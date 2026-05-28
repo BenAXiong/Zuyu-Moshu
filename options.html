@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>族語魔書 — 設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icons/icon48.png" alt="原住民族語辭典圖示" width="36" height="36">
+      <div>
+        <h1>族語魔書</h1>
+        <p>擴充功能設定</p>
+      </div>
+    </header>
+
+    <section>
+      <label>
+        <input type="checkbox" id="enabled">
+        啟用提示框
+      </label>
+    </section>
+
+    <section>
+      <h2>語言篩選</h2>
+      <p class="hint">選擇特定語言篩選結果，或搜尋全部 16 種語言。</p>
+      <select id="language">
+        <option value="">全部語言</option>
+      </select>
+    </section>
+
+    <section>
+      <h2>資料來源</h2>
+      <div id="sources-list">
+        <!-- populated by options.js from shared.js SOURCES -->
+      </div>
+    </section>
+
+    <section>
+      <h2>提示框顯示</h2>
+      <div class="check-row">
+        <label>
+          <input type="checkbox" id="showDialect">
+          顯示方言名稱
+        </label>
+        <label>
+          <input type="checkbox" id="boldText">
+          粗體顯示翻譯
+        </label>
+      </div>
+      <label>
+        最多顯示筆數
+        <select id="maxResults">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="4">4</option>
+          <option value="6">6</option>
+          <option value="8">8</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
+      <h2>外觀</h2>
+      <div class="radio-row">
+        <span>主題</span>
+        <div class="radio-group">
+          <label><input type="radio" name="theme" value="dark"> 深色</label>
+          <label><input type="radio" name="theme" value="light"> 淺色</label>
+          <label><input type="radio" name="theme" value="paper"> 緋紙</label>
+          <label><input type="radio" name="theme" value="field"> 苔野</label>
+        </div>
+      </div>
+      <div class="radio-row">
+        <span>字體大小</span>
+        <div class="radio-group">
+          <label><input type="radio" name="fontSize" value="small"> 小</label>
+          <label><input type="radio" name="fontSize" value="medium"> 中</label>
+          <label><input type="radio" name="fontSize" value="large"> 大</label>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>觸發方式</h2>
+      <p class="hint">至少需啟用一種觸發方式。</p>
+      <div class="check-row">
+        <label>
+          <input type="checkbox" id="triggerDblclick">
+          雙擊單字
+        </label>
+        <label>
+          <input type="checkbox" id="triggerCtrlSelect">
+          Ctrl + 拖曳選取文字
+        </label>
+      </div>
+    </section>
+
+    <footer>
+      <button id="save">儲存設定</button>
+      <span id="status"></span>
+    </footer>
+  </main>
+
+  <script src="shared.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

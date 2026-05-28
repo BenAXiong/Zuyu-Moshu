@@ -1,0 +1,182 @@
+/* ============================================================
+   族語魔書 — tooltip (content.css)
+   Four themes: dark (default) · light · paper · field
+   ============================================================ */
+
+#formosan-dict-tooltip {
+  /* ── Night (default dark) ─────────────────────────────── */
+  --fdt-bg:             #0f0f12;
+  --fdt-surface:        #16161a;
+  --fdt-border:         rgba(255,255,255,0.07);
+  --fdt-text:           #f4f1ea;
+  --fdt-dim:            #7d7a72;
+  --fdt-accent:         #f4f1ea;
+  --fdt-accent-soft:    rgba(244,241,234,0.08);
+  --fdt-divider:        rgba(255,255,255,0.04);
+  --fdt-header-divider: rgba(255,255,255,0.06);
+  --fdt-tag-bg:         rgba(255,255,255,0.05);
+  --fdt-shadow:         0 12px 40px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4);
+
+  width: 304px;
+  background: var(--fdt-bg);
+  border: 1px solid var(--fdt-border);
+  border-radius: 14px;
+  box-shadow: var(--fdt-shadow);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
+               'Noto Sans CJK TC', 'Microsoft JhengHei', sans-serif;
+  font-size: 17px;
+  color: var(--fdt-text);
+  overflow: hidden;
+  backdrop-filter: saturate(1.05);
+}
+
+/* ── Day (light) ────────────────────────────────────────── */
+#formosan-dict-tooltip.fdt-light {
+  --fdt-bg:             #ffffff;
+  --fdt-surface:        #ffffff;
+  --fdt-border:         rgba(15,18,28,0.08);
+  --fdt-text:           #0c0d11;
+  --fdt-dim:            #8a8f99;
+  --fdt-accent:         #2a6fdb;
+  --fdt-accent-soft:    rgba(42,111,219,0.10);
+  --fdt-divider:        rgba(15,18,28,0.05);
+  --fdt-header-divider: rgba(15,18,28,0.07);
+  --fdt-tag-bg:         rgba(15,18,28,0.04);
+  --fdt-shadow:         0 14px 40px rgba(20,24,40,0.12), 0 2px 6px rgba(20,24,40,0.06);
+}
+
+/* ── Crimson Paper ─────────────────────────────────────── */
+#formosan-dict-tooltip.fdt-paper {
+  --fdt-bg:             #fbf5e7;
+  --fdt-surface:        #fffcf3;
+  --fdt-border:         #e6dac0;
+  --fdt-text:           #2b221a;
+  --fdt-dim:            #887b68;
+  --fdt-accent:         #a8351f;
+  --fdt-accent-soft:    #f6e0d6;
+  --fdt-divider:        rgba(43,34,26,0.06);
+  --fdt-header-divider: rgba(43,34,26,0.10);
+  --fdt-tag-bg:         #f5eedf;
+  --fdt-shadow:         0 14px 36px rgba(124,33,19,0.16), 0 2px 6px rgba(43,34,26,0.08);
+}
+
+/* ── Sage Field ────────────────────────────────────────── */
+#formosan-dict-tooltip.fdt-field {
+  --fdt-bg:             #fbf5e7;
+  --fdt-surface:        #fffcf3;
+  --fdt-border:         #e4e7cc;
+  --fdt-text:           #2b221a;
+  --fdt-dim:            #887b68;
+  --fdt-accent:         #566234;
+  --fdt-accent-soft:    #e4e7cc;
+  --fdt-divider:        rgba(43,34,26,0.06);
+  --fdt-header-divider: rgba(86,98,52,0.18);
+  --fdt-tag-bg:         #f5eedf;
+  --fdt-shadow:         0 14px 36px rgba(86,98,52,0.18), 0 2px 6px rgba(43,34,26,0.08);
+}
+
+/* ── Sizes ──────────────────────────────────────────────── */
+#formosan-dict-tooltip.fdt-small { font-size: 14px; }
+#formosan-dict-tooltip.fdt-large { font-size: 20px; }
+
+/* ── Header ─────────────────────────────────────────────── */
+.fdt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px 10px;
+  background: var(--fdt-surface);
+  border-bottom: 1px solid var(--fdt-header-divider);
+}
+
+.fdt-word {
+  font-family: ui-monospace, 'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--fdt-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fdt-label {
+  flex-shrink: 0;
+  font-size: 0.62em;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--fdt-dim);
+  background: var(--fdt-tag-bg);
+  border-radius: 999px;
+  padding: 3px 9px;
+  line-height: 1.4;
+}
+
+/* ── Body ───────────────────────────────────────────────── */
+.fdt-body { padding: 4px 0; }
+
+.fdt-loading,
+.fdt-empty {
+  display: block;
+  padding: 12px 14px;
+  color: var(--fdt-dim);
+  font-style: italic;
+  font-size: 0.92em;
+}
+
+.fdt-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 14px;
+  transition: background-color 0.12s ease;
+}
+
+.fdt-row + .fdt-row { border-top: 1px solid var(--fdt-divider); }
+
+.fdt-row:hover { background: var(--fdt-accent-soft); }
+
+.fdt-zh {
+  color: var(--fdt-accent);
+  font-weight: 500;
+  flex-shrink: 0;
+  line-height: 1.35;
+}
+
+#formosan-dict-tooltip.fdt-bold .fdt-zh { font-weight: 700; }
+
+.fdt-dialect {
+  color: var(--fdt-dim);
+  font-size: 0.74em;
+  letter-spacing: 0.02em;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Alt-spelling section ───────────────────────────────── */
+.fdt-alt-section {
+  margin-top: 4px;
+  border-top: 1px solid var(--fdt-header-divider);
+  background: linear-gradient(to bottom, var(--fdt-accent-soft) 0%, transparent 40%);
+  padding-top: 4px;
+}
+
+.fdt-alt-header {
+  padding: 8px 14px 4px;
+  font-size: 0.66em;
+  font-weight: 600;
+  color: var(--fdt-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+.fdt-alt-header::before {
+  content: "→ ";
+  color: var(--fdt-accent);
+  opacity: 0.7;
+  margin-right: 2px;
+}

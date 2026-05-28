@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>族語魔書</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon16.png" alt="">
+    <span class="title">族語魔書</span>
+    <span id="toggle-label">啟用</span>
+    <button id="toggle" class="sw" title="啟用/停用提示框"></button>
+  </header>
+
+  <div class="row">
+    <span class="lbl">語言</span>
+    <select id="language">
+      <option value="">全部</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <span class="lbl">主題</span>
+    <div class="pills">
+      <button class="pill" data-group="theme" data-value="dark">夜</button>
+      <button class="pill" data-group="theme" data-value="light">晝</button>
+      <button class="pill" data-group="theme" data-value="paper">緋紙</button>
+      <button class="pill" data-group="theme" data-value="field">苔野</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">字體</span>
+    <div class="pills">
+      <button class="pill" data-group="font" data-value="small">小</button>
+      <button class="pill" data-group="font" data-value="medium">中</button>
+      <button class="pill" data-group="font" data-value="large">大</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <span class="lbl">替拼</span>
+    <button id="altSpelling" class="sw" title="相近拼法搜尋"></button>
+  </div>
+
+  <a id="opts" href="#">完整設定 →</a>
+
+  <script src="shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

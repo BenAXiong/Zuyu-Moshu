@@ -1,0 +1,98 @@
+// DEFAULTS and LANG_TO_DIALECTS provided by shared.js
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Populate language dropdown
+  const langSelect = document.getElementById('language');
+  Object.keys(LANG_TO_DIALECTS).forEach(lang => {
+    const opt = document.createElement('option');
+    opt.value = lang;
+    opt.textContent = lang;
+    langSelect.appendChild(opt);
+  });
+
+  // Load settings and reflect them in the UI
+  chrome.storage.sync.get(DEFAULTS, (s) => {
+    const MIGRATE = { woven: 'paper', forest: 'field' };
+    if (s.theme in MIGRATE) { s.theme = MIGRATE[s.theme]; patch({ theme: s.theme }); }
+    langSelect.value = s.language;
+    activatePill('theme', s.theme);
+    activatePill('font', s.fontSize);
+    applyTheme(s.theme);
+    applyFontSize(s.fontSize);
+    setToggle(s.enabled);
+    document.getElementById('altSpelling').classList.toggle('off', !s.altSpelling);
+  });
+
+  // Language: save on change
+  langSelect.addEventListener('change', () => {
+    patch({ language: langSelect.value });
+  });
+
+  // Pills: save on click
+  document.querySelectorAll('.pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { group, value } = btn.dataset;
+      activatePill(group, value);
+      if (group === 'theme') {
+        applyTheme(value);
+        patch({ theme: value });
+      } else {
+        applyFontSize(value);
+        patch({ fontSize: value });
+      }
+    });
+  });
+
+  // Enable/disable toggle
+  document.getElementById('toggle').addEventListener('click', () => {
+    chrome.storage.sync.get(DEFAULTS, (s) => {
+      const next = !s.enabled;
+      patch({ enabled: next });
+      setToggle(next);
+    });
+  });
+
+  // Alt spelling toggle
+  document.getElementById('altSpelling').addEventListener('click', () => {
+    chrome.storage.sync.get(DEFAULTS, (s) => {
+      const next = !s.altSpelling;
+      patch({ altSpelling: next });
+      document.getElementById('altSpelling').classList.toggle('off', !next);
+    });
+  });
+
+  // Full settings link
+  document.getElementById('opts').addEventListener('click', (e) => {
+    e.preventDefault();
+    chrome.runtime.openOptionsPage();
+  });
+});
+
+function setToggle(enabled) {
+  document.getElementById('toggle').classList.toggle('off', !enabled);
+  const lbl = document.getElementById('toggle-label');
+  lbl.textContent = enabled ? '啟用' : '停用';
+  lbl.classList.toggle('off', !enabled);
+}
+
+function activatePill(group, value) {
+  document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
+function applyTheme(theme) {
+  document.body.classList.remove('light', 'paper', 'field');
+  if (theme !== 'dark') document.body.classList.add(theme);
+}
+
+function applyFontSize(size) {
+  document.body.classList.remove('font-small', 'font-large');
+  if (size !== 'medium') document.body.classList.add(`font-${size}`);
+}
+
+function patch(changes) {
+  chrome.storage.sync.get(DEFAULTS, (s) => {
+    chrome.storage.sync.set({ ...s, ...changes });
+  });
+}
