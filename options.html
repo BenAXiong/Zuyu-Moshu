@@ -45,22 +45,18 @@
           顯示方言名稱
         </label>
         <label>
-          <input type="checkbox" id="boldText">
-          粗體顯示翻譯
+          最多顯示筆數
+          <select id="maxResults">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+          </select>
         </label>
       </div>
-      <label>
-        最多顯示筆數
-        <select id="maxResults">
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="4">4</option>
-          <option value="6">6</option>
-          <option value="8">8</option>
-          <option value="10">10</option>
-          <option value="20">20</option>
-        </select>
-      </label>
     </section>
 
     <section>
@@ -82,6 +78,10 @@
           <label><input type="radio" name="fontSize" value="large"> 大</label>
         </div>
       </div>
+      <label>
+        <input type="checkbox" id="boldText">
+        粗體顯示翻譯
+      </label>
     </section>
 
     <section>
@@ -91,6 +91,10 @@
         <label>
           <input type="checkbox" id="triggerDblclick">
           雙擊單字
+        </label>
+        <label>
+          <input type="checkbox" id="triggerHover">
+          滑鼠懸停
         </label>
         <label>
           <input type="checkbox" id="triggerCtrlSelect">

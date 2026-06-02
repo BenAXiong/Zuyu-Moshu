@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cb.className = 'source-cb';
     cb.value = src.id;
     cb.disabled = !src.available;
+    if (src.language) cb.dataset.language = src.language;
     label.append(cb, document.createTextNode(' ' + src.label));
     sourcesList.appendChild(label);
   });
@@ -28,10 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
     langSelect.value = s.language;
 
     const validIds = new Set(SOURCES.map(src => src.id));
-    const activeSources = (s.sources || []).filter(id => validIds.has(id));
+    const activeSources = (s.sources || [])
+      .map(id => ({ ILRDF: 'EPARK', WIKI: 'ILRDF' }[id] || id))
+      .filter(id => validIds.has(id));
     const effectiveSources = activeSources.length > 0 ? activeSources : DEFAULTS.sources;
-    document.querySelectorAll('.source-cb:not([disabled])').forEach(cb => {
-      cb.checked = effectiveSources.includes(cb.value);
+    document.querySelectorAll('.source-cb').forEach(cb => {
+      cb.checked = effectiveSources.includes(cb.value) || (cb.value === 'KILANG' && s.moeKilangInsights);
     });
 
     document.getElementById('showDialect').checked = s.showDialect;
@@ -42,18 +45,31 @@ document.addEventListener('DOMContentLoaded', () => {
      document.querySelector('input[name="theme"][value="dark"]')).checked = true;
     document.querySelector(`input[name="fontSize"][value="${s.fontSize}"]`).checked = true;
     document.getElementById('enabled').checked = s.enabled;
-    document.getElementById('triggerDblclick').checked = s.triggerDblclick;
+    document.getElementById('triggerDblclick').checked = s.triggerHover ? false : s.triggerDblclick;
+    document.getElementById('triggerHover').checked = s.triggerHover;
     document.getElementById('triggerCtrlSelect').checked = s.triggerCtrlSelect;
+    updateSourceAvailability(langSelect.value);
+  });
+
+  langSelect.addEventListener('change', () => updateSourceAvailability(langSelect.value));
+
+  document.getElementById('triggerDblclick').addEventListener('change', (e) => {
+    if (e.target.checked) document.getElementById('triggerHover').checked = false;
+  });
+
+  document.getElementById('triggerHover').addEventListener('change', (e) => {
+    if (e.target.checked) document.getElementById('triggerDblclick').checked = false;
   });
 
   document.getElementById('save').addEventListener('click', () => {
-    const dblclick = document.getElementById('triggerDblclick').checked;
+    const hover = document.getElementById('triggerHover').checked;
+    const dblclick = !hover && document.getElementById('triggerDblclick').checked;
     const ctrlSel  = document.getElementById('triggerCtrlSelect').checked;
     const sources = Array.from(document.querySelectorAll('.source-cb:not([disabled])'))
                         .filter(cb => cb.checked)
                         .map(cb => cb.value);
 
-    if (!dblclick && !ctrlSel) {
+    if (!hover && !dblclick && !ctrlSel) {
       showStatus('至少需啟用一種觸發方式。', true);
       return;
     }
@@ -68,12 +84,24 @@ document.addEventListener('DOMContentLoaded', () => {
       fontSize:          document.querySelector('input[name="fontSize"]:checked').value,
       enabled:           document.getElementById('enabled').checked,
       triggerDblclick:   dblclick,
+      triggerHover:      hover,
       triggerCtrlSelect: ctrlSel,
+      moeKilangInsights: langSelect.value === 'Amis' && sources.includes('KILANG'),
     };
 
     chrome.storage.sync.set(settings, () => showStatus('已儲存！', false));
   });
 });
+
+function updateSourceAvailability(language) {
+  document.querySelectorAll('.source-cb').forEach(cb => {
+    const source = SOURCES.find(src => src.id === cb.value);
+    const available = Boolean(source?.available) && (!source.language || source.language === language);
+    cb.disabled = !available;
+    if (!available) cb.checked = false;
+    cb.parentElement?.classList.toggle('disabled', !available);
+  });
+}
 
 function showStatus(msg, isError) {
   const el = document.getElementById('status');

@@ -1,12 +1,12 @@
 const SOURCES = [
-  { id: 'ILRDF', label: 'ILRDF 族語辭典',   available: true  },
-  { id: 'MOE',   label: 'MoE 教育部辭典',    available: false },
-  { id: 'WIKI',  label: '維基辭典',           available: false },
+  { id: 'EPARK',  label: 'ePark',  available: true },
+  { id: 'KILANG', label: 'Kilang', available: true, language: 'Amis' },
+  { id: 'ILRDF',  label: 'ILRDF',  available: false },
 ];
 
 const DEFAULTS = {
-  language: '',
-  sources: ['ILRDF'],   // only available source for now
+  language: 'Amis',
+  sources: ['KILANG'],
   showDialect: true,
   boldText: true,
   maxResults: 6,
@@ -14,8 +14,10 @@ const DEFAULTS = {
   fontSize: 'medium',
   triggerDblclick: true,
   triggerCtrlSelect: true,
+  triggerHover: false,
   enabled: true,
   altSpelling: true,
+  moeKilangInsights: false,
 };
 
 const LANG_TO_DIALECTS = {

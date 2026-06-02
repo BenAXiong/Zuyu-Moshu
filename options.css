@@ -73,6 +73,11 @@ label {
   cursor: pointer;
 }
 
+label.disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 select {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -95,6 +100,10 @@ input[type="checkbox"] {
   accent-color: #059669;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
 }
 
 /* Radio rows */
@@ -140,7 +149,12 @@ input[type="radio"] {
 .check-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px 32px;
+}
+
+.check-row label {
+  margin-bottom: 0;
 }
 
 

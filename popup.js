@@ -1,5 +1,7 @@
 // DEFAULTS and LANG_TO_DIALECTS provided by shared.js
 
+const ALT_SPELLING_LANGUAGE = 'Amis';
+
 document.addEventListener('DOMContentLoaded', () => {
   // Populate language dropdown
   const langSelect = document.getElementById('language');
@@ -20,12 +22,16 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(s.theme);
     applyFontSize(s.fontSize);
     setToggle(s.enabled);
-    document.getElementById('altSpelling').classList.toggle('off', !s.altSpelling);
+    setAltSpellingToggle(s.altSpelling, s.language);
+    setHoverToggle(s.triggerHover);
   });
 
   // Language: save on change
   langSelect.addEventListener('change', () => {
-    patch({ language: langSelect.value });
+    chrome.storage.sync.get(DEFAULTS, (s) => {
+      patch({ language: langSelect.value });
+      setAltSpellingToggle(s.altSpelling, langSelect.value);
+    });
   });
 
   // Pills: save on click
@@ -55,9 +61,19 @@ document.addEventListener('DOMContentLoaded', () => {
   // Alt spelling toggle
   document.getElementById('altSpelling').addEventListener('click', () => {
     chrome.storage.sync.get(DEFAULTS, (s) => {
+      if (s.language !== ALT_SPELLING_LANGUAGE) return;
       const next = !s.altSpelling;
       patch({ altSpelling: next });
-      document.getElementById('altSpelling').classList.toggle('off', !next);
+      setAltSpellingToggle(next, s.language);
+    });
+  });
+
+  // Hover lookup toggle; hover mode replaces double-click lookup
+  document.getElementById('triggerHover').addEventListener('click', () => {
+    chrome.storage.sync.get(DEFAULTS, (s) => {
+      const next = !s.triggerHover;
+      patch({ triggerHover: next, triggerDblclick: !next });
+      setHoverToggle(next);
     });
   });
 
@@ -73,6 +89,19 @@ function setToggle(enabled) {
   const lbl = document.getElementById('toggle-label');
   lbl.textContent = enabled ? '啟用' : '停用';
   lbl.classList.toggle('off', !enabled);
+}
+
+function setAltSpellingToggle(enabled, language) {
+  const btn = document.getElementById('altSpelling');
+  const available = language === ALT_SPELLING_LANGUAGE;
+  btn.disabled = !available;
+  btn.classList.toggle('disabled', !available);
+  btn.classList.toggle('off', !available || !enabled);
+  btn.title = available ? '相近拼法搜尋' : '相近拼法搜尋僅適用 Amis';
+}
+
+function setHoverToggle(enabled) {
+  document.getElementById('triggerHover').classList.toggle('off', !enabled);
 }
 
 function activatePill(group, value) {

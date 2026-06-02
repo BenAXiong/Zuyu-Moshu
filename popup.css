@@ -162,6 +162,12 @@ header .title {
 .sw.off { background: var(--switch-off); }
 .sw.off::after { right: auto; left: 2px; }
 
+.sw:disabled,
+.sw.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 /* ── Rows ───────────────────────────────────────────────── */
 .row {
   display: flex;
