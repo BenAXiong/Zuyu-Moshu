@@ -922,13 +922,19 @@ function closeExpandedResults(scope = tooltip) {
     item.setAttribute('aria-expanded', 'false');
     item.querySelector('.fdt-examples')?.remove();
   });
+  scope?.querySelectorAll('.fdt-moe-sense.expanded').forEach(item => {
+    item.classList.remove('expanded');
+    item.setAttribute('aria-expanded', 'false');
+    item.querySelector('.fdt-examples')?.remove();
+  });
 }
 
-function buildExamplesPanel(examples) {
+function buildExamplesPanel(examples, limit = MAX_EXPANDED_EXAMPLES) {
   const panel = document.createElement('div');
   panel.className = 'fdt-examples';
 
-  examples.slice(0, MAX_EXPANDED_EXAMPLES).forEach(example => {
+  const visibleExamples = Number.isFinite(limit) ? examples.slice(0, limit) : examples;
+  visibleExamples.forEach(example => {
     const item = document.createElement('div');
     item.className = 'fdt-example';
 
@@ -989,6 +995,16 @@ function toggleMoeExamples(item, examples) {
   item.classList.add('expanded');
   item.setAttribute('aria-expanded', 'true');
   item.appendChild(buildExamplesPanel(examples));
+}
+
+function toggleMoeSenseExamples(item, examples) {
+  const isExpanded = item.classList.contains('expanded');
+  closeExpandedResults();
+
+  item.classList.toggle('expanded', !isExpanded);
+  item.setAttribute('aria-expanded', String(!isExpanded));
+  item.querySelector('.fdt-examples')?.remove();
+  item.appendChild(buildExamplesPanel(examples, isExpanded ? MAX_EXPANDED_EXAMPLES : Infinity));
 }
 
 function appendResultRow(parent, entry, settings, showRowAudio) {
@@ -1129,6 +1145,16 @@ function getMoeExampleRows(row) {
     .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
 }
 
+function dedupeMoeExamples(examples) {
+  const seen = new Set();
+  return examples.filter(example => {
+    const key = `${example.ab}\n${example.zh}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function getMoeSourceRank(code) {
   return ({
     s: 0,
@@ -1139,29 +1165,45 @@ function getMoeSourceRank(code) {
   })[code] ?? 9;
 }
 
-function getMoePrimaryRow(rows) {
-  return [...rows].sort((a, b) => {
-    const aExamples = getMoeExampleRows(a).length > 0 ? 0 : 1;
-    const bExamples = getMoeExampleRows(b).length > 0 ? 0 : 1;
-    if (aExamples !== bExamples) return aExamples - bExamples;
-    const sourceRank = getMoeSourceRank(a.dict_code) - getMoeSourceRank(b.dict_code);
-    if (sourceRank !== 0) return sourceRank;
-    return String(a.definition || '').length - String(b.definition || '').length;
-  })[0] || rows[0];
+function getMoeDisplayRows(rows) {
+  const displayable = rows.filter(row => cleanMoeDefinition(row.definition) || getMoeExampleRows(row).length > 0);
+  if (displayable.length === 0) return rows;
+
+  const bestRank = Math.min(...displayable.map(row => getMoeSourceRank(row.dict_code)));
+  return displayable.filter(row => getMoeSourceRank(row.dict_code) === bestRank);
 }
 
-function getMergedMoeExamples(rows) {
-  const seen = new Set();
-  const examples = [];
-  rows.forEach(row => {
-    getMoeExampleRows(row).forEach(example => {
-      const key = `${example.ab}\n${example.zh}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      examples.push(example);
-    });
+function getMoeSenseKey(row) {
+  const definition = cleanMoeDefinition(row.definition);
+  return definition || cleanMoeText(row.word_ab) || String(row.id || '');
+}
+
+function getMoeSenseRows(rows) {
+  const senses = [];
+  const byKey = new Map();
+
+  getMoeDisplayRows(rows).forEach(row => {
+    const key = getMoeSenseKey(row);
+    if (!key) return;
+
+    let sense = byKey.get(key);
+    if (!sense) {
+      sense = {
+        row,
+        definition: cleanMoeDefinition(row.definition),
+        examples: [],
+      };
+      byKey.set(key, sense);
+      senses.push(sense);
+    }
+    sense.examples = dedupeMoeExamples([...sense.examples, ...getMoeExampleRows(row)]);
   });
-  return examples;
+
+  return senses;
+}
+
+function getMoePrimaryRow(rows) {
+  return getMoeSenseRows(rows)[0]?.row || rows[0];
 }
 
 function getMoeAffixes(word, stem) {
@@ -1187,6 +1229,63 @@ function formatMoeAffixSummary(affixes) {
   if (prefix) return `(${prefix}-)`;
   if (suffix) return `(-${suffix})`;
   return '';
+}
+
+function renderMoeSenseRows(section, rows) {
+  const senses = getMoeSenseRows(rows);
+
+  senses.forEach(sense => {
+    const item = document.createElement('div');
+    item.className = 'fdt-moe-sense';
+
+    const examples = sense.examples;
+    const hasOverflow = examples.length > MAX_EXPANDED_EXAMPLES;
+    if (hasOverflow) {
+      item.classList.add('fdt-expandable');
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-expanded', 'false');
+      item.title = '顯示全部例句';
+      item.addEventListener('click', () => toggleMoeSenseExamples(item, examples));
+      item.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        toggleMoeSenseExamples(item, examples);
+      });
+    }
+
+    const header = document.createElement('div');
+    header.className = 'fdt-moe-sense-head';
+
+    const def = document.createElement('div');
+    def.className = 'fdt-moe-def';
+    def.textContent = sense.definition || cleanMoeText(sense.row.word_ab);
+    header.appendChild(def);
+
+    const meta = document.createElement('span');
+    meta.className = 'fdt-moe-meta';
+    if (sense.row.tier) {
+      const tier = document.createElement('span');
+      tier.className = 'fdt-moe-source';
+      tier.textContent = `T${sense.row.tier}`;
+      meta.appendChild(tier);
+    }
+    const source = document.createElement('span');
+    source.className = 'fdt-moe-source';
+    source.textContent = getMoeSourceLabel(sense.row.dict_code);
+    meta.appendChild(source);
+    header.appendChild(meta);
+
+    item.appendChild(header);
+
+    if (examples.length > 0) {
+      item.appendChild(buildExamplesPanel(examples, MAX_EXPANDED_EXAMPLES));
+    }
+
+    section.appendChild(item);
+  });
+
+  return senses;
 }
 
 function renderMoeKilangSection(insights, settings) {
@@ -1224,55 +1323,29 @@ function renderMoeKilangSection(insights, settings) {
   const affixStem = insights.fallbackFrom ? matchedWord : (stem || root);
   const affixes = getMoeAffixes(affixBaseWord, affixStem);
   const affixSummary = formatMoeAffixSummary(affixes);
-  const definition = cleanMoeDefinition(primary.definition);
   const isExactHeadword = cleanMoeText(getHeaderWord()).toLowerCase() === matchedWord.toLowerCase() && !affixSummary;
   setHeaderRoot(root);
 
   const section = document.createElement('div');
   section.className = 'fdt-moe-section';
 
-  const header = document.createElement('div');
-  header.className = 'fdt-moe-header';
+  const contextTitle = [matchedWord, affixSummary].filter(Boolean).join(' ');
+  if (!isExactHeadword && contextTitle) {
+    const header = document.createElement('div');
+    header.className = 'fdt-moe-header fdt-moe-context';
 
-  const title = document.createElement('span');
-  title.className = 'fdt-moe-title';
-  title.textContent = isExactHeadword && definition
-    ? definition
-    : [matchedWord, affixSummary].filter(Boolean).join(' ');
-  header.appendChild(title);
+    const title = document.createElement('span');
+    title.className = 'fdt-moe-title';
+    title.textContent = contextTitle;
+    header.appendChild(title);
 
-  const meta = document.createElement('span');
-  meta.className = 'fdt-moe-meta';
-  if (primary.tier) {
-    const tier = document.createElement('span');
-    tier.className = 'fdt-moe-source';
-    tier.textContent = `T${primary.tier}`;
-    meta.appendChild(tier);
-  }
-  const source = document.createElement('span');
-  source.className = 'fdt-moe-source';
-  source.textContent = getMoeSourceLabel(primary.dict_code);
-  meta.appendChild(source);
-  header.appendChild(meta);
-  section.appendChild(header);
-
-  if (definition && !isExactHeadword) {
-    const item = document.createElement('div');
-    item.className = 'fdt-moe-item';
-
-    const def = document.createElement('div');
-    def.className = 'fdt-moe-def';
-    def.textContent = definition;
-    item.appendChild(def);
-
-    section.appendChild(item);
+    section.appendChild(header);
   }
 
-  const examples = getMergedMoeExamples(rows);
-  if (examples.length > 0) {
-    const panel = buildExamplesPanel(examples);
-    panel.classList.add('fdt-moe-examples');
-    section.appendChild(panel);
+  const senses = renderMoeSenseRows(section, rows);
+  if (senses.length === 0) {
+    showNoResultsIfEmpty(body);
+    return;
   }
 
   insertMoeSection(body, section);
@@ -1322,36 +1395,24 @@ function renderMoeAltSection(insights, settings) {
   const affixStem = insights.fallbackFrom ? matchedWord : (stem || root);
   const affixes = getMoeAffixes(affixBaseWord, affixStem);
   const affixSummary = formatMoeAffixSummary(affixes);
-  const definition = cleanMoeDefinition(primary.definition);
 
-  const header = document.createElement('div');
-  header.className = 'fdt-moe-header';
+  const contextTitle = [matchedWord, affixSummary].filter(Boolean).join(' ');
+  if (affixSummary && contextTitle) {
+    const header = document.createElement('div');
+    header.className = 'fdt-moe-header fdt-moe-context';
 
-  const title = document.createElement('span');
-  title.className = 'fdt-moe-title';
-  title.textContent = definition || [matchedWord, affixSummary].filter(Boolean).join(' ');
-  header.appendChild(title);
+    const title = document.createElement('span');
+    title.className = 'fdt-moe-title';
+    title.textContent = contextTitle;
+    header.appendChild(title);
 
-  const meta = document.createElement('span');
-  meta.className = 'fdt-moe-meta';
-  if (primary.tier) {
-    const tier = document.createElement('span');
-    tier.className = 'fdt-moe-source';
-    tier.textContent = `T${primary.tier}`;
-    meta.appendChild(tier);
+    section.appendChild(header);
   }
-  const source = document.createElement('span');
-  source.className = 'fdt-moe-source';
-  source.textContent = getMoeSourceLabel(primary.dict_code);
-  meta.appendChild(source);
-  header.appendChild(meta);
-  section.appendChild(header);
 
-  const examples = getMergedMoeExamples(rows);
-  if (examples.length > 0) {
-    const panel = buildExamplesPanel(examples);
-    panel.classList.add('fdt-moe-examples');
-    section.appendChild(panel);
+  const senses = renderMoeSenseRows(section, rows);
+  if (senses.length === 0) {
+    showNoResultsIfEmpty(body);
+    return;
   }
 
   clearEmptyMessage(body);

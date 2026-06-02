@@ -290,12 +290,14 @@
 }
 
 .fdt-result.expanded > .fdt-row,
-.fdt-moe-item.expanded {
+.fdt-moe-item.expanded,
+.fdt-moe-sense.expanded {
   background: var(--fdt-accent-soft);
 }
 
 .fdt-result.expanded > .fdt-row::after,
-.fdt-moe-item.expanded::after {
+.fdt-moe-item.expanded::after,
+.fdt-moe-sense.expanded::after {
   transform: rotate(225deg) translate(-2px, -1px);
 }
 
@@ -525,6 +527,46 @@
   background: var(--fdt-tag-bg);
 }
 
+.fdt-moe-context {
+  margin-bottom: 8px;
+}
+
+.fdt-moe-sense {
+  position: relative;
+  padding-right: 12px;
+}
+
+.fdt-moe-sense + .fdt-moe-sense {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--fdt-divider);
+}
+
+.fdt-moe-sense.fdt-expandable::after {
+  position: absolute;
+  right: 1px;
+  top: 7px;
+}
+
+.fdt-moe-sense.fdt-expandable {
+  cursor: pointer;
+}
+
+.fdt-moe-sense-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.fdt-moe-sense-head .fdt-moe-def {
+  flex: 1;
+  min-width: 0;
+}
+
+.fdt-moe-sense-head .fdt-moe-meta {
+  margin-left: auto;
+}
+
 .fdt-moe-item {
   margin-top: 8px;
   position: relative;
@@ -545,6 +587,13 @@
 }
 
 .fdt-moe-item .fdt-examples {
+  margin-top: 6px;
+  padding: 0 0 0 8px;
+  background: transparent;
+  border-left: 1px solid var(--fdt-border);
+}
+
+.fdt-moe-sense .fdt-examples {
   margin-top: 6px;
   padding: 0 0 0 8px;
   background: transparent;
@@ -591,6 +640,14 @@
 
 .fdt-moe-alt-section .fdt-moe-header {
   padding: 6px 14px 0;
+}
+
+.fdt-moe-alt-section .fdt-moe-sense {
+  margin: 8px 14px 0;
+}
+
+.fdt-moe-alt-section .fdt-moe-sense + .fdt-moe-sense {
+  margin-top: 10px;
 }
 
 .fdt-moe-alt-section .fdt-moe-item {
