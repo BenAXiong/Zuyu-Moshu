@@ -814,9 +814,9 @@ function showTooltip(word, rect, settings, nav = null) {
   const top = spaceBelow > tooltipH
     ? rect.bottom + window.scrollY + 6
     : rect.top + window.scrollY - tooltipH - 6;
-  const left = Math.max(8, Math.min(rect.left + window.scrollX, window.innerWidth - 248));
+  const initialLeft = Math.max(8, rect.left + window.scrollX);
 
-  tooltip.style.cssText = `position:absolute;top:${top}px;left:${left}px;z-index:2147483647`;
+  tooltip.style.cssText = `position:absolute;top:${top}px;left:${initialLeft}px;z-index:2147483647`;
 
   const header = document.createElement('div');
   header.className = 'fdt-header';
@@ -883,7 +883,7 @@ function showTooltip(word, rect, settings, nav = null) {
 
   tooltip.append(header, body);
   document.body.appendChild(tooltip);
-  showFloatingSavedButton(top, left);
+  positionTooltipAndSavedButton(top, initialLeft);
 }
 
 function setLoading(on) {
@@ -1171,11 +1171,39 @@ function setHeaderSaveItem(item) {
   });
 }
 
-function showFloatingSavedButton(top, left) {
+function positionTooltipAndSavedButton(top, preferredLeft) {
+  if (!tooltip) return;
+  const margin = 8;
+  const width = tooltip.offsetWidth || 304;
+  const viewportRight = window.scrollX + window.innerWidth - margin;
+  const left = Math.max(
+    window.scrollX + margin,
+    Math.min(preferredLeft, viewportRight - width)
+  );
+  tooltip.style.left = `${left}px`;
+  showFloatingSavedButton(top, left, width);
+}
+
+function refreshTooltipLayout() {
+  if (!tooltip) return;
+  const top = Number.parseFloat(tooltip.style.top) || 0;
+  const left = Number.parseFloat(tooltip.style.left) || 8;
+  positionTooltipAndSavedButton(top, left);
+}
+
+function showFloatingSavedButton(top, left, tooltipWidth) {
   savedOpenButton?.remove();
   savedOpenButton = createOpenSavedButton();
   savedOpenButton.classList.add('fdt-saved-float');
-  const x = Math.min(left + 310, window.scrollX + window.innerWidth - 42);
+  const gap = 6;
+  const buttonWidth = 36;
+  const viewportLeft = window.scrollX + 8;
+  const viewportRight = window.scrollX + window.innerWidth - 8;
+  const rightX = left + tooltipWidth + gap;
+  const leftX = left - buttonWidth - gap;
+  const x = rightX + buttonWidth <= viewportRight
+    ? rightX
+    : Math.max(viewportLeft, leftX);
   savedOpenButton.style.cssText = `position:absolute;top:${top}px;left:${x}px;z-index:2147483647`;
   const styles = getComputedStyle(tooltip);
   [
@@ -1499,6 +1527,7 @@ function renderResults(results, settings) {
 
   setHeaderSaveItem(buildSavedHeadwordFromEntries(top));
   top.forEach(e => appendResultRow(body, e, settings, zhToAb));
+  refreshTooltipLayout();
 }
 
 function renderZhResults(entries, settings) {
@@ -1516,6 +1545,7 @@ function renderZhResults(entries, settings) {
 
   setHeaderSaveItem(buildSavedHeadwordFromEntries(top));
   top.forEach(entry => appendResultRow(body, entry, settings, true));
+  refreshTooltipLayout();
 }
 
 function renderCandidateSections(groups, settings) {
@@ -1546,6 +1576,7 @@ function renderCandidateSections(groups, settings) {
     group.results.forEach(entry => appendResultRow(section, entry, settings, true));
     body.appendChild(section);
   });
+  refreshTooltipLayout();
 }
 
 function cleanMoeText(text) {
@@ -1894,6 +1925,7 @@ function renderMoeKilangSection(insights, settings) {
   }));
 
   insertMoeSection(body, section);
+  refreshTooltipLayout();
 }
 
 function renderMoeAltSection(insights, settings) {
@@ -1980,6 +2012,7 @@ function renderMoeAltSection(insights, settings) {
 
   clearEmptyMessage(body);
   body.appendChild(section);
+  refreshTooltipLayout();
 }
 
 function renderAltSection(altWord, results, settings) {
@@ -2021,6 +2054,7 @@ function renderAltSection(altWord, results, settings) {
 
   clearEmptyMessage(body);
   body.appendChild(section);
+  refreshTooltipLayout();
 }
 
 function dismissTooltip() {

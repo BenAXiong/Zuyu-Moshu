@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 22:40 +08:00
+Global timestamp: 2026-06-03 22:47 +08:00
 
 Current extension version: 1.5.0
 
@@ -40,6 +40,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Feature | Scope | Current state | Implementation |
 |---|---|---|---|
 | Main result rows | Universal | Compact rows with primary text, optional secondary text, optional dialect/source label, optional row audio. | `content.js`: `appendResultRow()`, `renderResults()`, `renderZhResults()`. |
+| Responsive tooltip width | Universal | Tooltip width can grow from 304px up to 608px, capped by viewport width. Layout is remeasured after results render so the tooltip and floating saved-list button stay clamped. | `content.css`: `#formosan-dict-tooltip`; `content.js`: `positionTooltipAndSavedButton()`, `refreshTooltipLayout()`. |
 | ZH-to-AB normalized rows | Universal across enabled zh-capable sources | AB is primary text. ZH definition/translation is secondary text. ePark and Kilang share the row UI. | `content.js`: `normalizeDictZhEntries()`, `normalizeMoeZhEntries()`, `getZhLookupEntries()`. |
 | CJK hover candidate groups | Universal across enabled zh-capable sources | Shows at most 6 candidate groups, each with at most 2 unique AB results. Longer candidates are prioritized. | `content.js`: `makeCjkCandidates()`, `triggerCandidateLookup()`, `renderCandidateSections()`. |
 | No-results state | Universal | Shows `查無此詞` only if no enabled source/section produced content. | `content.js`: `showNoResultsIfEmpty()`. |
