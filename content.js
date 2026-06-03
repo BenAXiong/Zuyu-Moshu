@@ -71,13 +71,29 @@ function canUseAltSpelling(settings) {
   return settings.altSpelling && settings.language === ALT_SPELLING_LANGUAGE;
 }
 
+function hasEnabledSource(settings, sourceId) {
+  const sources = Array.isArray(settings.sources) ? settings.sources : DEFAULTS.sources;
+  return sources.includes(sourceId);
+}
+
 function canUseMoeKilang(settings, word) {
-  return settings.moeKilangInsights && settings.language === ALT_SPELLING_LANGUAGE && !hasCjk(word);
+  return (settings.moeKilangInsights || hasEnabledSource(settings, 'KILANG'))
+    && settings.language === ALT_SPELLING_LANGUAGE
+    && !hasCjk(word);
+}
+
+function canUseKilangZhToAb(settings, word) {
+  return (settings.moeKilangInsights || hasEnabledSource(settings, 'KILANG'))
+    && settings.language === ALT_SPELLING_LANGUAGE
+    && hasCjk(word);
 }
 
 function canUseDict(settings) {
-  const sources = Array.isArray(settings.sources) ? settings.sources : DEFAULTS.sources;
-  return sources.includes('EPARK') || sources.includes('ILRDF');
+  return hasEnabledSource(settings, 'EPARK') || hasEnabledSource(settings, 'ILRDF');
+}
+
+function canUseZhToAb(settings, word) {
+  return hasCjk(word) && (canUseDict(settings) || canUseKilangZhToAb(settings, word));
 }
 
 function clearHoverTimer() {
@@ -401,9 +417,146 @@ function prepareResults(results, query) {
     });
 }
 
+function sendRuntimeMessage(message) {
+  return new Promise(resolve => {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) resolve(null);
+      else resolve(response);
+    });
+  });
+}
+
+function normalizeDictZhEntries(results) {
+  return results
+    .map(entry => ({
+      ...entry,
+      sourceId: 'EPARK',
+      displayText: cleanDisplayText(entry.ab || ''),
+      secondaryText: cleanDisplayText(entry.zh || ''),
+    }))
+    .filter(entry => entry.displayText && !hasCjk(entry.displayText));
+}
+
+function getMoeSourceMeta(row) {
+  const parts = [];
+  if (row.tier) parts.push(`T${row.tier}`);
+  parts.push(getMoeSourceLabel(row.dict_code));
+  return parts.join(' ');
+}
+
+function normalizeMoeZhEntries(rows) {
+  const groups = [];
+  const byWord = new Map();
+
+  rows
+    .filter(row => cleanMoeText(row.word_ab))
+    .forEach(row => {
+      const word = cleanMoeText(row.word_ab);
+      let group = byWord.get(word.toLowerCase());
+      if (!group) {
+        group = { word, rows: [] };
+        byWord.set(word.toLowerCase(), group);
+        groups.push(group);
+      }
+      group.rows.push(row);
+    });
+
+  return groups.map(group => {
+    const bestRank = Math.min(...group.rows.map(row => getMoeSourceRank(row.dict_code)));
+    const bestRows = group.rows.filter(row => getMoeSourceRank(row.dict_code) === bestRank);
+    const definitions = [...new Set(
+      bestRows.map(row => cleanMoeDefinition(row.definition)).filter(Boolean)
+    )];
+    const examples = dedupeMoeExamples(bestRows.flatMap(getMoeExampleRows));
+    const primary = bestRows[0] || group.rows[0];
+
+    return {
+      sourceId: 'KILANG',
+      ab: group.word,
+      zh: definitions.join('；'),
+      displayText: group.word,
+      secondaryText: definitions.slice(0, 2).join('；'),
+      metaLabel: getMoeSourceMeta(primary),
+      examples,
+      moeRows: bestRows,
+      root: cleanMoeText(primary?.ultimate_root || primary?.stem || ''),
+      sourceRank: bestRank,
+    };
+  }).filter(entry => entry.displayText);
+}
+
+function sortZhEntries(entries, settings) {
+  const sourceOrder = Array.isArray(settings.sources) && settings.sources.length > 0
+    ? settings.sources
+    : DEFAULTS.sources;
+  const sourceRank = source => {
+    const index = sourceOrder.indexOf(source);
+    return index >= 0 ? index : sourceOrder.length;
+  };
+
+  return [...entries].sort((a, b) => {
+    const bySource = sourceRank(a.sourceId) - sourceRank(b.sourceId);
+    if (bySource !== 0) return bySource;
+    const byMoeSource = (a.sourceRank ?? 0) - (b.sourceRank ?? 0);
+    if (byMoeSource !== 0) return byMoeSource;
+    return a.displayText.localeCompare(b.displayText);
+  });
+}
+
+function dedupeZhEntries(entries) {
+  const seen = new Set();
+  return entries.filter(entry => {
+    const key = `${entry.sourceId}:${entry.displayText}:${entry.secondaryText || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+async function getZhLookupEntries(word, settings) {
+  const tasks = [];
+
+  if (canUseDict(settings)) {
+    tasks.push((async () => {
+      const cacheKey = `${word}:${settings.language}`;
+      if (fetched.has(cacheKey)) return normalizeDictZhEntries(fetched.get(cacheKey));
+
+      const dialects = settings.language && LANG_TO_DIALECTS[settings.language]
+        ? LANG_TO_DIALECTS[settings.language]
+        : '';
+      const response = await sendRuntimeMessage({ type: 'lookup', word, dialects });
+      const results = response?.results ?? [];
+      if (fetched.size >= MAX_CACHE) fetched.delete(fetched.keys().next().value);
+      fetched.set(cacheKey, results);
+      return normalizeDictZhEntries(results);
+    })());
+  }
+
+  if (canUseKilangZhToAb(settings, word)) {
+    tasks.push((async () => {
+      const cacheKey = `moe-zh:${word}`;
+      if (moeFetched.has(cacheKey)) return normalizeMoeZhEntries(moeFetched.get(cacheKey)?.rows ?? []);
+
+      const response = await sendRuntimeMessage({ type: 'moeZhLookup', word });
+      const insights = response?.insights ?? { query: word, rows: [] };
+      if (moeFetched.size >= MAX_CACHE) moeFetched.delete(moeFetched.keys().next().value);
+      moeFetched.set(cacheKey, insights);
+      return normalizeMoeZhEntries(insights.rows ?? []);
+    })());
+  }
+
+  const entries = (await Promise.all(tasks)).flat();
+  return sortZhEntries(dedupeZhEntries(entries), settings);
+}
+
 function triggerLookup(word, rect, settings, nav = null) {
   const lookupId = ++lookupSerial;
   showTooltip(word, rect, settings, nav);
+  if (hasCjk(word)) {
+    triggerZhLookup(word, settings, lookupId);
+    return;
+  }
+
   const dictEnabled = canUseDict(settings);
   const kilangEnabled = canUseMoeKilang(settings, word);
 
@@ -449,6 +602,20 @@ function triggerLookup(word, rect, settings, nav = null) {
   });
 }
 
+async function triggerZhLookup(word, settings, lookupId) {
+  setHeaderRoot('');
+  setHeaderAudioUrl('');
+  setLoading(true);
+
+  const entries = canUseZhToAb(settings, word)
+    ? await getZhLookupEntries(word, settings)
+    : [];
+  if (lookupId !== lookupSerial) return;
+
+  renderZhResults(entries, settings);
+  setLoading(false);
+}
+
 function doMoeKilangLookup(word, settings, lookupId) {
   const cacheKey = `moe:${word}`;
   if (moeFetched.has(cacheKey)) {
@@ -470,69 +637,39 @@ function doMoeKilangLookup(word, settings, lookupId) {
   });
 }
 
-function triggerCandidateLookup(candidates, rect, settings) {
-  if (!canUseDict(settings)) return;
-
+async function triggerCandidateLookup(candidates, rect, settings) {
   const words = candidates
     .map(cleanWord)
     .filter(word => hasLookupLength(word) && word.length <= MAX_WORD_LEN);
   if (words.length === 0) return;
+  if (!canUseZhToAb(settings, words[0])) return;
 
   const lookupId = ++lookupSerial;
   showTooltip(words[0], rect, settings);
   setLoading(true);
 
-  const dialects = settings.language && LANG_TO_DIALECTS[settings.language]
-    ? LANG_TO_DIALECTS[settings.language]
-    : '';
-
   const groups = [];
-  let pending = words.length;
 
-  function addGroup(word, results) {
-    const prepared = prepareResults(results, word);
-    if (prepared.length > 0) {
+  await Promise.all(words.map(async word => {
+    const entries = await getZhLookupEntries(word, settings);
+    if (entries.length > 0) {
       groups.push({
         query: word,
-        results: prepared.slice(0, MAX_CJK_RESULTS_PER_GROUP),
+        results: entries.slice(0, MAX_CJK_RESULTS_PER_GROUP),
       });
     }
-  }
+  }));
 
-  function finish() {
-    if (lookupId !== lookupSerial) return;
-    groups.sort((a, b) => {
-      if (b.query.length !== a.query.length) return b.query.length - a.query.length;
-      return words.indexOf(a.query) - words.indexOf(b.query);
-    });
-
-    const topGroups = groups.slice(0, MAX_CJK_CANDIDATE_GROUPS);
-    setHeaderWord(topGroups[0]?.query || words[0]);
-    renderCandidateSections(topGroups, settings);
-    setLoading(false);
-  }
-
-  words.forEach(word => {
-    const cacheKey = `${word}:${settings.language}`;
-    if (fetched.has(cacheKey)) {
-      addGroup(word, fetched.get(cacheKey));
-      pending--;
-      if (pending === 0) finish();
-      return;
-    }
-
-    chrome.runtime.sendMessage({ type: 'lookup', word, dialects }, (response) => {
-      if (lookupId !== lookupSerial) return;
-      if (!chrome.runtime.lastError) {
-        const results = response?.results ?? [];
-        if (fetched.size >= MAX_CACHE) fetched.delete(fetched.keys().next().value);
-        fetched.set(cacheKey, results);
-        addGroup(word, results);
-      }
-      pending--;
-      if (pending === 0) finish();
-    });
+  if (lookupId !== lookupSerial) return;
+  groups.sort((a, b) => {
+    if (b.query.length !== a.query.length) return b.query.length - a.query.length;
+    return words.indexOf(a.query) - words.indexOf(b.query);
   });
+
+  const topGroups = groups.slice(0, MAX_CJK_CANDIDATE_GROUPS);
+  setHeaderWord(topGroups[0]?.query || words[0]);
+  renderCandidateSections(topGroups, settings);
+  setLoading(false);
 }
 
 function doAltLookup(word, settings) {
@@ -1031,6 +1168,7 @@ function appendResultRow(parent, entry, settings, showRowAudio) {
 
   const textWrap = document.createElement('span');
   textWrap.className = 'fdt-result-text';
+  if (entry.secondaryText) textWrap.classList.add('has-secondary');
 
   const audioUrl = getAudioUrl(entry);
   if (showRowAudio && audioUrl) textWrap.appendChild(createAudioButton(audioUrl));
@@ -1039,12 +1177,19 @@ function appendResultRow(parent, entry, settings, showRowAudio) {
   zh.className = 'fdt-zh';
   zh.textContent = getPrimaryText(entry);
   textWrap.appendChild(zh);
+
+  if (entry.secondaryText) {
+    const secondary = document.createElement('span');
+    secondary.className = 'fdt-result-secondary';
+    secondary.textContent = entry.secondaryText;
+    textWrap.appendChild(secondary);
+  }
   row.appendChild(textWrap);
 
-  if (settings.showDialect) {
+  if (entry.metaLabel || settings.showDialect) {
     const dl = document.createElement('span');
     dl.className = 'fdt-dialect';
-    dl.textContent = getDialectLabel(entry.dialect_name, settings);
+    dl.textContent = entry.metaLabel || getDialectLabel(entry.dialect_name, settings);
     row.appendChild(dl);
   }
 
@@ -1072,6 +1217,22 @@ function renderResults(results, settings) {
   }
 
   top.forEach(e => appendResultRow(body, e, settings, zhToAb));
+}
+
+function renderZhResults(entries, settings) {
+  const body = tooltip?.querySelector('.fdt-body');
+  if (!body) return;
+  body.classList.remove('fdt-loading');
+  body.innerHTML = '';
+  setHeaderAudioUrl('');
+
+  const top = entries.slice(0, settings.maxResults);
+  if (top.length === 0) {
+    showNoResultsIfEmpty(body);
+    return;
+  }
+
+  top.forEach(entry => appendResultRow(body, entry, settings, true));
 }
 
 function renderCandidateSections(groups, settings) {

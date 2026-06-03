@@ -75,24 +75,33 @@ function makeMoeFallbackCandidates(word) {
   return uniqueWords(candidates).slice(0, 8);
 }
 
-async function fetchMoeRows(word) {
-  const params = new URLSearchParams({ keyword: word, exact: 'true', mode: 'moe' });
+async function fetchMoeRows(word, exact = true) {
+  const params = new URLSearchParams({ keyword: word, exact: String(exact), mode: 'moe' });
   const response = await fetch(`${MOE_SHADOW_BASE}?${params}`);
   if (!response.ok) throw new Error(`moe lookup failed: ${response.status}`);
   const data = await response.json();
   return data.rows ?? [];
 }
 
-async function enrichMoeRows(rows) {
-  const root = rows.map(row => row.ultimate_root || row.stem).find(Boolean);
-  if (!root) return rows;
-
+async function fetchMoeLineageRows(root) {
   const params = new URLSearchParams({ keyword: root, aggregate: 'true', mode: 'moe' });
   const response = await fetch(`${MOE_SHADOW_BASE}?${params}`);
-  if (!response.ok) return rows;
+  if (!response.ok) return [];
 
   const data = await response.json();
-  const lineageRows = data.rows ?? [];
+  return data.rows ?? [];
+}
+
+async function enrichMoeRows(rows, options = {}) {
+  const maxRoots = options.maxRoots ?? 1;
+  const roots = uniqueWords(
+    rows.map(row => row.ultimate_root || row.stem).filter(Boolean)
+  ).slice(0, maxRoots);
+  if (roots.length === 0) return rows;
+
+  const lineageRows = (await Promise.all(
+    roots.map(root => fetchMoeLineageRows(root).catch(() => []))
+  )).flat();
   if (lineageRows.length === 0) return rows;
 
   const lineageByWordAndSource = new Map(lineageRows.map(row => [
@@ -141,6 +150,11 @@ async function fetchMoeInsights(word) {
   return { query: word, match: '', fallbackFrom: '', rows: [] };
 }
 
+async function fetchMoeZhInsights(keyword) {
+  const rows = await enrichMoeRows(await fetchMoeRows(keyword, false), { maxRoots: 8 });
+  return { query: keyword, rows };
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'lookup') {
     fetchLookup(msg.word, msg.dialects)
@@ -154,6 +168,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     fetchMoeInsights(msg.word)
       .then(insights => sendResponse({ insights }))
       .catch(() => sendResponse({ insights: null }));
+
+    return true; // keep channel open for async sendResponse
+  }
+
+  if (msg.type === 'moeZhLookup') {
+    fetchMoeZhInsights(msg.word)
+      .then(insights => sendResponse({ insights }))
+      .catch(() => sendResponse({ insights: { query: msg.word, rows: [] } }));
 
     return true; // keep channel open for async sendResponse
   }
