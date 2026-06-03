@@ -90,7 +90,8 @@ button:disabled {
 }
 
 main {
-  max-width: 1040px;
+  width: min(80vw, 1480px);
+  max-width: none;
   margin: 0 auto;
   padding: 18px 28px 40px;
 }
@@ -134,10 +135,21 @@ select {
   gap: 8px;
 }
 
+.list-header {
+  display: grid;
+  grid-template-columns: 18px minmax(360px, 1fr) minmax(72px, 110px) minmax(84px, 140px) auto;
+  gap: 12px;
+  padding: 0 14px 8px;
+  color: var(--dim);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+
 .item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 18px minmax(360px, 1fr) minmax(72px, 110px) minmax(84px, 140px) auto;
   gap: 12px;
+  align-items: start;
   padding: 13px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -149,7 +161,10 @@ select {
 }
 
 .item-check {
+  width: 14px;
+  height: 14px;
   margin-top: 4px;
+  accent-color: var(--accent);
 }
 
 .item-main {
@@ -176,23 +191,28 @@ select {
   overflow-wrap: anywhere;
 }
 
-.meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 8px;
+.affixes,
+.item-language,
+.item-root {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
 }
 
-.pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 20px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--muted);
-  font-size: 0.74rem;
-  line-height: 1.2;
+.item-language,
+.item-root {
+  padding-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-root {
+  color: var(--text);
+}
+
+.affixes {
+  margin-top: 6px;
 }
 
 .examples {
@@ -216,6 +236,25 @@ select {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+}
+
+.toggle {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: var(--surface-hi);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
 }
 
 .delete {
@@ -244,7 +283,16 @@ select {
   }
 
   .item {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 18px 1fr;
+  }
+
+  .list-header {
+    display: none;
+  }
+
+  .item-language,
+  .item-root {
+    grid-column: 2;
   }
 
   .item-actions {

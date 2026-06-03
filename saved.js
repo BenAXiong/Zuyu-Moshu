@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   els.summary = document.getElementById('summary');
   els.search = document.getElementById('search');
   els.typeFilter = document.getElementById('typeFilter');
-  els.sourceFilter = document.getElementById('sourceFilter');
+  els.languageFilter = document.getElementById('languageFilter');
+  els.showSenseExamples = document.getElementById('showSenseExamples');
   els.list = document.getElementById('list');
   els.empty = document.getElementById('empty');
   els.copySelected = document.getElementById('copySelected');
@@ -14,7 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   els.search.addEventListener('input', render);
   els.typeFilter.addEventListener('change', render);
-  els.sourceFilter.addEventListener('change', render);
+  els.languageFilter.addEventListener('change', render);
+  els.showSenseExamples.addEventListener('change', render);
   els.copySelected.addEventListener('click', () => copyItems(getSelectedItems(), els.copySelected));
   els.copyFiltered.addEventListener('click', () => copyItems(getFilteredItems(), els.copyFiltered));
 
@@ -23,16 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadItems() {
   savedItems = await fdtGetSavedItems();
-  populateSourceFilter();
+  populateLanguageFilter();
   render();
 }
 
-function populateSourceFilter() {
-  const current = els.sourceFilter.value;
-  const sources = [...new Set(savedItems.map(item => item.sourceId).filter(Boolean))].sort();
-  els.sourceFilter.replaceChildren(new Option('全部來源', ''));
-  sources.forEach(source => els.sourceFilter.appendChild(new Option(source, source)));
-  els.sourceFilter.value = sources.includes(current) ? current : '';
+function populateLanguageFilter() {
+  const current = els.languageFilter.value;
+  const languages = [...new Set(savedItems.map(item => item.language).filter(Boolean))].sort();
+  els.languageFilter.replaceChildren(new Option('全部語言', ''));
+  languages.forEach(language => els.languageFilter.appendChild(new Option(language, language)));
+  els.languageFilter.value = languages.includes(current) ? current : '';
 }
 
 function itemSearchText(item) {
@@ -43,9 +45,6 @@ function itemSearchText(item) {
     item.matchedWord,
     item.ab,
     item.zh,
-    item.sourceId,
-    item.sourceMeta,
-    item.dialect,
     item.root,
     ...(item.affixes || []),
     ...(item.examples || []).flatMap(example => [example.ab, example.zh, example.source]),
@@ -55,10 +54,10 @@ function itemSearchText(item) {
 function getFilteredItems() {
   const query = els.search.value.trim().toLowerCase();
   const type = els.typeFilter.value;
-  const source = els.sourceFilter.value;
+  const language = els.languageFilter.value;
   return savedItems.filter(item => {
     if (type && item.type !== type) return false;
-    if (source && item.sourceId !== source) return false;
+    if (language && item.language !== language) return false;
     if (query && !itemSearchText(item).includes(query)) return false;
     return true;
   });
@@ -109,24 +108,15 @@ function renderItem(item) {
     main.appendChild(zh);
   }
 
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  [
-    item.type,
-    item.language,
-    item.sourceId,
-    item.sourceMeta || item.dialect,
-    item.root ? `root ${item.root}` : '',
-    item.affixes?.length ? item.affixes.join(' + ') : '',
-  ].filter(Boolean).forEach(value => {
-    const pill = document.createElement('span');
-    pill.className = 'pill';
-    pill.textContent = value;
-    meta.appendChild(pill);
-  });
-  main.appendChild(meta);
+  if (item.affixes?.length) {
+    const affixes = document.createElement('div');
+    affixes.className = 'affixes';
+    affixes.textContent = item.affixes.join(' + ');
+    main.appendChild(affixes);
+  }
 
-  if (item.examples?.length) {
+  const showExamples = item.type !== 'sense' || els.showSenseExamples.checked;
+  if (showExamples && item.examples?.length) {
     const examples = document.createElement('div');
     examples.className = 'examples';
     item.examples.slice(0, 3).forEach(example => {
@@ -160,12 +150,20 @@ function renderItem(item) {
   del.textContent = '刪除';
   del.addEventListener('click', async () => {
     savedItems = await fdtRemoveSavedItem(item.id);
-    populateSourceFilter();
+    populateLanguageFilter();
     render();
   });
   actions.append(copy, del);
 
-  card.append(checkbox, main, actions);
+  const language = document.createElement('div');
+  language.className = 'item-language';
+  language.textContent = item.language || '';
+
+  const root = document.createElement('div');
+  root.className = 'item-root';
+  root.textContent = item.root || '';
+
+  card.append(checkbox, main, language, root, actions);
   return card;
 }
 

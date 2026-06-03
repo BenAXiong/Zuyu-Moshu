@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 22:25 +08:00
+Global timestamp: 2026-06-03 22:32 +08:00
 
 Current extension version: 1.5.0
 
@@ -77,7 +77,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Example rows have their own bookmark; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
-| Saved-items page | Universal | Dedicated extension page for review. Supports search, type/source filters, delete, copy one item, copy selected, and copy the current filtered list. | `saved.html`, `saved.css`, `saved.js`. |
+| Saved-items page | Universal | Dedicated extension page titled `族語魔書 - 咒語庫`. Supports search, type/language filters, sense-example show/hide toggle, delete, copy one item, copy selected, and copy the current filtered list. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Clipboard export is implemented first. The source-neutral saved item schema keeps room for future IndiHunt, Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`. |
 
