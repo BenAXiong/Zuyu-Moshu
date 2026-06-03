@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 22:32 +08:00
+Global timestamp: 2026-06-03 22:40 +08:00
 
 Current extension version: 1.5.0
 
@@ -46,7 +46,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
 | Tooltip drilling | Universal for drillable AB text | AB tokens in examples and ZH-to-AB primary rows are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `drillLookup()`, `normalizeTooltipNav()`. |
-| Saved-list opener | Universal | Tooltip shows a visually separate floating button to the right of the header that opens the saved-items page. | `content.js`: `createOpenSavedButton()`, `showFloatingSavedButton()`; `saved.html`. |
+| Saved-list opener | Universal | Tooltip shows a visually separate larger floating button aligned with the top border to the right of the header that opens the saved-items page. | `content.js`: `createOpenSavedButton()`, `showFloatingSavedButton()`; `saved.html`. |
 
 ## Kilang Morphology And Sense UI
 

@@ -1175,8 +1175,8 @@ function showFloatingSavedButton(top, left) {
   savedOpenButton?.remove();
   savedOpenButton = createOpenSavedButton();
   savedOpenButton.classList.add('fdt-saved-float');
-  const x = Math.min(left + 310, window.scrollX + window.innerWidth - 36);
-  savedOpenButton.style.cssText = `position:absolute;top:${top + 8}px;left:${x}px;z-index:2147483647`;
+  const x = Math.min(left + 310, window.scrollX + window.innerWidth - 42);
+  savedOpenButton.style.cssText = `position:absolute;top:${top}px;left:${x}px;z-index:2147483647`;
   const styles = getComputedStyle(tooltip);
   [
     '--fdt-surface',

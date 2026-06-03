@@ -163,7 +163,7 @@ function renderItem(item) {
   root.className = 'item-root';
   root.textContent = item.root || '';
 
-  card.append(checkbox, main, language, root, actions);
+  card.append(checkbox, language, root, main, actions);
   return card;
 }
 

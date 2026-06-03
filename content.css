@@ -272,6 +272,13 @@
 .fdt-saved-float {
   background: var(--fdt-surface);
   box-shadow: var(--fdt-shadow);
+  width: 36px;
+  height: 36px;
+}
+
+.fdt-saved-float .fdt-save-icon {
+  width: 18px;
+  height: 18px;
 }
 
 /* ── Body ───────────────────────────────────────────────── */

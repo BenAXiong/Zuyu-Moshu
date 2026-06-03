@@ -58,6 +58,10 @@ h1 {
   gap: 8px;
 }
 
+.top-actions {
+  justify-content: flex-end;
+}
+
 button,
 input,
 select {
@@ -137,7 +141,7 @@ select {
 
 .list-header {
   display: grid;
-  grid-template-columns: 18px minmax(360px, 1fr) minmax(72px, 110px) minmax(84px, 140px) auto;
+  grid-template-columns: 18px minmax(72px, 110px) minmax(84px, 140px) minmax(360px, 1fr) auto;
   gap: 12px;
   padding: 0 14px 8px;
   color: var(--dim);
@@ -147,7 +151,7 @@ select {
 
 .item {
   display: grid;
-  grid-template-columns: 18px minmax(360px, 1fr) minmax(72px, 110px) minmax(84px, 140px) auto;
+  grid-template-columns: 18px minmax(72px, 110px) minmax(84px, 140px) minmax(360px, 1fr) auto;
   gap: 12px;
   align-items: start;
   padding: 13px 14px;
@@ -161,9 +165,12 @@ select {
 }
 
 .item-check {
+  align-self: start;
   width: 14px;
   height: 14px;
   margin-top: 4px;
+  min-width: 14px;
+  min-height: 14px;
   accent-color: var(--accent);
 }
 
@@ -241,7 +248,9 @@ select {
 .toggle {
   min-height: 34px;
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
+  justify-content: flex-start;
   gap: 7px;
   padding: 0 10px;
   border: 1px solid var(--line-strong);
@@ -252,8 +261,12 @@ select {
 }
 
 .toggle input {
+  flex: 0 0 auto;
   width: 14px;
   height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  padding: 0;
   accent-color: var(--accent);
 }
 
@@ -284,6 +297,11 @@ select {
 
   .item {
     grid-template-columns: 18px 1fr;
+  }
+
+  .item-main {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .list-header {
