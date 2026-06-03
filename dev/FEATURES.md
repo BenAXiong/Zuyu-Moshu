@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 18:50 +08:00
+Global timestamp: 2026-06-03 21:08 +08:00
 
 Current extension version: 1.4.3
 
@@ -54,7 +54,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Kilang AB lookup | Kilang, Amis only | Uses exact lookup first, then a ranked recovery pipeline: full-word spelling alternates, conservative glottal repair, bounded chained affix stripping, then alternates/glottal repair on stripped forms. | `background.js`: `fetchMoeInsights()`, `makeMoeFallbackCandidates()`. |
 | Kilang ZH lookup | Kilang, Amis only | Uses `exact=false` to search Chinese definitions and examples through Citadel's MoE shadow endpoint. | `background.js`: `fetchMoeZhInsights()`; `content.js`: `getZhLookupEntries()`. |
 | Lineage enrichment | Kilang, Amis only | Exact AB lookups enrich one root. ZH lookups enrich up to 8 roots because Chinese terms can match unrelated words. | `background.js`: `enrichMoeRows()`, `fetchMoeLineageRows()`. |
-| Root chip | Kilang AB only | Shows ultimate root in the tooltip header when it adds information. If the headword is already the root, only the red root icon is shown. Pure spelling recovery hides the chip when the root is just the recovered spelling. | `content.js`: `setHeaderRoot()`, `createRootIcon()`, `renderMoeKilangSection()`. |
+| Root chip | Kilang AB only | Shows ultimate root in the tooltip header when it adds information. If the headword is already the root, only the red root icon is shown. Pure spelling recovery also keeps the icon-only root marker when the root is just the recovered spelling. | `content.js`: `setHeaderRoot()`, `createRootIcon()`, `renderMoeKilangSection()`. |
 | Recovery/affix context label | Kilang AB only | Displays compact relation headers. Pure spelling alternates use `~`, derived or more complex recovery uses the branch marker. Exact lineage can infer forms like `hinatala + ka-...-an`; recovered fallback can use lookup metadata like `'orip + ni- + ka-`. | `content.js`: `getMoeAffixes()`, `formatMoeAffixSummary()`, `getMoeRecoveryAffixSummary()`, `appendMoeRelationHeaders()`. |
 | Kilang alt dedupe | Kilang AB only | Suppresses the separate Kilang alt section when the main Kilang recovery already displays the same matched form. ePark alt rows stay independent. | `content.js`: `getMoeMatchKey()`, `removeDuplicateMoeAltSection()`, `renderMoeKilangSection()`, `renderMoeAltSection()`. |
 | Sense rows | Kilang | One row per displayed zh definition/meaning. Examples stay under their own meaning instead of being globally merged. | `content.js`: `getMoeSenseRows()`, `renderMoeSenseRows()`. |
