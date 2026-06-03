@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 18:01 +08:00
+Global timestamp: 2026-06-03 18:24 +08:00
 
 Current extension version: 1.4.2
 
@@ -51,11 +51,11 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 
 | Feature | Scope | Current state | Implementation |
 |---|---|---|---|
-| Kilang AB lookup | Kilang, Amis only | Uses exact lookup first, then conservative affix-stripped fallback candidates. | `background.js`: `fetchMoeInsights()`, `makeMoeFallbackCandidates()`. |
+| Kilang AB lookup | Kilang, Amis only | Uses exact lookup first, then a ranked recovery pipeline: full-word spelling alternates, conservative glottal repair, bounded chained affix stripping, then alternates/glottal repair on stripped forms. | `background.js`: `fetchMoeInsights()`, `makeMoeFallbackCandidates()`. |
 | Kilang ZH lookup | Kilang, Amis only | Uses `exact=false` to search Chinese definitions and examples through Citadel's MoE shadow endpoint. | `background.js`: `fetchMoeZhInsights()`; `content.js`: `getZhLookupEntries()`. |
 | Lineage enrichment | Kilang, Amis only | Exact AB lookups enrich one root. ZH lookups enrich up to 8 roots because Chinese terms can match unrelated words. | `background.js`: `enrichMoeRows()`, `fetchMoeLineageRows()`. |
 | Root chip | Kilang AB only | Shows ultimate root in the tooltip header. If the headword is already the root, only the red root icon is shown. | `content.js`: `setHeaderRoot()`, `createRootIcon()`. |
-| Affix context label | Kilang AB only | Displays the base used for affix analysis plus the affix summary. Example: `hinatala (ka-...-an)` for `kahinatalaan` when the root chip is `tala`. | `content.js`: `getMoeAffixes()`, `formatMoeAffixSummary()`, `formatMoeAffixContextTitle()`. |
+| Affix context label | Kilang AB only | Displays the base used for affix/recovery analysis plus the affix summary. Exact lineage can infer forms like `hinatala + ka-...-an`; recovered fallback can use lookup metadata like `'orip + ni- + ka-`. | `content.js`: `getMoeAffixes()`, `formatMoeAffixSummary()`, `getMoeRecoveryAffixSummary()`, `appendMoeDerivedHeader()`. |
 | Sense rows | Kilang | One row per displayed zh definition/meaning. Examples stay under their own meaning instead of being globally merged. | `content.js`: `getMoeSenseRows()`, `renderMoeSenseRows()`. |
 | Example display | Kilang and ePark rows with examples | Shows up to 3 examples. Kilang sense rows expand when more than 3 examples exist. | `content.js`: `buildExamplesPanel()`, `toggleMoeSenseExamples()`. |
 | Source/tier pills | Kilang | Shows compact metadata like `T3 S` next to Kilang sense rows. | `content.js`: `getMoeSourceMeta()`, `getMoeSourceLabel()`. |
@@ -109,6 +109,7 @@ Remaining work under this anchor is Citadel/data-side:
 
 - Kilang is Amis-only by design in both UI availability and content-side guards.
 - Kilang audio rendering is extension-ready, but current Kilang/MoE rows do not expose useful audio URLs.
+- Kilang AB fallback is intentionally capped: it keeps the existing affix inventory, allows at most 2 prefix strips and 1 suffix strip, tries at most 4 spelling-swap positions per candidate, and queries at most 20 fallback candidates. Glottal repair currently covers leading/trailing glottals and one internal glottal at known prefix boundaries.
 - ZH-to-AB Kilang ranking prefers better source ranks (`s`, then `m`, `a`, `old-s`, then `p`) but Chinese definition search can still return broad semantic matches.
 - CJK hover multi-source lookup can make several API calls per hover event; caching limits repeat cost, but very broad text can still be heavier than AB lookup.
 - PDF support was explicitly dropped.

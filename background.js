@@ -2,6 +2,12 @@ const API_BASE = 'https://ycm-citadel.vercel.app/api/search';
 const MOE_SHADOW_BASE = 'https://ycm-citadel.vercel.app/api/moe_shadow';
 const MOE_COMMON_PREFIXES = ['sapi', 'paka', 'pina', 'maka', 'mala', 'mipa', 'misa', 'ma', 'mi', 'pa', 'pi', 'ka', 'sa', 'si', 'ni'];
 const MOE_COMMON_SUFFIXES = ['ayay', 'anay', 'enay', 'ay', 'en', 'an', 'aw', 'to'];
+const MOE_ALT_SWAPS = { u: 'o', o: 'u', l: 'r', r: 'l', f: 'v', v: 'f' };
+const MAX_MOE_FALLBACK_CANDIDATES = 20;
+const MAX_MOE_ALT_POSITIONS = 4;
+const MAX_MOE_PREFIX_STRIPS = 2;
+const MAX_MOE_SUFFIX_STRIPS = 1;
+const MIN_MOE_RECOVERY_BASE_LEN = 4;
 
 async function updateIcon(enabled) {
   const size = 16;
@@ -46,33 +52,156 @@ function uniqueWords(words) {
   });
 }
 
-function makeMoeFallbackCandidates(word) {
-  const normalized = word.trim().toLowerCase();
-  const candidates = [];
+function getMoeRecoveryLength(word) {
+  return word.replace(/'/g, '').length;
+}
+
+function formatMoeAffixLabel(type, value) {
+  if (type === 'prefix') return `${value}-`;
+  if (type === 'suffix') return `-${value}`;
+  return value;
+}
+
+function makeMoeAltSpellings(word) {
+  const pos = [];
+  for (let i = 0; i < word.length; i++) {
+    if (word[i] in MOE_ALT_SWAPS) pos.push(i);
+  }
+  if (pos.length === 0) return [];
+
+  const active = pos.slice(0, MAX_MOE_ALT_POSITIONS);
+  const results = new Set();
+  for (let mask = 1; mask < (1 << active.length); mask++) {
+    const chars = word.split('');
+    for (let b = 0; b < active.length; b++) {
+      if (mask & (1 << b)) chars[active[b]] = MOE_ALT_SWAPS[word[active[b]]];
+    }
+    const alt = chars.join('');
+    if (alt !== word) results.add(alt);
+  }
+  return [...results];
+}
+
+function makeMoeGlottalRepairs(word) {
+  if (!word || word.includes("'")) return [];
+
+  const repairs = [];
+  if (/^[aeiou]/.test(word)) repairs.push(`'${word}`);
+  if (/[aeiou]$/.test(word)) repairs.push(`${word}'`);
 
   for (const prefix of MOE_COMMON_PREFIXES) {
-    if (normalized.startsWith(prefix) && normalized.length > prefix.length + 1) {
-      candidates.push(normalized.slice(prefix.length));
+    if (!word.startsWith(prefix)) continue;
+    const rest = word.slice(prefix.length);
+    if (rest.length >= MIN_MOE_RECOVERY_BASE_LEN && /^[aeiou]/.test(rest)) {
+      repairs.push(`${prefix}'${rest}`);
     }
   }
 
-  for (const suffix of MOE_COMMON_SUFFIXES) {
-    if (normalized.endsWith(suffix) && normalized.length > suffix.length + 1) {
-      candidates.push(normalized.slice(0, -suffix.length));
-    }
-  }
+  return uniqueWords(repairs);
+}
 
-  for (const prefix of MOE_COMMON_PREFIXES) {
-    if (!normalized.startsWith(prefix)) continue;
-    const withoutPrefix = normalized.slice(prefix.length);
-    for (const suffix of MOE_COMMON_SUFFIXES) {
-      if (withoutPrefix.endsWith(suffix) && withoutPrefix.length > suffix.length + 1) {
-        candidates.push(withoutPrefix.slice(0, -suffix.length));
+function makeMoeStrippedStates(word) {
+  const initial = {
+    word,
+    prefixStrips: 0,
+    suffixStrips: 0,
+    affixes: [],
+  };
+  const queue = [initial];
+  const states = [];
+  const seen = new Set([`${word}:0:0`]);
+
+  for (let index = 0; index < queue.length; index++) {
+    const state = queue[index];
+    if (state.prefixStrips < MAX_MOE_PREFIX_STRIPS) {
+      for (const prefix of MOE_COMMON_PREFIXES) {
+        if (!state.word.startsWith(prefix)) continue;
+        const stripped = state.word.slice(prefix.length);
+        if (getMoeRecoveryLength(stripped) < MIN_MOE_RECOVERY_BASE_LEN) continue;
+        const next = {
+          word: stripped,
+          prefixStrips: state.prefixStrips + 1,
+          suffixStrips: state.suffixStrips,
+          affixes: [...state.affixes, formatMoeAffixLabel('prefix', prefix)],
+        };
+        const key = `${next.word}:${next.prefixStrips}:${next.suffixStrips}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        states.push(next);
+        queue.push(next);
+      }
+    }
+
+    if (state.suffixStrips < MAX_MOE_SUFFIX_STRIPS) {
+      for (const suffix of MOE_COMMON_SUFFIXES) {
+        if (!state.word.endsWith(suffix)) continue;
+        const stripped = state.word.slice(0, -suffix.length);
+        if (getMoeRecoveryLength(stripped) < MIN_MOE_RECOVERY_BASE_LEN) continue;
+        const next = {
+          word: stripped,
+          prefixStrips: state.prefixStrips,
+          suffixStrips: state.suffixStrips + 1,
+          affixes: [...state.affixes, formatMoeAffixLabel('suffix', suffix)],
+        };
+        const key = `${next.word}:${next.prefixStrips}:${next.suffixStrips}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        states.push(next);
+        queue.push(next);
       }
     }
   }
 
-  return uniqueWords(candidates).slice(0, 8);
+  return states;
+}
+
+function makeMoeFallbackCandidates(word) {
+  const normalized = word.trim().toLowerCase();
+  const candidates = [];
+  const seen = new Set([normalized]);
+
+  function add(wordValue, state, score, operations = []) {
+    if (!wordValue || getMoeRecoveryLength(wordValue) < MIN_MOE_RECOVERY_BASE_LEN) return;
+    const key = wordValue.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push({
+      word: wordValue,
+      score,
+      recovery: {
+        affixes: state?.affixes ?? [],
+        operations,
+      },
+    });
+  }
+
+  function addForms(state, baseScore) {
+    add(state.word, state, baseScore);
+
+    const alts = makeMoeAltSpellings(state.word);
+    for (const alt of alts) add(alt, state, baseScore + 1, ['alt']);
+
+    for (const repaired of makeMoeGlottalRepairs(state.word)) {
+      add(repaired, state, baseScore + 2, ['glottal']);
+    }
+
+    for (const alt of alts) {
+      for (const repaired of makeMoeGlottalRepairs(alt)) {
+        add(repaired, state, baseScore + 3, ['alt', 'glottal']);
+      }
+    }
+  }
+
+  addForms({ word: normalized, affixes: [] }, 0);
+
+  for (const state of makeMoeStrippedStates(normalized)) {
+    const depth = state.prefixStrips + state.suffixStrips;
+    addForms(state, 4 + ((depth - 1) * 4));
+  }
+
+  return candidates
+    .sort((a, b) => a.score - b.score)
+    .slice(0, MAX_MOE_FALLBACK_CANDIDATES);
 }
 
 async function fetchMoeRows(word, exact = true) {
@@ -141,9 +270,9 @@ async function fetchMoeInsights(word) {
   }
 
   for (const candidate of makeMoeFallbackCandidates(word)) {
-    const rows = await enrichMoeRows(await fetchMoeRows(candidate));
+    const rows = await enrichMoeRows(await fetchMoeRows(candidate.word));
     if (rows.length > 0) {
-      return { query: word, match: candidate, fallbackFrom: word, rows };
+      return { query: word, match: candidate.word, fallbackFrom: word, recovery: candidate.recovery, rows };
     }
   }
 

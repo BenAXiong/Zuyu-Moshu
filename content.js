@@ -1466,10 +1466,15 @@ function formatMoeAffixSummary(affixes) {
   return '';
 }
 
-function getMoeAffixContext({ matchedWord, affixStem, affixSummary, fallbackFrom }) {
+function getMoeRecoveryAffixSummary(recovery) {
+  const affixes = Array.isArray(recovery?.affixes) ? recovery.affixes : [];
+  return affixes.map(cleanMoeText).filter(Boolean).join(' + ');
+}
+
+function getMoeAffixContext({ matchedWord, affixStem, affixSummary, fallbackFrom, recovery }) {
   return {
     base: fallbackFrom ? matchedWord : (cleanMoeText(affixStem) || matchedWord),
-    affix: affixSummary,
+    affix: getMoeRecoveryAffixSummary(recovery) || affixSummary,
   };
 }
 
@@ -1590,7 +1595,8 @@ function renderMoeKilangSection(insights, settings) {
   const stem = cleanMoeText(parent || primary.stem || root);
   const affixStem = insights.fallbackFrom ? matchedWord : (stem || root);
   const affixes = getMoeAffixes(affixBaseWord, affixStem);
-  const affixSummary = formatMoeAffixSummary(affixes);
+  const inferredAffixSummary = formatMoeAffixSummary(affixes);
+  const affixSummary = getMoeRecoveryAffixSummary(insights.recovery) || inferredAffixSummary;
   const isExactHeadword = cleanMoeText(getHeaderWord()).toLowerCase() === matchedWord.toLowerCase() && !affixSummary;
   setHeaderRoot(root);
 
@@ -1600,8 +1606,9 @@ function renderMoeKilangSection(insights, settings) {
   const context = getMoeAffixContext({
     matchedWord,
     affixStem,
-    affixSummary,
+    affixSummary: inferredAffixSummary,
     fallbackFrom: insights.fallbackFrom,
+    recovery: insights.recovery,
   });
   if (!isExactHeadword && context.base) {
     appendMoeDerivedHeader(section, context);
@@ -1659,13 +1666,15 @@ function renderMoeAltSection(insights, settings) {
   const stem = cleanMoeText(parent || primary.stem || root);
   const affixStem = insights.fallbackFrom ? matchedWord : (stem || root);
   const affixes = getMoeAffixes(affixBaseWord, affixStem);
-  const affixSummary = formatMoeAffixSummary(affixes);
+  const inferredAffixSummary = formatMoeAffixSummary(affixes);
+  const affixSummary = getMoeRecoveryAffixSummary(insights.recovery) || inferredAffixSummary;
 
   const context = getMoeAffixContext({
     matchedWord,
     affixStem,
-    affixSummary,
+    affixSummary: inferredAffixSummary,
     fallbackFrom: insights.fallbackFrom,
+    recovery: insights.recovery,
   });
   if (affixSummary && context.base) {
     appendMoeDerivedHeader(section, context);
