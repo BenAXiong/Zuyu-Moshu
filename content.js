@@ -1457,21 +1457,40 @@ function getMoeAffixes(word, stem) {
 function formatMoeAffixSummary(affixes) {
   const prefix = affixes.find(affix => affix.type === 'prefix')?.label.replace(/-$/, '');
   const suffix = affixes.find(affix => affix.type === 'suffix')?.label.replace(/^-/, '');
-  if (prefix && suffix) return `(${prefix}-...-${suffix})`;
-  if (prefix) return `(${prefix}-)`;
-  if (suffix) return `(-${suffix})`;
+  if (prefix && suffix) return `${prefix}-...-${suffix}`;
+  if (prefix) return `${prefix}-`;
+  if (suffix) return `-${suffix}`;
   return '';
 }
 
-function formatMoeAffixContextTitle({ matchedWord, affixStem, affixSummary, fallbackFrom }) {
-  const label = fallbackFrom ? matchedWord : (cleanMoeText(affixStem) || matchedWord);
-  return [label, affixSummary].filter(Boolean).join(' ');
+function getMoeAffixContext({ matchedWord, affixStem, affixSummary, fallbackFrom }) {
+  return {
+    base: fallbackFrom ? matchedWord : (cleanMoeText(affixStem) || matchedWord),
+    affix: affixSummary,
+  };
 }
 
-function appendMoeDerivedHeader(section, contextTitle) {
+function appendMoeDerivedHeader(section, context) {
   const header = document.createElement('div');
   header.className = 'fdt-derived-header';
-  header.textContent = contextTitle;
+
+  const base = document.createElement('span');
+  base.className = 'fdt-derived-base';
+  base.textContent = context.base;
+  header.appendChild(base);
+
+  if (context.affix) {
+    const plus = document.createElement('span');
+    plus.className = 'fdt-derived-plus';
+    plus.textContent = '+';
+
+    const affix = document.createElement('span');
+    affix.className = 'fdt-derived-affix';
+    affix.textContent = context.affix;
+
+    header.append(plus, affix);
+  }
+
   section.appendChild(header);
 }
 
@@ -1573,14 +1592,14 @@ function renderMoeKilangSection(insights, settings) {
   const section = document.createElement('div');
   section.className = 'fdt-moe-section';
 
-  const contextTitle = formatMoeAffixContextTitle({
+  const context = getMoeAffixContext({
     matchedWord,
     affixStem,
     affixSummary,
     fallbackFrom: insights.fallbackFrom,
   });
-  if (!isExactHeadword && contextTitle) {
-    appendMoeDerivedHeader(section, contextTitle);
+  if (!isExactHeadword && context.base) {
+    appendMoeDerivedHeader(section, context);
   }
 
   const senses = renderMoeSenseRows(section, rows);
@@ -1637,14 +1656,14 @@ function renderMoeAltSection(insights, settings) {
   const affixes = getMoeAffixes(affixBaseWord, affixStem);
   const affixSummary = formatMoeAffixSummary(affixes);
 
-  const contextTitle = formatMoeAffixContextTitle({
+  const context = getMoeAffixContext({
     matchedWord,
     affixStem,
     affixSummary,
     fallbackFrom: insights.fallbackFrom,
   });
-  if (affixSummary && contextTitle) {
-    appendMoeDerivedHeader(section, contextTitle);
+  if (affixSummary && context.base) {
+    appendMoeDerivedHeader(section, context);
   }
 
   const senses = renderMoeSenseRows(section, rows);

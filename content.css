@@ -567,6 +567,9 @@
 }
 
 .fdt-derived-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin-bottom: 8px;
   font-size: 0.66em;
   font-weight: 600;
@@ -580,6 +583,30 @@
   color: var(--fdt-accent);
   opacity: 0.7;
   margin-right: 2px;
+}
+
+.fdt-derived-base {
+  min-width: 0;
+  color: var(--fdt-text);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fdt-derived-plus {
+  color: var(--fdt-dim);
+  opacity: 0.75;
+}
+
+.fdt-derived-affix {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--fdt-tag-bg);
+  color: var(--fdt-accent);
+  letter-spacing: 0.03em;
+  text-transform: none;
 }
 
 .fdt-moe-sense {
