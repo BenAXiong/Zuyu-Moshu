@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 04:26 +08:00
+Global timestamp: 2026-06-04 05:00 +08:00
 
 Current extension version: 1.5.2
 
@@ -13,6 +13,7 @@ This document is a current-state inventory, not a historical changelog. It lists
 | `EPARK` | ePark | Enabled | All configured languages/dialects | `https://ycm-citadel.vercel.app/api/search?mode=DICT&q=...` | Legacy DICT/ePark lookup. Supports AB-to-ZH and ZH-to-AB. May include audio URLs on sentence rows when the API returns them. |
 | `KILANG` | Kilang | Enabled | Amis only | `https://ycm-citadel.vercel.app/api/moe_shadow?...&mode=moe` | MoE/Kilang-derived Amis morphology and dictionary data. Supports AB-to-ZH/root-affix insight and ZH-to-AB lookup. No audio currently expected. |
 | `ILRDF` | ILRDF | Disabled | Reserved | none active | Present in source config but not available in the UI. |
+| `ILRDF_AI` | ILRDF AI Labs | Enabled for saved page AI panel | Amis MT/TTS currently | `https://ai-labs.ilrdf.org.tw/.../gradio_api/call/...` | Saved page `AI MT & TTS` tab calls ILRDF Gradio endpoints directly. Requires `https://ai-labs.ilrdf.org.tw/*` host permission. |
 
 Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kilang only.
 
@@ -78,7 +79,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Alt-spelling section headers and example rows have their own bookmarks; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
-| Saved-items page | Universal | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. `咒語庫` is functional. `AI MT & TTS` has a minimal UI-only panel with input/output text areas, ZH-to-族語 / 族語-to-ZH selector, translate button, and listen button for later wiring. `短章分析` and `Kilang` remain empty shells. | `saved.html`, `saved.css`, `saved.js`. |
+| Saved-items page | Universal plus Amis AI | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. `咒語庫` is functional. `AI MT & TTS` supports Amis ZH-to-Amis / Amis-to-ZH translation and Amis TTS through ILRDF AI Labs; the language selector lists 16 language codes but non-Amis currently reports Amis-only support. `短章分析` and `Kilang` remain empty shells. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Saved-page and tooltip IndiHunt export open `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `content.js`: `exportTooltipToIndiHunt()`; `assets/indivore/`. |
 
@@ -124,7 +125,7 @@ Remaining work under this anchor is Citadel/data-side:
 Implemented:
 
 - Built-in saved-items list with local storage, tooltip save buttons, popup access, and copy/delete/export-to-clipboard basics.
-- Saved page workspace shell with future tabs for short-text analysis and Kilang, a minimal UI-only AI MT/TTS panel, plus selected-item IndiHunt direct import.
+- Saved page workspace shell with future tabs for short-text analysis and Kilang, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import.
 - Options page unsaved-change warning.
 
 Left before publishing:
@@ -134,7 +135,7 @@ Left before publishing:
 
 Deferred beyond v1.5:
 
-- Functional short-text analysis, AI MT/TTS wiring, Kilang tree panel, cloud/sync storage, and richer export targets such as Notion.
+- Functional short-text analysis, non-Amis AI MT/TTS coverage, Kilang tree panel, cloud/sync storage, and richer export targets such as Notion.
 
 ## Current Caveats
 
@@ -146,3 +147,4 @@ Deferred beyond v1.5:
 - PDF support was explicitly dropped.
 - ILRDF is configured as a disabled source placeholder, not an active lookup path.
 - Saved items are local to the current Chrome profile/device in v1.5.2. Cross-device sync/export is not implemented yet.
+- The `AI MT & TTS` tab adds `https://ai-labs.ilrdf.org.tw/*` as a host permission and currently only performs live MT/TTS for Amis.

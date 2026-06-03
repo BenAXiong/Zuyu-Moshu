@@ -29,7 +29,8 @@
     "open_in_tab": true
   },
   "host_permissions": [
-    "https://ycm-citadel.vercel.app/*"
+    "https://ycm-citadel.vercel.app/*",
+    "https://ai-labs.ilrdf.org.tw/*"
   ],
   "web_accessible_resources": [
     {

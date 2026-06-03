@@ -1,5 +1,18 @@
 let savedItems = [];
 
+// ── ILRDF AI — direct Gradio 5 calls (no proxy) ──────────────────────────────
+const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
+const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
+const ILRDF_TIMEOUT  = 20000;
+
+const AMI_DIALECTS = [
+  { label: 'Coastal 海岸',      code: 'ami_Coas', speaker: '阿美_海岸_男聲'   },
+  { label: 'Hengchun 恆春',    code: 'ami_Heng', speaker: '阿美_恆春_女聲'   },
+  { label: 'Malan 馬蘭',       code: 'ami_Mala', speaker: '阿美_馬蘭_女聲'   },
+  { label: 'Southern 南部',    code: 'ami_Sout', speaker: '阿美_南勢_女聲'   },
+  { label: 'Xiuguluan 秀姑巒', code: 'ami_Xiug', speaker: '阿美_秀姑巒_女聲1' },
+];
+
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
 const INDIHUNT_MAX_ITEMS = 200;
 const INDIHUNT_LANG_CODE = {
@@ -49,6 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
   els.directionOptions.forEach(option => {
     option.addEventListener('click', () => activateDirection(option.dataset.direction));
   });
+
+  // AI MT & TTS
+  els.aiLanguage  = document.getElementById('aiLanguage');
+  els.aiDialect   = document.getElementById('aiDialect');
+  els.aiInput     = document.getElementById('aiInput');
+  els.aiOutput    = document.getElementById('aiOutput');
+  els.aiTranslate = document.getElementById('aiTranslate');
+  els.aiListen    = document.getElementById('aiListen');
+
+  els.aiLanguage.addEventListener('change', updateAiSelectors);
+  els.aiInput.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) aiTranslate(); });
+  els.aiTranslate.addEventListener('click', aiTranslate);
+  els.aiListen.addEventListener('click', aiListen);
+  updateAiSelectors();
 
   loadItems();
 });
@@ -362,4 +389,135 @@ function flashButtonLabel(btn, text) {
   const original = label.textContent;
   label.textContent = text;
   setTimeout(() => { label.textContent = original; }, 900);
+}
+
+// ── AI MT & TTS ───────────────────────────────────────────────────────────────
+
+// Gradio 5 SSE: POST → event_id, GET stream → find complete event, cancel reader
+async function gradioCall(base, fn, data, signal) {
+  const submitRes = await fetch(`${base}/gradio_api/call/${fn}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data }),
+    signal,
+  });
+  if (!submitRes.ok) return null;
+  const { event_id } = await submitRes.json();
+  if (!event_id) return null;
+
+  const streamRes = await fetch(`${base}/gradio_api/call/${fn}/${event_id}`, { signal });
+  if (!streamRes.ok || !streamRes.body) return null;
+
+  const reader = streamRes.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let result = null;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const match = /event:\s*complete[\r\n]+data:\s*(\[[\s\S]+?\])\s*$/.exec(buf);
+      if (match) {
+        result = JSON.parse(match[1])[0];
+        break;
+      }
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+  return result;
+}
+
+function getActiveDirection() {
+  return document.querySelector('.direction-option.is-active')?.dataset.direction ?? 'zh-to-x';
+}
+
+function getActiveDialect() {
+  return AMI_DIALECTS.find(d => d.code === els.aiDialect.value) ?? AMI_DIALECTS[0];
+}
+
+function updateAiSelectors() {
+  const isAmi = els.aiLanguage.value === 'ami';
+  els.aiDialect.hidden = !isAmi;
+  els.aiListen.hidden  = !isAmi;
+}
+
+async function aiTranslate() {
+  const text = els.aiInput.value.trim();
+  if (!text || els.aiTranslate.disabled) return;
+
+  const lang = els.aiLanguage.value;
+  if (lang !== 'ami') {
+    els.aiOutput.value = 'ILRDF MT currently supports Amis only.';
+    return;
+  }
+
+  const direction   = getActiveDirection();
+  const dialectCode = getActiveDialect().code;
+  const isZhToAmi   = direction === 'zh-to-x';
+  const fn   = isZhToAmi ? 'translate_1' : 'translate';
+  const data = isZhToAmi ? [text, 'zho_Hant', dialectCode] : [text, dialectCode, 'zho_Hant'];
+
+  setAiTranslating(true);
+  els.aiOutput.value = '';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const result = await gradioCall(ILRDF_MT_BASE, fn, data, controller.signal);
+    els.aiOutput.value = typeof result === 'string' ? result : 'Translation failed. Try again.';
+  } catch {
+    els.aiOutput.value = 'Translation service unavailable.';
+  } finally {
+    clearTimeout(timeout);
+    setAiTranslating(false);
+  }
+}
+
+let currentTtsAudio = null;
+
+async function aiListen() {
+  if (els.aiListen.hidden || els.aiListen.disabled) return;
+  // Play the Formosan side: input when ami→zh, output when zh→ami
+  const direction = getActiveDirection();
+  const ttsText   = direction === 'x-to-zh' ? els.aiInput.value.trim() : els.aiOutput.value.trim();
+  if (!ttsText) return;
+
+  const { speaker } = getActiveDialect();
+
+  setAiListening(true);
+  currentTtsAudio?.pause();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, ttsText], controller.signal);
+    const url = result?.url ?? (typeof result === 'string' ? result : null);
+    if (url) {
+      const audio = new Audio(url);
+      currentTtsAudio = audio;
+      audio.onended = () => setAiListening(false);
+      audio.onerror = () => setAiListening(false);
+      audio.play().catch(() => setAiListening(false));
+    } else {
+      setAiListening(false);
+    }
+  } catch {
+    setAiListening(false);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function setAiTranslating(on) {
+  els.aiTranslate.disabled = on;
+  const span = els.aiTranslate.querySelector('span:last-child');
+  if (span) span.textContent = on ? '翻譯中…' : 'Translate';
+}
+
+function setAiListening(on) {
+  els.aiListen.disabled = on;
+  const span = els.aiListen.querySelector('span:last-child');
+  if (span) span.textContent = on ? '…' : 'Listen';
 }

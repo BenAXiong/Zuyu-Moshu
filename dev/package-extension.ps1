@@ -36,10 +36,15 @@ $payloadFiles = @(
   'popup.css',
   'popup.html',
   'popup.js',
+  'saved.css',
+  'saved.html',
+  'saved.js',
+  'saved_store.js',
   'shared.js'
 )
 
 $payloadDirs = @(
+  'assets',
   'icons'
 )
 

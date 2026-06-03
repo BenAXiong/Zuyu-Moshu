@@ -135,3 +135,27 @@ Departures from or additions to `CHROME_EXT_SPEC.md`, logged here so the spec st
 **Why:** A single set of rules for all themed elements; adding new UI components only requires using the existing variables, not duplicating color values.
 
 **How to apply:** All new tooltip UI should reference `var(--fdt-*)` rather than hard-coded colors.
+
+---
+
+## D13 — Saved page AI MT/TTS uses direct ILRDF Gradio calls
+
+**What:** The saved page `AI MT & TTS` tab calls ILRDF AI Labs Gradio 5 endpoints directly from `saved.js`:
+- MT: `https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil`
+- TTS: `https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay`
+
+The tab currently wires Amis translation both directions (`translate_1` for ZH-to-Amis, `translate` for Amis-to-ZH) and Amis TTS (`default_speaker_tts`). The UI lists all 16 language codes for future expansion, but non-Amis currently returns an Amis-only message.
+
+**Why:** The ILRDF Gradio APIs are usable without an extension-side proxy, and keeping this inside the extension page avoids content-script CORS constraints. This requires the host permission `https://ai-labs.ilrdf.org.tw/*`.
+
+**How to apply:** Any future AI provider or expanded language support should keep endpoint-specific code isolated in the saved page AI section or move it behind a small adapter. If ILRDF changes function names, SSE response shape, or auth policy, update `gradioCall()` and the call-site data arrays in `saved.js`.
+
+---
+
+## D14 — Packaging includes saved workspace and assets
+
+**What:** `dev/package-extension.ps1` now includes `saved.html`, `saved.css`, `saved.js`, `saved_store.js`, and the `assets/` directory in addition to the original popup/content/options files and `icons/`.
+
+**Why:** The saved page, IndiHunt logos, and tooltip web-accessible image assets are part of the extension runtime. A zip that omits them can load but will have broken saved/export workflows.
+
+**How to apply:** Whenever a new runtime HTML/CSS/JS file or asset directory is added, update `$payloadFiles` or `$payloadDirs` in `dev/package-extension.ps1` before generating an upload zip.
