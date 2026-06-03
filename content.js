@@ -18,6 +18,7 @@ let activeAudio = null;
 let lookupSerial = 0;
 let currentTooltipRect = null;
 let currentTooltipSettings = null;
+let currentTooltipNav = null;
 const fetched = new Map();
 const moeFetched = new Map();
 
@@ -198,6 +199,10 @@ function hasCjk(text) {
 
 function hasLookupLength(word) {
   return hasCjk(word) ? word.length >= 1 : word.length >= 2;
+}
+
+function isDrillableWord(word) {
+  return !hasCjk(word) && hasLookupLength(word) && word.length <= MAX_WORD_LEN;
 }
 
 function makeCjkCandidates(text, index) {
@@ -602,6 +607,35 @@ function triggerLookup(word, rect, settings, nav = null) {
   });
 }
 
+function normalizeTooltipNav(nav) {
+  if (Array.isArray(nav?.history)) return { history: nav.history.slice(-8) };
+  if (nav?.backWord) return { history: [nav.backWord] };
+  return { history: [] };
+}
+
+function getCurrentDrillHistory() {
+  return Array.isArray(currentTooltipNav?.history) ? currentTooltipNav.history : [];
+}
+
+function getNextDrillNav(fromWord = getHeaderWord()) {
+  const cleanFrom = cleanWord(fromWord || '');
+  const history = getCurrentDrillHistory();
+  if (!cleanFrom) return { history };
+  if (history.at(-1) === cleanFrom) return { history };
+  return { history: [...history, cleanFrom].slice(-8) };
+}
+
+function drillLookup(rawWord) {
+  const word = cleanWord(rawWord || '');
+  if (!isDrillableWord(word) || word === cleanWord(getHeaderWord())) return;
+  triggerLookup(
+    word,
+    currentTooltipRect,
+    currentTooltipSettings,
+    getNextDrillNav()
+  );
+}
+
 async function triggerZhLookup(word, settings, lookupId) {
   setHeaderRoot('');
   setHeaderAudioUrl('');
@@ -762,8 +796,10 @@ function doMoeAltLookup(alts, settings, lookupId) {
 
 function showTooltip(word, rect, settings, nav = null) {
   dismissTooltip();
+  const tooltipNav = normalizeTooltipNav(nav);
   currentTooltipRect = rect;
   currentTooltipSettings = settings;
+  currentTooltipNav = tooltipNav;
   tooltip = document.createElement('div');
   tooltip.id = 'formosan-dict-tooltip';
   if (settings.theme !== 'dark') tooltip.classList.add(`fdt-${settings.theme}`);
@@ -788,12 +824,16 @@ function showTooltip(word, rect, settings, nav = null) {
   backBtn.title = '返回';
   backBtn.setAttribute('aria-label', '返回');
   backBtn.textContent = '‹';
-  backBtn.hidden = !nav?.backWord;
+  backBtn.hidden = tooltipNav.history.length === 0;
   backBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!nav?.backWord) return;
-    triggerLookup(nav.backWord, currentTooltipRect || rect, currentTooltipSettings || settings);
+    const history = getCurrentDrillHistory();
+    const backWord = history.at(-1);
+    if (!backWord) return;
+    triggerLookup(backWord, currentTooltipRect || rect, currentTooltipSettings || settings, {
+      history: history.slice(0, -1),
+    });
   });
 
   const wordSpan = document.createElement('span');
@@ -819,7 +859,7 @@ function showTooltip(word, rect, settings, nav = null) {
     e.stopPropagation();
     const root = rootChip.dataset.root;
     if (!root || root === getHeaderWord()) return;
-    triggerLookup(root, currentTooltipRect || rect, currentTooltipSettings || settings, { backWord: getHeaderWord() });
+    triggerLookup(root, currentTooltipRect || rect, currentTooltipSettings || settings, getNextDrillNav());
   });
   const rootText = document.createElement('span');
   rootText.className = 'fdt-root-text';
@@ -1022,6 +1062,35 @@ function cleanDisplayText(text) {
     .trim();
 }
 
+function appendDrillableText(parent, text) {
+  const raw = String(text || '');
+  if (!raw) return;
+
+  const parts = raw.split(/([\p{L}\p{M}\d'^’ʼ:.-]+)/gu);
+  parts.forEach(part => {
+    if (!part) return;
+    const word = cleanWord(part);
+    if (!isDrillableWord(word)) {
+      parent.appendChild(document.createTextNode(part));
+      return;
+    }
+
+    const token = document.createElement('button');
+    token.type = 'button';
+    token.className = 'fdt-drill';
+    token.textContent = part;
+    token.title = '查詢此詞';
+    token.setAttribute('aria-label', `查詢 ${word}`);
+    token.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      drillLookup(word);
+    });
+    token.addEventListener('keydown', (e) => e.stopPropagation());
+    parent.appendChild(token);
+  });
+}
+
 function countCjk(text) {
   return [...String(text || '')].filter(ch => isCjk(ch)).length;
 }
@@ -1083,7 +1152,7 @@ function buildExamplesPanel(examples, limit = MAX_EXPANDED_EXAMPLES) {
     if (example.ab) {
       const ab = document.createElement('div');
       ab.className = 'fdt-example-ab';
-      ab.textContent = example.ab;
+      appendDrillableText(ab, example.ab);
       text.appendChild(ab);
     }
 
@@ -1175,7 +1244,9 @@ function appendResultRow(parent, entry, settings, showRowAudio) {
 
   const zh = document.createElement('span');
   zh.className = 'fdt-zh';
-  zh.textContent = getPrimaryText(entry);
+  const primaryText = getPrimaryText(entry);
+  if (entry.sourceId && !hasCjk(primaryText)) appendDrillableText(zh, primaryText);
+  else zh.textContent = primaryText;
   textWrap.appendChild(zh);
 
   if (entry.secondaryText) {
@@ -1633,4 +1704,5 @@ function dismissTooltip() {
   tooltip = null;
   currentTooltipRect = null;
   currentTooltipSettings = null;
+  currentTooltipNav = null;
 }
