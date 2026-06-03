@@ -636,6 +636,10 @@
   gap: 8px;
 }
 
+.fdt-moe-sense-head .fdt-audio {
+  margin-top: 1px;
+}
+
 .fdt-moe-sense-head .fdt-moe-def {
   flex: 1;
   min-width: 0;

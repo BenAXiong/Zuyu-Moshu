@@ -37,13 +37,12 @@ function getDialectLabel(full, settings) {
   return settings.language ? getShortDialect(full) : full;
 }
 
-function getAudioUrl(entry) {
-  const directUrl = entry?.audio_url ?? entry?.audioUrl ?? entry?.audio;
-  const exampleUrl = Array.isArray(entry?.examples)
-    ? entry.examples.map(ex => ex?.audio_url ?? ex?.audioUrl ?? ex?.audio).find(Boolean)
-    : '';
-  const url = directUrl || exampleUrl;
+function normalizeAudioUrl(url) {
   return typeof url === 'string' && /^https?:\/\//.test(url) ? url : '';
+}
+
+function getAudioUrl(entry) {
+  return normalizeAudioUrl(entry?.audioUrl ?? entry?.audio_url ?? entry?.audio);
 }
 
 const SWAP = { u:'o', o:'u', l:'r', r:'l', f:'v', v:'f', '^':"'" };
@@ -438,6 +437,7 @@ function normalizeDictZhEntries(results) {
       sourceId: 'EPARK',
       displayText: cleanDisplayText(entry.ab || ''),
       secondaryText: cleanDisplayText(entry.zh || ''),
+      audioUrl: getAudioUrl(entry),
     }))
     .filter(entry => entry.displayText && !hasCjk(entry.displayText));
 }
@@ -482,6 +482,7 @@ function normalizeMoeZhEntries(rows) {
       displayText: group.word,
       secondaryText: definitions.slice(0, 2).join('；'),
       metaLabel: getMoeSourceMeta(primary),
+      audioUrl: getAudioUrl(primary),
       examples,
       moeRows: bestRows,
       root: cleanMoeText(primary?.ultimate_root || primary?.stem || ''),
@@ -1371,8 +1372,8 @@ function getMoeExampleRows(row) {
     .map(ex => ({
       ab: cleanMoeText(ex.ab),
       zh: cleanMoeText(ex.zh || ex.en),
-      source: '',
-      audioUrl: '',
+      source: cleanMoeText(ex.source || ''),
+      audioUrl: getAudioUrl(ex),
     }))
     .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
 }
@@ -1423,11 +1424,13 @@ function getMoeSenseRows(rows) {
       sense = {
         row,
         definition: cleanMoeDefinition(row.definition),
+        audioUrl: getAudioUrl(row),
         examples: [],
       };
       byKey.set(key, sense);
       senses.push(sense);
     }
+    if (!sense.audioUrl) sense.audioUrl = getAudioUrl(row);
     sense.examples = dedupeMoeExamples([...sense.examples, ...getMoeExampleRows(row)]);
   });
 
@@ -1519,6 +1522,8 @@ function renderMoeSenseRows(section, rows) {
 
     const header = document.createElement('div');
     header.className = 'fdt-moe-sense-head';
+
+    if (sense.audioUrl) header.appendChild(createAudioButton(sense.audioUrl));
 
     const def = document.createElement('div');
     def.className = 'fdt-moe-def';
@@ -1707,7 +1712,7 @@ function renderAltSection(altWord, results, settings) {
       const key = `${getPrimaryText(e)}:${getAudioUrl(e) || 'no-audio'}`;
       return altSeen.has(key) ? false : altSeen.add(key);
     }).slice(0, settings.maxResults);
-    altTop.forEach(e => appendResultRow(section, e, settings, false));
+    altTop.forEach(e => appendResultRow(section, e, settings, true));
   }
 
   clearEmptyMessage(body);

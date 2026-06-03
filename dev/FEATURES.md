@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 17:51 +08:00
+Global timestamp: 2026-06-03 17:57 +08:00
 
 Current extension version: 1.4.1
 
@@ -64,19 +64,30 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 
 | Feature | Scope | Current state | Implementation |
 |---|---|---|---|
-| Header audio button | ePark AB-to-ZH | Shows only when a main ePark result has audio. Hidden for ZH-to-AB and Kilang-only results. | `content.js`: `getAudioUrl()`, `setHeaderAudioUrl()`. |
-| Row audio button | ePark ZH-to-AB and result rows with audio | Shows when an entry has an audio URL. Hidden when absent. | `content.js`: `appendResultRow()`, `createAudioButton()`. |
+| Header audio button | Source-agnostic direct headword audio | Shows only when the current main headword row has direct audio. It does not borrow nested example audio. | `content.js`: `getAudioUrl()`, `setHeaderAudioUrl()`. |
+| Row audio button | Source-agnostic direct row audio | Shows when a result row or Kilang sense row has direct audio. Hidden when absent. | `content.js`: `appendResultRow()`, `renderMoeSenseRows()`, `createAudioButton()`. |
+| Example audio button | Source-agnostic example audio | Shows when an example has `audioUrl` / `audio_url`. Kilang examples are audio-ready if Citadel adds audio fields later. | `content.js`: `getExampleRows()`, `getMoeExampleRows()`, `buildExamplesPanel()`. |
 | Example copy button | Universal examples | Copies AB + ZH text. Icon temporarily changes to a check mark after success. | `content.js`: `createCopyButton()`, `setCopyButtonIcon()`. |
 
 ### Audio Universalization Plan
 
 Current strategy:
 
-- Extension work should make audio consumption source-agnostic: direct row/headword audio, row audio, and example audio should render from normalized `audioUrl` fields regardless of source.
+- Extension audio consumption is source-agnostic: direct row/headword audio, row audio, and example audio render from normalized `audioUrl` fields regardless of source.
 - Do not plan around rescraping MoE dictionary audio into Citadel. MoE audio coverage is expected to be weak, and Kilang/MoE rows currently do not expose useful audio URLs.
 - Treat ILRDF / 原住民族語言線上辭典 as the likely primary future audio source because it appears to have better coverage. Citadel can later ingest or link ILRDF audio, either by scraping/copying from the planned source or importing from a GitHub repo if available.
 - Preferred Citadel API contract remains source-neutral: rows and examples should expose absolute `audio_url` values when known, and `null`/empty values when absent. The extension should not need source-specific URL construction.
 - Once Citadel exposes `audio_url` consistently for ILRDF/ePark/Kilang-derived rows or examples, the extension should show audio automatically through the same row/example controls.
+
+Future-work anchor: `AUDIO-ILRDF-CITADEL`
+
+Remaining work under this anchor is Citadel/data-side:
+
+- Ingest or link ILRDF audio into Citadel without depending on a new MoE scrape.
+- Decide matching rules between ILRDF entries/audio and Kilang/MoE rows, especially roots, derived forms, and spelling variants.
+- Expose absolute `audio_url` on row objects for direct headword/entry audio.
+- Expose absolute `audio_url` inside example objects when sentence/example audio is known.
+- Keep the API contract source-neutral so the extension consumes `audio_url` rather than constructing source-specific URLs.
 
 ## Options And Popup
 
