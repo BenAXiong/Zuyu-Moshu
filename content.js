@@ -1943,7 +1943,10 @@ function renderMoeAltSection(insights, settings) {
 
   const altHeader = document.createElement('div');
   altHeader.className = 'fdt-alt-header';
-  altHeader.textContent = cleanMoeText(insights?.query || insights?.match || '');
+  const altHeaderText = document.createElement('span');
+  altHeaderText.className = 'fdt-alt-header-text';
+  altHeaderText.textContent = cleanMoeText(insights?.query || insights?.match || '');
+  altHeader.appendChild(altHeaderText);
   section.appendChild(altHeader);
 
   if (!insights || insights.rows === null) {
@@ -2001,6 +2004,13 @@ function renderMoeAltSection(insights, settings) {
     return;
   }
 
+  altHeader.appendChild(createSaveButton(() => buildSavedMoeHeadword({
+    matchedWord,
+    root,
+    affixSummary: saveAffixSummary,
+    senses,
+  })));
+
   if (!body.querySelector(':scope > .fdt-result, :scope > .fdt-moe-section:not(.fdt-moe-alt-section)')) {
     setHeaderSaveItem(buildSavedMoeHeadword({
       matchedWord,
@@ -2032,7 +2042,10 @@ function renderAltSection(altWord, results, settings) {
 
   const header = document.createElement('div');
   header.className = 'fdt-alt-header';
-  header.textContent = altWord ?? '';
+  const headerText = document.createElement('span');
+  headerText.className = 'fdt-alt-header-text';
+  headerText.textContent = altWord ?? '';
+  header.appendChild(headerText);
   section.appendChild(header);
 
   if (results === null) {
@@ -2048,6 +2061,9 @@ function renderAltSection(altWord, results, settings) {
     }).slice(0, settings.maxResults);
     if (!body.querySelector(':scope > .fdt-result, :scope > .fdt-moe-section')) {
       setHeaderSaveItem(buildSavedHeadwordFromEntries(altTop, { matchedWord: altWord }));
+    }
+    if (altTop.length > 0) {
+      header.appendChild(createSaveButton(() => buildSavedHeadwordFromEntries(altTop, { matchedWord: altWord })));
     }
     altTop.forEach(e => appendResultRow(section, e, settings, true));
   }

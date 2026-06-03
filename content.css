@@ -765,6 +765,10 @@
 }
 
 .fdt-alt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 8px 14px 4px;
   font-size: 0.66em;
   font-weight: 600;
@@ -773,11 +777,22 @@
   letter-spacing: 0.09em;
 }
 
-.fdt-alt-header::before {
+.fdt-alt-header-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fdt-alt-header-text::before {
   content: "~ ";
   color: var(--fdt-accent);
   opacity: 0.7;
   margin-right: 2px;
+}
+
+.fdt-alt-header .fdt-save {
+  margin-left: auto;
 }
 
 .fdt-moe-alt-section .fdt-derived-header {
