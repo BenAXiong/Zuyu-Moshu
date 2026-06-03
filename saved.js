@@ -1,5 +1,26 @@
 let savedItems = [];
 
+const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
+const INDIHUNT_MAX_ITEMS = 200;
+const INDIHUNT_LANG_CODE = {
+  Amis: 'ami',
+  Atayal: 'tay',
+  Paiwan: 'pwn',
+  Bunun: 'bnn',
+  Puyuma: 'pyu',
+  Rukai: 'dru',
+  Tsou: 'tsu',
+  Saisiyat: 'xsy',
+  Tao: 'tao',
+  Thao: 'ssf',
+  Kavalan: 'ckv',
+  Truku: 'trv',
+  Sakizaya: 'szy',
+  Sediq: 'see',
+  Kanakanavu: 'xnb',
+  Saaroa: 'sxr',
+};
+
 const els = {};
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -195,34 +216,116 @@ function copyItems(items, btn) {
 
 function exportItemsToIndiHunt(items, btn) {
   if (!items.length) return;
+  const exportItems = items.flatMap(formatIndiHuntItems).slice(0, INDIHUNT_MAX_ITEMS);
+  if (!exportItems.length) return;
   const payload = {
+    version: 1,
     source: 'ycm-popupdict',
     exportedAt: new Date().toISOString(),
-    items: items.map(formatIndiHuntItem),
+    items: exportItems,
   };
-  navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
-    const label = btn.querySelector('span');
-    if (!label) return;
-    const original = label.textContent;
-    label.textContent = '已複製';
-    setTimeout(() => { label.textContent = original; }, 900);
+  openIndiHuntImport(payload);
+  flashButtonLabel(btn, '已送出');
+}
+
+function formatIndiHuntItems(item) {
+  const items = [];
+  const main = formatIndiHuntMainItem(item);
+  if (main) items.push(main);
+
+  (item.examples || []).forEach(example => {
+    const sentence = formatIndiHuntSentenceItem(example, item);
+    if (sentence) items.push(sentence);
+  });
+
+  return items;
+}
+
+function formatIndiHuntMainItem(item) {
+  const ab = cleanExportText(item.ab || item.matchedWord || item.headword);
+  const language = getIndiHuntLanguageCode(item.language);
+  if (!ab || !language) return null;
+
+  return cleanIndiHuntItem({
+    ab,
+    zh: cleanExportText(item.zh),
+    type: item.type === 'example' ? 'sentence' : 'word',
+    language,
+    dialect: cleanExportText(item.dialect),
+    audio: cleanExportText(item.audioUrl),
+    notes: formatIndiHuntNotes(item),
+    tags: formatIndiHuntTags(item),
   });
 }
 
-function formatIndiHuntItem(item) {
-  return {
-    type: item.type,
-    language: item.language,
-    headword: item.headword || item.matchedWord || item.ab || '',
-    ab: item.ab || item.matchedWord || item.headword || '',
-    zh: item.zh || '',
-    root: item.root || '',
-    affixes: item.affixes || [],
-    examples: item.examples || [],
-    sourceId: item.sourceId || '',
-    sourceMeta: item.sourceMeta || item.dialect || '',
-    pageUrl: item.pageUrl || '',
-    pageTitle: item.pageTitle || '',
-    createdAt: item.createdAt || '',
-  };
+function formatIndiHuntSentenceItem(example, parent) {
+  const ab = cleanExportText(example.ab);
+  const language = getIndiHuntLanguageCode(parent.language);
+  if (!ab || !language) return null;
+
+  return cleanIndiHuntItem({
+    ab,
+    zh: cleanExportText(example.zh),
+    type: 'sentence',
+    language,
+    dialect: cleanExportText(parent.dialect),
+    audio: cleanExportText(example.audioUrl || example.audio_url),
+    notes: formatIndiHuntNotes(parent, example),
+    tags: formatIndiHuntTags(parent),
+  });
+}
+
+function cleanIndiHuntItem(item) {
+  return Object.fromEntries(
+    Object.entries(item).filter(([, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== '';
+    })
+  );
+}
+
+function getIndiHuntLanguageCode(language) {
+  return INDIHUNT_LANG_CODE[language] || '';
+}
+
+function formatIndiHuntNotes(item, example = null) {
+  const notes = [];
+  if (item.root) notes.push(`Root: ${item.root}`);
+  if (item.affixes?.length) notes.push(`Affixes: ${item.affixes.join(' + ')}`);
+  if (item.sourceMeta || item.dialect) notes.push(`Source: ${item.sourceMeta || item.dialect}`);
+  if (example?.source) notes.push(`Example source: ${example.source}`);
+  if (item.pageTitle) notes.push(`Page: ${item.pageTitle}`);
+  if (item.pageUrl) notes.push(item.pageUrl);
+  return notes.join(' · ');
+}
+
+function formatIndiHuntTags(item) {
+  return [item.sourceId].map(cleanExportText).filter(Boolean);
+}
+
+function cleanExportText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function encodePayload(payload) {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function openIndiHuntImport(payload) {
+  const b64 = encodePayload(payload);
+  chrome.tabs.create({ url: `${INDIHUNT_IMPORT_URL}#v1:${b64}` });
+}
+
+function flashButtonLabel(btn, text) {
+  if (!btn) return;
+  const label = btn.querySelector('span') || btn;
+  const original = label.textContent;
+  label.textContent = text;
+  setTimeout(() => { label.textContent = original; }, 900);
 }

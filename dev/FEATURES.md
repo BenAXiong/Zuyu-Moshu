@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 02:19 +08:00
+Global timestamp: 2026-06-04 03:24 +08:00
 
 Current extension version: 1.5.1
 
@@ -78,9 +78,9 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Alt-spelling section headers and example rows have their own bookmarks; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
-| Saved-items page | Universal | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. Only `咒語庫` is functional for now. Supports search, type/language filters, sense-example show/hide toggle, selected-item copy/delete, and selected-item IndiHunt export payload copying. | `saved.html`, `saved.css`, `saved.js`. |
+| Saved-items page | Universal | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. Only `咒語庫` is functional for now. Supports search, type/language filters, sense-example show/hide toggle, selected-item copy/delete, and selected-item IndiHunt export. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
-| Future export path | Universal | Clipboard export is implemented first. IndiHunt export currently copies a structured JSON payload and uses local IndiHunt logo assets. The source-neutral saved item schema keeps room for future direct IndiHunt, Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItem()`; `assets/indivore/`. |
+| Future export path | Universal | Selected-item IndiHunt export opens `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `assets/indivore/`. |
 
 ### Audio Universalization Plan
 
@@ -124,7 +124,7 @@ Remaining work under this anchor is Citadel/data-side:
 Implemented:
 
 - Built-in saved-items list with local storage, tooltip save buttons, popup access, and copy/delete/export-to-clipboard basics.
-- Saved page workspace shell with future tabs for short-text analysis, AI MT/TTS, and Kilang, plus selected-item IndiHunt export payload copying.
+- Saved page workspace shell with future tabs for short-text analysis, AI MT/TTS, and Kilang, plus selected-item IndiHunt direct import.
 - Options page unsaved-change warning.
 
 Left before publishing:
