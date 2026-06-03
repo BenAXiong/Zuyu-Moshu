@@ -1639,7 +1639,14 @@ function renderMoeKilangSection(insights, settings) {
   const recoveryAffixSummary = getMoeRecoveryAffixSummary(insights.recovery);
   const recoveryOperations = getMoeRecoveryOperations(insights.recovery);
   const isSameHeadword = getMoeMatchKey(getHeaderWord()) === getMoeMatchKey(matchedWord);
-  setHeaderRoot(root);
+  const isPureAltRecovery = recoveryOperations.includes('alt')
+    && !recoveryOperations.includes('glottal')
+    && !recoveryAffixSummary;
+  const rootKey = getMoeMatchKey(root);
+  const matchedKey = getMoeMatchKey(matchedWord);
+  const headerKey = getMoeMatchKey(getHeaderWord());
+  const rootAddsInfo = rootKey && rootKey !== matchedKey && rootKey !== headerKey;
+  setHeaderRoot(isPureAltRecovery && !rootAddsInfo ? '' : root);
   body.dataset.moeMainMatchKey = getMoeMatchKey(matchedWord);
   removeDuplicateMoeAltSection(body, body.dataset.moeMainMatchKey);
 
