@@ -1,4 +1,6 @@
 // DEFAULTS, SOURCES, and LANG_TO_DIALECTS are provided by shared.js
+let savedOptionsSnapshot = '';
+let optionsLoaded = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Populate language dropdown
@@ -49,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('triggerHover').checked = s.triggerHover;
     document.getElementById('triggerCtrlSelect').checked = s.triggerCtrlSelect;
     updateSourceAvailability(langSelect.value);
+    savedOptionsSnapshot = serializeOptions(readCurrentOptions());
+    optionsLoaded = true;
   });
 
   langSelect.addEventListener('change', () => updateSourceAvailability(langSelect.value));
@@ -62,36 +66,60 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('save').addEventListener('click', () => {
-    const hover = document.getElementById('triggerHover').checked;
-    const dblclick = !hover && document.getElementById('triggerDblclick').checked;
-    const ctrlSel  = document.getElementById('triggerCtrlSelect').checked;
-    const sources = Array.from(document.querySelectorAll('.source-cb:not([disabled])'))
-                        .filter(cb => cb.checked)
-                        .map(cb => cb.value);
+    const settings = readCurrentOptions();
 
-    if (!hover && !dblclick && !ctrlSel) {
+    if (!settings.triggerHover && !settings.triggerDblclick && !settings.triggerCtrlSelect) {
       showStatus('至少需啟用一種觸發方式。', true);
       return;
     }
 
-    const settings = {
-      language:          langSelect.value,
-      sources,
-      showDialect:       document.getElementById('showDialect').checked,
-      boldText:          document.getElementById('boldText').checked,
-      maxResults:        Number.parseInt(document.getElementById('maxResults').value, 10),
-      theme:             document.querySelector('input[name="theme"]:checked').value,
-      fontSize:          document.querySelector('input[name="fontSize"]:checked').value,
-      enabled:           document.getElementById('enabled').checked,
-      triggerDblclick:   dblclick,
-      triggerHover:      hover,
-      triggerCtrlSelect: ctrlSel,
-      moeKilangInsights: langSelect.value === 'Amis' && sources.includes('KILANG'),
-    };
+    chrome.storage.sync.set(settings, () => {
+      savedOptionsSnapshot = serializeOptions(settings);
+      showStatus('已儲存！', false);
+    });
+  });
 
-    chrome.storage.sync.set(settings, () => showStatus('已儲存！', false));
+  window.addEventListener('beforeunload', (e) => {
+    if (!hasUnsavedOptions()) return;
+    e.preventDefault();
+    e.returnValue = '';
   });
 });
+
+function readCurrentOptions() {
+  const language = document.getElementById('language').value;
+  const hover = document.getElementById('triggerHover').checked;
+  const dblclick = !hover && document.getElementById('triggerDblclick').checked;
+  const sources = Array.from(document.querySelectorAll('.source-cb:not([disabled])'))
+                      .filter(cb => cb.checked)
+                      .map(cb => cb.value);
+
+  return {
+    language,
+    sources,
+    showDialect:       document.getElementById('showDialect').checked,
+    boldText:          document.getElementById('boldText').checked,
+    maxResults:        Number.parseInt(document.getElementById('maxResults').value, 10),
+    theme:             document.querySelector('input[name="theme"]:checked').value,
+    fontSize:          document.querySelector('input[name="fontSize"]:checked').value,
+    enabled:           document.getElementById('enabled').checked,
+    triggerDblclick:   dblclick,
+    triggerHover:      hover,
+    triggerCtrlSelect: document.getElementById('triggerCtrlSelect').checked,
+    moeKilangInsights: language === 'Amis' && sources.includes('KILANG'),
+  };
+}
+
+function serializeOptions(settings) {
+  return JSON.stringify({
+    ...settings,
+    sources: [...settings.sources].sort(),
+  });
+}
+
+function hasUnsavedOptions() {
+  return optionsLoaded && serializeOptions(readCurrentOptions()) !== savedOptionsSnapshot;
+}
 
 function updateSourceAvailability(language) {
   document.querySelectorAll('.source-cb').forEach(cb => {

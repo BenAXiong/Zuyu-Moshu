@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 23:12 +08:00
+Global timestamp: 2026-06-03 23:24 +08:00
 
 Current extension version: 1.5.0
 
@@ -109,6 +109,7 @@ Remaining work under this anchor is Citadel/data-side:
 | Source selection | Universal | Sources shown as ePark, Kilang, ILRDF. Kilang is the only enabled default source. | `options.html`, `options.js`, `shared.js`. |
 | Kilang availability | Amis only | Kilang source checkbox is disabled outside Amis. Content-side checks also require Amis. | `options.js`: `updateSourceAvailability()`; `content.js`: `canUseMoeKilang()`, `canUseKilangZhToAb()`. |
 | Appearance settings | Universal | Theme, font size, bold translations, and dialect display are stored in `chrome.storage.sync`. | `options.js`, `popup.js`, `content.css`. |
+| Unsaved options warning | Universal | Options page prompts with the browser's native leave-page warning when form controls differ from the last loaded/saved settings. | `options.js`: `readCurrentOptions()`, `hasUnsavedOptions()`. |
 | Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, and has two icon+label buttons for options and saved items. | `popup.html`, `popup.js`. |
 
 ## Packaging
