@@ -1,8 +1,8 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 18:24 +08:00
+Global timestamp: 2026-06-03 18:32 +08:00
 
-Current extension version: 1.4.2
+Current extension version: 1.4.3
 
 This document is a current-state inventory, not a historical changelog. It lists what is implemented, whether behavior is universal or source-specific, and the main technical entry points.
 
