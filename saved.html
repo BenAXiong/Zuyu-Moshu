@@ -59,7 +59,39 @@
       <section id="list" class="list" aria-live="polite"></section>
     </section>
 
-    <section id="panel-paragraph" class="workspace-panel" data-panel="paragraph" hidden></section>
+    <section id="panel-paragraph" class="workspace-panel paragraph-panel" data-panel="paragraph" hidden>
+      <section class="paragraph-tools" aria-label="paragraph analysis controls">
+        <div class="paragraph-selectors">
+          <select id="analysisLanguage" aria-label="Analysis language">
+            <option value="Amis">Amis 阿美語</option>
+          </select>
+          <select id="analysisSource" aria-label="Analysis source">
+            <option value="KILANG">Kilang</option>
+            <option value="EPARK">ePark</option>
+          </select>
+        </div>
+        <button id="analyzeText" class="ai-primary" type="button">Analyze</button>
+      </section>
+
+      <textarea id="analysisInput" class="analysis-input" rows="8" placeholder="貼上族語短文"></textarea>
+
+      <section class="analysis-summary" aria-live="polite">
+        <span id="analysisWordCount">0 words analyzed</span>
+      </section>
+
+      <section class="analysis-results" aria-label="analysis results">
+        <div class="analysis-header" aria-hidden="true">
+          <span>Word</span>
+          <span>ZH</span>
+          <span>Root</span>
+          <span>Source</span>
+          <span></span>
+        </div>
+        <div id="analysisList" class="analysis-list">
+          <div class="analysis-empty">Paste text and run Analyze.</div>
+        </div>
+      </section>
+    </section>
 
     <section id="panel-ai-mt-tts" class="workspace-panel ai-panel" data-panel="ai-mt-tts" hidden>
       <div class="ai-direction">

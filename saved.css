@@ -239,6 +239,113 @@ select {
   background: var(--accent);
 }
 
+.paragraph-panel {
+  display: grid;
+  gap: 12px;
+  padding-top: 18px;
+}
+
+.paragraph-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.paragraph-selectors {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-input {
+  width: 100%;
+  min-height: 190px;
+  resize: vertical;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px;
+  line-height: 1.55;
+}
+
+.analysis-input:focus {
+  border-color: var(--accent);
+}
+
+.analysis-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.analysis-results {
+  display: grid;
+  gap: 8px;
+}
+
+.analysis-header,
+.analysis-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.9fr) minmax(240px, 1.8fr) minmax(96px, 0.8fr) minmax(80px, 0.6fr) 32px;
+  gap: 12px;
+  align-items: start;
+}
+
+.analysis-header {
+  padding: 0 14px 0;
+  color: var(--dim);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+}
+
+.analysis-list {
+  display: grid;
+  gap: 8px;
+}
+
+.analysis-row {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.analysis-token {
+  color: var(--text);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.analysis-zh,
+.analysis-root,
+.analysis-source,
+.analysis-empty {
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.analysis-empty {
+  padding: 24px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.analysis-expand {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+
 .empty {
   margin-top: 28px;
   padding: 24px;
@@ -444,7 +551,9 @@ select {
   }
 
   .filters,
-  .list-tools {
+  .list-tools,
+  .paragraph-tools,
+  .paragraph-selectors {
     align-items: stretch;
     flex-direction: column;
   }
@@ -459,12 +568,21 @@ select {
 
   input,
   select,
-  .ai-textarea {
+  .ai-textarea,
+  .analysis-input {
     width: 100%;
     min-width: 0;
   }
 
   .ai-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-header {
+    display: none;
+  }
+
+  .analysis-row {
     grid-template-columns: 1fr;
   }
 

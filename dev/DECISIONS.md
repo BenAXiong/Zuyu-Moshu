@@ -159,3 +159,13 @@ The tab currently wires Amis translation both directions (`translate_1` for ZH-t
 **Why:** The saved page, IndiHunt logos, and tooltip web-accessible image assets are part of the extension runtime. A zip that omits them can load but will have broken saved/export workflows.
 
 **How to apply:** Whenever a new runtime HTML/CSS/JS file or asset directory is added, update `$payloadFiles` or `$payloadDirs` in `dev/package-extension.ps1` before generating an upload zip.
+
+---
+
+## D15 — Short-text analysis starts as a saved-page shell
+
+**What:** The saved page `短章分析` tab has a minimal whole-text analysis UI: language/source selectors, a large indigenous text input, an Analyze button, a word count, and a result grid with token, ZH, root, source, and future expand columns. The current implementation tokenizes pasted text locally and renders placeholder rows only; it does not call dictionary APIs yet.
+
+**Why:** Whole-text analysis can become expensive and UX-sensitive once it performs many lookups. Starting with the shell fixes the workspace shape and stable DOM hooks before adding lookup batching, caching, examples, save/export actions, or Kilang tree integration.
+
+**How to apply:** Wire future lookup logic behind `renderAnalysisShell()` or a replacement analysis pipeline. Keep token caps and caching explicit, because analyzing long text can otherwise fan out into many API calls.

@@ -70,11 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
   els.aiOutput    = document.getElementById('aiOutput');
   els.aiTranslate = document.getElementById('aiTranslate');
   els.aiListen    = document.getElementById('aiListen');
+  els.analysisInput = document.getElementById('analysisInput');
+  els.analysisList = document.getElementById('analysisList');
+  els.analysisWordCount = document.getElementById('analysisWordCount');
+  els.analyzeText = document.getElementById('analyzeText');
 
   els.aiLanguage.addEventListener('change', updateAiSelectors);
   els.aiInput.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) aiTranslate(); });
   els.aiTranslate.addEventListener('click', aiTranslate);
   els.aiListen.addEventListener('click', aiListen);
+  els.analyzeText.addEventListener('click', renderAnalysisShell);
   updateAiSelectors();
 
   loadItems();
@@ -97,6 +102,59 @@ function activateTab(tabId) {
 function activateDirection(direction) {
   els.directionOptions.forEach(option => {
     option.classList.toggle('is-active', option.dataset.direction === direction);
+  });
+}
+
+function getAnalysisTokens(text) {
+  return [...new Set(
+    String(text || '')
+      .split(/[\s,.;:!?()[\]{}"'“”‘’、，。！？；：「」『』\n\r\t]+/)
+      .map(token => token.trim())
+      .filter(Boolean)
+  )].slice(0, 120);
+}
+
+function renderAnalysisShell() {
+  const tokens = getAnalysisTokens(els.analysisInput.value);
+  els.analysisWordCount.textContent = `${tokens.length} words analyzed`;
+  els.analysisList.replaceChildren();
+
+  if (tokens.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'analysis-empty';
+    empty.textContent = 'Paste text and run Analyze.';
+    els.analysisList.appendChild(empty);
+    return;
+  }
+
+  tokens.forEach(token => {
+    const row = document.createElement('div');
+    row.className = 'analysis-row';
+
+    const word = document.createElement('div');
+    word.className = 'analysis-token';
+    word.textContent = token;
+
+    const zh = document.createElement('div');
+    zh.className = 'analysis-zh';
+    zh.textContent = '—';
+
+    const root = document.createElement('div');
+    root.className = 'analysis-root';
+    root.textContent = '—';
+
+    const source = document.createElement('div');
+    source.className = 'analysis-source';
+    source.textContent = '—';
+
+    const expand = document.createElement('button');
+    expand.className = 'analysis-expand';
+    expand.type = 'button';
+    expand.textContent = '⌄';
+    expand.disabled = true;
+
+    row.append(word, zh, root, source, expand);
+    els.analysisList.appendChild(row);
   });
 }
 
