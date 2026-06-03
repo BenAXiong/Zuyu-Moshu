@@ -1854,6 +1854,7 @@ function renderMoeKilangSection(insights, settings) {
   const affixes = getMoeAffixes(matchedWord, affixStem);
   const inferredAffixSummary = formatMoeAffixSummary(affixes);
   const recoveryAffixSummary = getMoeRecoveryAffixSummary(insights.recovery);
+  const saveAffixSummary = recoveryAffixSummary || inferredAffixSummary;
   const recoveryOperations = getMoeRecoveryOperations(insights.recovery);
   const isSameHeadword = getMoeMatchKey(getHeaderWord()) === getMoeMatchKey(matchedWord);
   const isPureAltRecovery = recoveryOperations.includes('alt')
@@ -1888,7 +1889,7 @@ function renderMoeKilangSection(insights, settings) {
   setHeaderSaveItem(buildSavedMoeHeadword({
     matchedWord,
     root,
-    affixSummary,
+    affixSummary: saveAffixSummary,
     senses,
   }));
 
@@ -1950,6 +1951,7 @@ function renderMoeAltSection(insights, settings) {
   const affixes = getMoeAffixes(matchedWord, affixStem);
   const inferredAffixSummary = formatMoeAffixSummary(affixes);
   const recoveryAffixSummary = getMoeRecoveryAffixSummary(insights.recovery);
+  const saveAffixSummary = recoveryAffixSummary || inferredAffixSummary;
   const recoveryOperations = getMoeRecoveryOperations(insights.recovery);
 
   appendMoeRelationHeaders(section, {
@@ -1971,7 +1973,7 @@ function renderMoeAltSection(insights, settings) {
     setHeaderSaveItem(buildSavedMoeHeadword({
       matchedWord,
       root,
-      affixSummary,
+      affixSummary: saveAffixSummary,
       senses,
     }));
   }
