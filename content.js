@@ -873,7 +873,7 @@ function showTooltip(word, rect, settings, nav = null) {
   labelSpan.className = 'fdt-label';
   labelSpan.textContent = settings.language || '所有族語';
 
-  header.append(backBtn, wordWrap, labelSpan);
+  header.append(backBtn, wordWrap, labelSpan, createOpenSavedButton());
 
   const body = document.createElement('div');
   body.className = 'fdt-body fdt-loading';
@@ -1011,6 +1011,33 @@ function setCopyButtonIcon(btn, copied) {
   btn.replaceChildren(copied ? createCheckIcon() : createCopyIcon());
 }
 
+function createBookmarkIcon(saved = false) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('fdt-save-icon');
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M4.5 2.5h7v11L8 11.2l-3.5 2.3z');
+  if (saved) path.setAttribute('fill', 'currentColor');
+  svg.appendChild(path);
+  return svg;
+}
+
+function createLibraryIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('fdt-save-icon');
+
+  const left = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  left.setAttribute('d', 'M3 3.5h3.5A1.5 1.5 0 0 1 8 5v8a1.5 1.5 0 0 0-1.5-1.5H3z');
+  const right = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  right.setAttribute('d', 'M13 3.5H9.5A1.5 1.5 0 0 0 8 5v8a1.5 1.5 0 0 1 1.5-1.5H13z');
+  svg.append(left, right);
+  return svg;
+}
+
 function getExampleCopyText(example) {
   return [example.ab, example.zh].filter(Boolean).join('\n');
 }
@@ -1045,6 +1072,126 @@ function createCopyButton(example) {
     });
   });
   return btn;
+}
+
+function getPageSaveContext() {
+  return {
+    pageUrl: location.href,
+    pageTitle: document.title,
+  };
+}
+
+function getTooltipSaveContext() {
+  return {
+    language: currentTooltipSettings?.language || '',
+    headword: getHeaderWord(),
+    root: tooltip?.querySelector('.fdt-root-chip')?.dataset.root || '',
+    ...getPageSaveContext(),
+  };
+}
+
+function setSaveButtonState(btn, saved) {
+  btn.classList.toggle('saved', saved);
+  btn.title = saved ? '移除儲存' : '儲存';
+  btn.setAttribute('aria-label', saved ? '移除儲存' : '儲存');
+  btn.replaceChildren(createBookmarkIcon(saved));
+}
+
+function createSaveButton(getItem) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fdt-save';
+  setSaveButtonState(btn, false);
+
+  const readItem = () => fdtNormalizeSavedItem(getItem());
+  try {
+    const item = readItem();
+    fdtFindSavedItemKey(item.key).then(saved => setSaveButtonState(btn, !!saved));
+  } catch (err) {
+    btn.disabled = true;
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (btn.disabled) return;
+    const item = readItem();
+    fdtToggleSavedItem(item).then(result => {
+      setSaveButtonState(btn, result.saved);
+    }).catch(() => {
+      btn.classList.add('error');
+      clearTimeout(btn._errorTimer);
+      btn._errorTimer = setTimeout(() => btn.classList.remove('error'), 900);
+    });
+  });
+  return btn;
+}
+
+function createOpenSavedButton() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fdt-saved-open';
+  btn.title = '開啟已儲存項目';
+  btn.setAttribute('aria-label', '開啟已儲存項目');
+  btn.appendChild(createLibraryIcon());
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fdtOpenSavedPage();
+  });
+  return btn;
+}
+
+function buildSavedExample(example) {
+  return {
+    ...getTooltipSaveContext(),
+    type: 'example',
+    ab: example.ab,
+    zh: example.zh,
+    sourceId: example.sourceId || '',
+    sourceMeta: example.source || '',
+    audioUrl: example.audioUrl || '',
+  };
+}
+
+function buildSavedEntry(entry, examples = []) {
+  const primaryText = getPrimaryText(entry);
+  const zhToAb = hasCjk(getHeaderWord());
+  const ab = zhToAb
+    ? primaryText
+    : cleanDisplayText(entry.ab || entry.word_ab || entry.matchedWord || getHeaderWord());
+  const zh = zhToAb
+    ? cleanDisplayText(entry.secondaryText || entry.zh || entry.word_ch || '')
+    : cleanDisplayText(primaryText || entry.zh || entry.word_ch || '');
+
+  return {
+    ...getTooltipSaveContext(),
+    type: 'word',
+    matchedWord: cleanDisplayText(entry.matchedWord || entry.ab || entry.word_ab || ab || getHeaderWord()),
+    ab,
+    zh,
+    sourceId: entry.sourceId || 'EPARK',
+    sourceMeta: entry.metaLabel || '',
+    dialect: entry.dialect_name || '',
+    examples,
+    audioUrl: getAudioUrl(entry),
+  };
+}
+
+function buildSavedMoeSense(sense) {
+  const context = getTooltipSaveContext();
+  return {
+    ...context,
+    type: 'sense',
+    matchedWord: cleanDisplayText(sense.row.word_ab || context.headword),
+    ab: cleanDisplayText(sense.row.word_ab || context.headword),
+    zh: sense.definition || cleanMoeText(sense.row.definition),
+    sourceId: 'KILANG',
+    sourceMeta: getMoeSourceMeta(sense.row),
+    root: cleanMoeText(sense.row.ultimate_root || sense.row.stem || context.root),
+    examples: sense.examples,
+    audioUrl: getAudioUrl(sense.row),
+  };
 }
 
 function setHeaderAudioUrl(url) {
@@ -1114,6 +1261,7 @@ function getExampleRows(entry) {
       ab: cleanDisplayText(ex?.ab || ex?.word_ab || ex?.text || ''),
       zh: cleanDisplayText(ex?.zh || ex?.word_ch || ex?.translation || ''),
       source: cleanDisplayText(ex?.source || ex?.category || ''),
+      sourceId: entry.sourceId || 'EPARK',
       audioUrl: getAudioUrl(ex),
     }))
     .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
@@ -1167,7 +1315,11 @@ function buildExamplesPanel(examples, limit = MAX_EXPANDED_EXAMPLES) {
 
     const actions = document.createElement('div');
     actions.className = 'fdt-example-actions';
-    actions.appendChild(createCopyButton(example));
+    const controls = document.createElement('div');
+    controls.className = 'fdt-example-controls';
+    controls.appendChild(createSaveButton(() => buildSavedExample(example)));
+    controls.appendChild(createCopyButton(example));
+    actions.appendChild(controls);
 
     if (example.source) {
       const source = document.createElement('div');
@@ -1258,6 +1410,11 @@ function appendResultRow(parent, entry, settings, showRowAudio) {
     textWrap.appendChild(secondary);
   }
   row.appendChild(textWrap);
+
+  const actions = document.createElement('span');
+  actions.className = 'fdt-row-actions';
+  actions.appendChild(createSaveButton(() => buildSavedEntry(entry, examples)));
+  row.appendChild(actions);
 
   if (entry.metaLabel || settings.showDialect) {
     const dl = document.createElement('span');
@@ -1378,6 +1535,7 @@ function getMoeExampleRows(row) {
       ab: cleanMoeText(ex.ab),
       zh: cleanMoeText(ex.zh || ex.en),
       source: cleanMoeText(ex.source || ''),
+      sourceId: 'KILANG',
       audioUrl: getAudioUrl(ex),
     }))
     .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
@@ -1588,6 +1746,8 @@ function renderMoeSenseRows(section, rows) {
     source.className = 'fdt-moe-source';
     source.textContent = getMoeSourceLabel(sense.row.dict_code);
     meta.appendChild(source);
+
+    meta.appendChild(createSaveButton(() => buildSavedMoeSense(sense)));
     header.appendChild(meta);
 
     item.appendChild(header);

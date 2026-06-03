@@ -285,6 +285,12 @@ async function fetchMoeZhInsights(keyword) {
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'openSavedPage') {
+    chrome.tabs.create({ url: msg.url || chrome.runtime.getURL('saved.html') });
+    sendResponse({ ok: true });
+    return false;
+  }
+
   if (msg.type === 'lookup') {
     fetchLookup(msg.word, msg.dialects)
       .then(results => sendResponse({ results }))

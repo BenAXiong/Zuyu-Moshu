@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <title>已儲存項目 - 族語魔書</title>
+  <link rel="stylesheet" href="saved.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>已儲存項目</h1>
+      <p id="summary">0 items</p>
+    </div>
+    <div class="top-actions">
+      <button id="copySelected" type="button">複製選取</button>
+      <button id="copyFiltered" type="button">複製目前列表</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="filters" aria-label="filters">
+      <input id="search" type="search" placeholder="搜尋 AB、中文、詞根、來源">
+      <select id="typeFilter">
+        <option value="">全部類型</option>
+        <option value="word">詞條</option>
+        <option value="sense">義項</option>
+        <option value="example">例句</option>
+      </select>
+      <select id="sourceFilter">
+        <option value="">全部來源</option>
+      </select>
+    </section>
+
+    <section id="empty" class="empty" hidden>尚未儲存任何項目。</section>
+    <section id="list" class="list" aria-live="polite"></section>
+  </main>
+
+  <script src="saved_store.js"></script>
+  <script src="saved.js"></script>
+</body>
+</html>

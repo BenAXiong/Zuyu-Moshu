@@ -82,6 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     chrome.runtime.openOptionsPage();
   });
+
+  document.getElementById('saved').addEventListener('click', (e) => {
+    e.preventDefault();
+    fdtOpenSavedPage();
+  });
 });
 
 function setToggle(enabled) {

@@ -252,16 +252,27 @@ body.field .pill.active {
 }
 
 /* ── Options link ───────────────────────────────────────── */
-#opts {
+#opts,
+#saved {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  padding: 12px 16px 14px;
+  padding: 10px 16px;
   font-size: 0.84em;
   color: var(--dim);
   text-decoration: none;
   transition: color 0.15s, gap 0.15s;
 }
 
-#opts:hover { color: var(--accent); gap: 7px; }
+#opts {
+  border-top: 1px solid var(--line);
+}
+
+#saved {
+  padding-top: 0;
+  padding-bottom: 14px;
+}
+
+#opts:hover,
+#saved:hover { color: var(--accent); gap: 7px; }

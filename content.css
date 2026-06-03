@@ -84,7 +84,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 9px;
   padding: 11px 14px 10px;
   background: var(--fdt-surface);
   border-bottom: 1px solid var(--fdt-header-divider);
@@ -248,6 +248,27 @@
   line-height: 1.4;
 }
 
+.fdt-saved-open {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--fdt-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--fdt-dim);
+  padding: 0;
+  cursor: pointer;
+}
+
+.fdt-saved-open:hover {
+  color: var(--fdt-accent);
+  background: var(--fdt-accent-soft);
+  border-color: var(--fdt-accent);
+}
+
 /* ── Body ───────────────────────────────────────────────── */
 .fdt-body { padding: 4px 0; }
 
@@ -388,7 +409,8 @@
   margin-top: 1px;
 }
 
-.fdt-copy {
+.fdt-copy,
+.fdt-save {
   flex-shrink: 0;
   width: 20px;
   height: 20px;
@@ -406,17 +428,21 @@
 }
 
 .fdt-copy:hover,
-.fdt-copy.copied {
+.fdt-copy.copied,
+.fdt-save:hover,
+.fdt-save.saved {
   color: var(--fdt-accent);
   background: var(--fdt-tag-bg);
   border-color: var(--fdt-border);
 }
 
-.fdt-copy.error {
+.fdt-copy.error,
+.fdt-save.error {
   opacity: 0.55;
 }
 
-.fdt-copy-icon {
+.fdt-copy-icon,
+.fdt-save-icon {
   width: 12px;
   height: 12px;
   fill: none;
@@ -426,12 +452,22 @@
   stroke-linejoin: round;
 }
 
+.fdt-save.saved .fdt-save-icon {
+  fill: currentColor;
+}
+
 .fdt-example-actions {
   flex-shrink: 0;
   min-width: 34px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 2px;
+}
+
+.fdt-example-controls {
+  display: inline-flex;
+  align-items: center;
   gap: 2px;
 }
 
@@ -560,6 +596,25 @@
   padding: 2px 6px;
   border-radius: 999px;
   background: var(--fdt-tag-bg);
+}
+
+.fdt-row-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.fdt-row-actions + .fdt-dialect {
+  margin-left: 0;
+}
+
+.fdt-row-actions .fdt-save,
+.fdt-moe-meta .fdt-save,
+.fdt-example-actions .fdt-save,
+.fdt-example-controls .fdt-copy {
+  margin-left: 0;
 }
 
 .fdt-moe-context {

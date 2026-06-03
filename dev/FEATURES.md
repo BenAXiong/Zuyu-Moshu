@@ -1,8 +1,8 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 21:08 +08:00
+Global timestamp: 2026-06-03 21:52 +08:00
 
-Current extension version: 1.4.3
+Current extension version: 1.5.0
 
 This document is a current-state inventory, not a historical changelog. It lists what is implemented, whether behavior is universal or source-specific, and the main technical entry points.
 
@@ -46,6 +46,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
 | Tooltip drilling | Universal for drillable AB text | AB tokens in examples and ZH-to-AB primary rows are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `drillLookup()`, `normalizeTooltipNav()`. |
+| Saved-list opener | Universal | Tooltip header includes a separate icon button that opens the saved-items page. | `content.js`: `createOpenSavedButton()`; `saved.html`. |
 
 ## Kilang Morphology And Sense UI
 
@@ -69,6 +70,16 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Row audio button | Source-agnostic direct row audio | Shows when a result row or Kilang sense row has direct audio. Hidden when absent. | `content.js`: `appendResultRow()`, `renderMoeSenseRows()`, `createAudioButton()`. |
 | Example audio button | Source-agnostic example audio | Shows when an example has `audioUrl` / `audio_url`. Kilang examples are audio-ready if Citadel adds audio fields later. | `content.js`: `getExampleRows()`, `getMoeExampleRows()`, `buildExamplesPanel()`. |
 | Example copy button | Universal examples | Copies AB + ZH text. Icon temporarily changes to a check mark after success. | `content.js`: `createCopyButton()`, `setCopyButtonIcon()`. |
+
+## Saved Items
+
+| Feature | Scope | Current state | Implementation |
+|---|---|---|---|
+| Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
+| Tooltip save buttons | Universal | Result rows, Kilang sense rows, and example rows have bookmark buttons. Example rows keep copy next to save. Clicking a saved bookmark removes it. | `content.js`: `createSaveButton()`, `buildSavedEntry()`, `buildSavedMoeSense()`, `buildSavedExample()`. |
+| Saved-items page | Universal | Dedicated extension page for review. Supports search, type/source filters, delete, copy one item, copy selected, and copy the current filtered list. | `saved.html`, `saved.css`, `saved.js`. |
+| Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
+| Future export path | Universal | Clipboard export is implemented first. The source-neutral saved item schema keeps room for future IndiHunt, Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`. |
 
 ### Audio Universalization Plan
 
@@ -97,7 +108,7 @@ Remaining work under this anchor is Citadel/data-side:
 | Source selection | Universal | Sources shown as ePark, Kilang, ILRDF. Kilang is the only enabled default source. | `options.html`, `options.js`, `shared.js`. |
 | Kilang availability | Amis only | Kilang source checkbox is disabled outside Amis. Content-side checks also require Amis. | `options.js`: `updateSourceAvailability()`; `content.js`: `canUseMoeKilang()`, `canUseKilangZhToAb()`. |
 | Appearance settings | Universal | Theme, font size, bold translations, and dialect display are stored in `chrome.storage.sync`. | `options.js`, `popup.js`, `content.css`. |
-| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, and link to full options. | `popup.html`, `popup.js`. |
+| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, link to full options, and link to saved items. | `popup.html`, `popup.js`. |
 
 ## Packaging
 
@@ -115,3 +126,4 @@ Remaining work under this anchor is Citadel/data-side:
 - CJK hover multi-source lookup can make several API calls per hover event; caching limits repeat cost, but very broad text can still be heavier than AB lookup.
 - PDF support was explicitly dropped.
 - ILRDF is configured as a disabled source placeholder, not an active lookup path.
+- Saved items are local to the current Chrome profile/device in v1.5.0. Cross-device sync/export is not implemented yet.
