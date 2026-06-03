@@ -1,8 +1,8 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 16:50 +08:00
+Global timestamp: 2026-06-03 17:08 +08:00
 
-Current extension version: 1.4.0
+Current extension version: 1.4.1
 
 This document is a current-state inventory, not a historical changelog. It lists what is implemented, whether behavior is universal or source-specific, and the main technical entry points.
 
@@ -33,6 +33,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | ZH-to-AB | yes | yes, Amis only | Chinese selections and CJK hover candidates fan out to enabled zh-capable sources and render normalized AB rows. |
 | Alt spelling | yes, Amis only | yes, Amis only | Applies to AB input only. Handles Amis alternates including `f/v`, `u/o`, `l/r`, and caret/glottal variants. |
 | Root lookup | no | yes, Amis only | Root chip appears for Kilang AB lookups. Clicking it looks up root results with a back button. |
+| Tooltip drilling | yes | yes, Amis only | Click drillable AB words inside tooltip results/examples to replace the current tooltip lookup. Back uses a bounded history stack. |
 
 ## Tooltip Rendering
 
@@ -44,6 +45,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | No-results state | Universal | Shows `查無此詞` only if no enabled source/section produced content. | `content.js`: `showNoResultsIfEmpty()`. |
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
+| Tooltip drilling | Universal for drillable AB text | AB tokens in examples and ZH-to-AB primary rows are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `drillLookup()`, `normalizeTooltipNav()`. |
 
 ## Kilang Morphology And Sense UI
 
