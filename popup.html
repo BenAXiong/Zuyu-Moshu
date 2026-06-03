@@ -49,8 +49,21 @@
     <button id="triggerHover" class="sw" title="滑鼠懸停查詢"></button>
   </div>
 
-  <a id="opts" href="#">完整設定 →</a>
-  <a id="saved" href="#">已儲存項目 →</a>
+  <div class="footer-actions">
+    <button id="opts" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M6.7 2.4h2.6l.4 1.5 1.4.6 1.4-.8 1.3 2.2-1.1 1.1.1 1.5 1.1 1.1-1.3 2.2-1.4-.8-1.4.6-.4 1.5H6.7l-.4-1.5-1.4-.6-1.4.8-1.3-2.2 1.1-1.1-.1-1.5-1.1-1.1 1.3-2.2 1.4.8 1.4-.6z"></path>
+        <circle cx="8" cy="8" r="2"></circle>
+      </svg>
+      <span>設定</span>
+    </button>
+    <button id="saved" type="button">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4.5 2.5h7v11L8 11.2l-3.5 2.3z"></path>
+      </svg>
+      <span>儲存</span>
+    </button>
+  </div>
 
   <script src="shared.js"></script>
   <script src="saved_store.js"></script>

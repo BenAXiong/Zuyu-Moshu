@@ -269,6 +269,11 @@
   border-color: var(--fdt-accent);
 }
 
+.fdt-saved-float {
+  background: var(--fdt-surface);
+  box-shadow: var(--fdt-shadow);
+}
+
 /* ── Body ───────────────────────────────────────────────── */
 .fdt-body { padding: 4px 0; }
 
@@ -467,6 +472,7 @@
 
 .fdt-example-controls {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   gap: 2px;
 }
@@ -593,24 +599,14 @@
 
 .fdt-moe-source {
   flex-shrink: 0;
-  padding: 2px 6px;
+  padding: 1px 3px;
   border-radius: 999px;
   background: var(--fdt-tag-bg);
+  font-size: 0.5em;
+  line-height: 1.15;
 }
 
-.fdt-row-actions {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: auto;
-}
-
-.fdt-row-actions + .fdt-dialect {
-  margin-left: 0;
-}
-
-.fdt-row-actions .fdt-save,
+.fdt-header-save,
 .fdt-moe-meta .fdt-save,
 .fdt-example-actions .fdt-save,
 .fdt-example-controls .fdt-copy {

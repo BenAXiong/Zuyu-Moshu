@@ -78,13 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Full settings link
-  document.getElementById('opts').addEventListener('click', (e) => {
-    e.preventDefault();
+  document.getElementById('opts').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
   });
 
-  document.getElementById('saved').addEventListener('click', (e) => {
-    e.preventDefault();
+  document.getElementById('saved').addEventListener('click', () => {
     fdtOpenSavedPage();
   });
 });

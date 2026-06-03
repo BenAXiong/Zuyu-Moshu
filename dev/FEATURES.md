@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 21:52 +08:00
+Global timestamp: 2026-06-03 22:25 +08:00
 
 Current extension version: 1.5.0
 
@@ -46,7 +46,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
 | Tooltip drilling | Universal for drillable AB text | AB tokens in examples and ZH-to-AB primary rows are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `drillLookup()`, `normalizeTooltipNav()`. |
-| Saved-list opener | Universal | Tooltip header includes a separate icon button that opens the saved-items page. | `content.js`: `createOpenSavedButton()`; `saved.html`. |
+| Saved-list opener | Universal | Tooltip shows a visually separate floating button to the right of the header that opens the saved-items page. | `content.js`: `createOpenSavedButton()`, `showFloatingSavedButton()`; `saved.html`. |
 
 ## Kilang Morphology And Sense UI
 
@@ -60,7 +60,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Kilang alt dedupe | Kilang AB only | Suppresses the separate Kilang alt section when the main Kilang recovery already displays the same matched form. ePark alt rows stay independent. | `content.js`: `getMoeMatchKey()`, `removeDuplicateMoeAltSection()`, `renderMoeKilangSection()`, `renderMoeAltSection()`. |
 | Sense rows | Kilang | One row per displayed zh definition/meaning. Examples stay under their own meaning instead of being globally merged. | `content.js`: `getMoeSenseRows()`, `renderMoeSenseRows()`. |
 | Example display | Kilang and ePark rows with examples | Shows up to 3 examples. Kilang sense rows expand when more than 3 examples exist. | `content.js`: `buildExamplesPanel()`, `toggleMoeSenseExamples()`. |
-| Source/tier pills | Kilang | Shows compact metadata like `T3 S` next to Kilang sense rows. | `content.js`: `getMoeSourceMeta()`, `getMoeSourceLabel()`. |
+| Source/tier pills | Kilang | Shows very compact metadata like `T3 S` next to Kilang sense rows. | `content.js`: `getMoeSourceMeta()`, `getMoeSourceLabel()`; `content.css`: `.fdt-moe-source`. |
 
 ## Audio And Copy
 
@@ -69,14 +69,14 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Header audio button | Source-agnostic direct headword audio | Shows only when the current main headword row has direct audio. It does not borrow nested example audio. | `content.js`: `getAudioUrl()`, `setHeaderAudioUrl()`. |
 | Row audio button | Source-agnostic direct row audio | Shows when a result row or Kilang sense row has direct audio. Hidden when absent. | `content.js`: `appendResultRow()`, `renderMoeSenseRows()`, `createAudioButton()`. |
 | Example audio button | Source-agnostic example audio | Shows when an example has `audioUrl` / `audio_url`. Kilang examples are audio-ready if Citadel adds audio fields later. | `content.js`: `getExampleRows()`, `getMoeExampleRows()`, `buildExamplesPanel()`. |
-| Example copy button | Universal examples | Copies AB + ZH text. Icon temporarily changes to a check mark after success. | `content.js`: `createCopyButton()`, `setCopyButtonIcon()`. |
+| Example copy button | Universal examples | Copies AB + ZH text. It is stacked below the example save button, and the icon temporarily changes to a check mark after success. | `content.js`: `createCopyButton()`, `setCopyButtonIcon()`. |
 
 ## Saved Items
 
 | Feature | Scope | Current state | Implementation |
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
-| Tooltip save buttons | Universal | Result rows, Kilang sense rows, and example rows have bookmark buttons. Example rows keep copy next to save. Clicking a saved bookmark removes it. | `content.js`: `createSaveButton()`, `buildSavedEntry()`, `buildSavedMoeSense()`, `buildSavedExample()`. |
+| Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Example rows have their own bookmark; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
 | Saved-items page | Universal | Dedicated extension page for review. Supports search, type/source filters, delete, copy one item, copy selected, and copy the current filtered list. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Clipboard export is implemented first. The source-neutral saved item schema keeps room for future IndiHunt, Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`. |
@@ -108,7 +108,7 @@ Remaining work under this anchor is Citadel/data-side:
 | Source selection | Universal | Sources shown as ePark, Kilang, ILRDF. Kilang is the only enabled default source. | `options.html`, `options.js`, `shared.js`. |
 | Kilang availability | Amis only | Kilang source checkbox is disabled outside Amis. Content-side checks also require Amis. | `options.js`: `updateSourceAvailability()`; `content.js`: `canUseMoeKilang()`, `canUseKilangZhToAb()`. |
 | Appearance settings | Universal | Theme, font size, bold translations, and dialect display are stored in `chrome.storage.sync`. | `options.js`, `popup.js`, `content.css`. |
-| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, link to full options, and link to saved items. | `popup.html`, `popup.js`. |
+| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, and has two icon+label buttons for options and saved items. | `popup.html`, `popup.js`. |
 
 ## Packaging
 

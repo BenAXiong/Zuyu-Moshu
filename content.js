@@ -19,6 +19,7 @@ let lookupSerial = 0;
 let currentTooltipRect = null;
 let currentTooltipSettings = null;
 let currentTooltipNav = null;
+let savedOpenButton = null;
 const fetched = new Map();
 const moeFetched = new Map();
 
@@ -155,7 +156,7 @@ chrome.storage.onChanged.addListener((changes) => {
 
 document.addEventListener('mousedown', (e) => {
   clearHoverTimer();
-  if (tooltip && !tooltip.contains(e.target)) dismissTooltip();
+  if (tooltip && !tooltip.contains(e.target) && !savedOpenButton?.contains(e.target)) dismissTooltip();
 });
 
 document.addEventListener('keydown', (e) => {
@@ -867,13 +868,14 @@ function showTooltip(word, rect, settings, nav = null) {
   rootText.className = 'fdt-root-text';
   rootChip.append(createRootIcon(), rootText);
 
-  wordWrap.append(wordSpan, rootChip, audioBtn);
+  const headerSaveBtn = createHeaderSaveButton();
+  wordWrap.append(wordSpan, rootChip, audioBtn, headerSaveBtn);
 
   const labelSpan = document.createElement('span');
   labelSpan.className = 'fdt-label';
   labelSpan.textContent = settings.language || '所有族語';
 
-  header.append(backBtn, wordWrap, labelSpan, createOpenSavedButton());
+  header.append(backBtn, wordWrap, labelSpan);
 
   const body = document.createElement('div');
   body.className = 'fdt-body fdt-loading';
@@ -881,6 +883,7 @@ function showTooltip(word, rect, settings, nav = null) {
 
   tooltip.append(header, body);
   document.body.appendChild(tooltip);
+  showFloatingSavedButton(top, left);
 }
 
 function setLoading(on) {
@@ -1142,6 +1145,50 @@ function createOpenSavedButton() {
   return btn;
 }
 
+function createHeaderSaveButton() {
+  const btn = createSaveButton(() => tooltip?._headerSaveItem || buildSavedHeaderFallback());
+  btn.classList.add('fdt-header-save');
+  return btn;
+}
+
+function buildSavedHeaderFallback() {
+  const headword = getHeaderWord();
+  return {
+    ...getTooltipSaveContext(),
+    type: 'word',
+    matchedWord: headword,
+    ab: hasCjk(headword) ? '' : headword,
+    zh: hasCjk(headword) ? headword : '',
+  };
+}
+
+function setHeaderSaveItem(item) {
+  const btn = tooltip?.querySelector('.fdt-header-save');
+  if (!btn) return;
+  tooltip._headerSaveItem = fdtNormalizeSavedItem(item);
+  fdtFindSavedItemKey(tooltip._headerSaveItem.key).then(saved => {
+    if (tooltip?.querySelector('.fdt-header-save') === btn) setSaveButtonState(btn, !!saved);
+  });
+}
+
+function showFloatingSavedButton(top, left) {
+  savedOpenButton?.remove();
+  savedOpenButton = createOpenSavedButton();
+  savedOpenButton.classList.add('fdt-saved-float');
+  const x = Math.min(left + 310, window.scrollX + window.innerWidth - 36);
+  savedOpenButton.style.cssText = `position:absolute;top:${top + 8}px;left:${x}px;z-index:2147483647`;
+  const styles = getComputedStyle(tooltip);
+  [
+    '--fdt-surface',
+    '--fdt-border',
+    '--fdt-dim',
+    '--fdt-accent',
+    '--fdt-accent-soft',
+    '--fdt-shadow',
+  ].forEach(name => savedOpenButton.style.setProperty(name, styles.getPropertyValue(name)));
+  document.body.appendChild(savedOpenButton);
+}
+
 function buildSavedExample(example) {
   return {
     ...getTooltipSaveContext(),
@@ -1154,43 +1201,52 @@ function buildSavedExample(example) {
   };
 }
 
-function buildSavedEntry(entry, examples = []) {
-  const primaryText = getPrimaryText(entry);
+function uniqueSavedText(values) {
+  const seen = new Set();
+  return values.map(cleanDisplayText).filter(value => {
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildSavedHeadwordFromEntries(entries, options = {}) {
   const zhToAb = hasCjk(getHeaderWord());
-  const ab = zhToAb
-    ? primaryText
-    : cleanDisplayText(entry.ab || entry.word_ab || entry.matchedWord || getHeaderWord());
-  const zh = zhToAb
-    ? cleanDisplayText(entry.secondaryText || entry.zh || entry.word_ch || '')
-    : cleanDisplayText(primaryText || entry.zh || entry.word_ch || '');
+  const first = entries[0] || {};
+  const primaryValues = uniqueSavedText(entries.map(getPrimaryText));
+  const ab = options.ab || (zhToAb ? primaryValues[0] : cleanDisplayText(first.ab || first.word_ab || getHeaderWord()));
+  const zh = options.zh || (zhToAb
+    ? uniqueSavedText(entries.map(entry => entry.secondaryText || entry.zh || entry.word_ch)).join('；')
+    : primaryValues.join('；'));
 
   return {
     ...getTooltipSaveContext(),
     type: 'word',
-    matchedWord: cleanDisplayText(entry.matchedWord || entry.ab || entry.word_ab || ab || getHeaderWord()),
+    matchedWord: options.matchedWord || ab || getHeaderWord(),
     ab,
     zh,
-    sourceId: entry.sourceId || 'EPARK',
-    sourceMeta: entry.metaLabel || '',
-    dialect: entry.dialect_name || '',
-    examples,
-    audioUrl: getAudioUrl(entry),
+    sourceId: options.sourceId || first.sourceId || 'EPARK',
+    sourceMeta: options.sourceMeta || first.metaLabel || '',
+    dialect: first.dialect_name || '',
+    examples: entries.flatMap(getExampleRows).slice(0, MAX_EXPANDED_EXAMPLES),
+    audioUrl: entries.map(getAudioUrl).find(Boolean) || '',
   };
 }
 
-function buildSavedMoeSense(sense) {
-  const context = getTooltipSaveContext();
+function buildSavedMoeHeadword({ matchedWord, root, affixSummary, senses }) {
   return {
-    ...context,
-    type: 'sense',
-    matchedWord: cleanDisplayText(sense.row.word_ab || context.headword),
-    ab: cleanDisplayText(sense.row.word_ab || context.headword),
-    zh: sense.definition || cleanMoeText(sense.row.definition),
+    ...getTooltipSaveContext(),
+    type: 'word',
+    matchedWord,
+    ab: matchedWord,
+    zh: uniqueSavedText(senses.map(sense => sense.definition)).join('；'),
     sourceId: 'KILANG',
-    sourceMeta: getMoeSourceMeta(sense.row),
-    root: cleanMoeText(sense.row.ultimate_root || sense.row.stem || context.root),
-    examples: sense.examples,
-    audioUrl: getAudioUrl(sense.row),
+    sourceMeta: uniqueSavedText(senses.map(sense => getMoeSourceMeta(sense.row))).join(' / '),
+    root,
+    affixes: affixSummary ? [affixSummary] : [],
+    examples: senses.flatMap(sense => sense.examples).slice(0, MAX_EXPANDED_EXAMPLES),
+    audioUrl: senses.map(sense => sense.audioUrl).find(Boolean) || '',
   };
 }
 
@@ -1411,11 +1467,6 @@ function appendResultRow(parent, entry, settings, showRowAudio) {
   }
   row.appendChild(textWrap);
 
-  const actions = document.createElement('span');
-  actions.className = 'fdt-row-actions';
-  actions.appendChild(createSaveButton(() => buildSavedEntry(entry, examples)));
-  row.appendChild(actions);
-
   if (entry.metaLabel || settings.showDialect) {
     const dl = document.createElement('span');
     dl.className = 'fdt-dialect';
@@ -1446,6 +1497,7 @@ function renderResults(results, settings) {
     return;
   }
 
+  setHeaderSaveItem(buildSavedHeadwordFromEntries(top));
   top.forEach(e => appendResultRow(body, e, settings, zhToAb));
 }
 
@@ -1462,6 +1514,7 @@ function renderZhResults(entries, settings) {
     return;
   }
 
+  setHeaderSaveItem(buildSavedHeadwordFromEntries(top));
   top.forEach(entry => appendResultRow(body, entry, settings, true));
 }
 
@@ -1475,6 +1528,10 @@ function renderCandidateSections(groups, settings) {
   if (groups.length === 0) {
     showNoResultsIfEmpty(body);
     return;
+  }
+
+  if (groups[0]?.results?.length) {
+    setHeaderSaveItem(buildSavedHeadwordFromEntries(groups[0].results, { matchedWord: groups[0].query }));
   }
 
   groups.forEach(group => {
@@ -1747,7 +1804,6 @@ function renderMoeSenseRows(section, rows) {
     source.textContent = getMoeSourceLabel(sense.row.dict_code);
     meta.appendChild(source);
 
-    meta.appendChild(createSaveButton(() => buildSavedMoeSense(sense)));
     header.appendChild(meta);
 
     item.appendChild(header);
@@ -1829,6 +1885,13 @@ function renderMoeKilangSection(insights, settings) {
     return;
   }
 
+  setHeaderSaveItem(buildSavedMoeHeadword({
+    matchedWord,
+    root,
+    affixSummary,
+    senses,
+  }));
+
   insertMoeSection(body, section);
 }
 
@@ -1904,6 +1967,15 @@ function renderMoeAltSection(insights, settings) {
     return;
   }
 
+  if (!body.querySelector(':scope > .fdt-result, :scope > .fdt-moe-section:not(.fdt-moe-alt-section)')) {
+    setHeaderSaveItem(buildSavedMoeHeadword({
+      matchedWord,
+      root,
+      affixSummary,
+      senses,
+    }));
+  }
+
   clearEmptyMessage(body);
   body.appendChild(section);
 }
@@ -1939,6 +2011,9 @@ function renderAltSection(altWord, results, settings) {
       const key = `${getPrimaryText(e)}:${getAudioUrl(e) || 'no-audio'}`;
       return altSeen.has(key) ? false : altSeen.add(key);
     }).slice(0, settings.maxResults);
+    if (!body.querySelector(':scope > .fdt-result, :scope > .fdt-moe-section')) {
+      setHeaderSaveItem(buildSavedHeadwordFromEntries(altTop, { matchedWord: altWord }));
+    }
     altTop.forEach(e => appendResultRow(section, e, settings, true));
   }
 
@@ -1952,6 +2027,8 @@ function dismissTooltip() {
     activeAudio = null;
   }
   tooltip?.remove();
+  savedOpenButton?.remove();
+  savedOpenButton = null;
   tooltip = null;
   currentTooltipRect = null;
   currentTooltipSettings = null;
