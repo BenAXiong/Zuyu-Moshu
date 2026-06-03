@@ -11,14 +11,16 @@ document.addEventListener('DOMContentLoaded', () => {
   els.list = document.getElementById('list');
   els.empty = document.getElementById('empty');
   els.copySelected = document.getElementById('copySelected');
-  els.copyFiltered = document.getElementById('copyFiltered');
+  els.deleteSelected = document.getElementById('deleteSelected');
+  els.exportIndiHunt = document.getElementById('exportIndiHunt');
 
   els.search.addEventListener('input', render);
   els.typeFilter.addEventListener('change', render);
   els.languageFilter.addEventListener('change', render);
   els.showSenseExamples.addEventListener('change', render);
   els.copySelected.addEventListener('click', () => copyItems(getSelectedItems(), els.copySelected));
-  els.copyFiltered.addEventListener('click', () => copyItems(getFilteredItems(), els.copyFiltered));
+  els.deleteSelected.addEventListener('click', deleteSelectedItems);
+  els.exportIndiHunt.addEventListener('click', () => exportItemsToIndiHunt(getSelectedItems(), els.exportIndiHunt));
 
   loadItems();
 });
@@ -74,10 +76,10 @@ function render() {
   els.empty.hidden = savedItems.length !== 0;
   els.list.replaceChildren();
 
-  els.copySelected.disabled = true;
-  els.copyFiltered.disabled = items.length === 0;
+  updateSelectedActionState();
 
   items.forEach(item => els.list.appendChild(renderItem(item)));
+  updateSelectedActionState();
 }
 
 function renderItem(item) {
@@ -140,20 +142,13 @@ function renderItem(item) {
 
   const actions = document.createElement('div');
   actions.className = 'item-actions';
-  const copy = document.createElement('button');
-  copy.type = 'button';
-  copy.textContent = '複製';
-  copy.addEventListener('click', () => copyItems([item], copy));
-  const del = document.createElement('button');
-  del.type = 'button';
-  del.className = 'delete';
-  del.textContent = '刪除';
-  del.addEventListener('click', async () => {
-    savedItems = await fdtRemoveSavedItem(item.id);
-    populateLanguageFilter();
-    render();
-  });
-  actions.append(copy, del);
+  const indivoreLogo = document.createElement('img');
+  indivoreLogo.className = 'item-indihunt-logo';
+  indivoreLogo.src = 'assets/indivore/icon128.png';
+  indivoreLogo.alt = 'IndiHunt';
+  indivoreLogo.width = 24;
+  indivoreLogo.height = 24;
+  actions.appendChild(indivoreLogo);
 
   const language = document.createElement('div');
   language.className = 'item-language';
@@ -168,7 +163,23 @@ function renderItem(item) {
 }
 
 function updateSelectedCopyState() {
-  els.copySelected.disabled = getSelectedItems().length === 0;
+  updateSelectedActionState();
+}
+
+function updateSelectedActionState() {
+  const hasSelection = getSelectedItems().length > 0;
+  els.copySelected.disabled = !hasSelection;
+  els.deleteSelected.disabled = !hasSelection;
+  els.exportIndiHunt.disabled = !hasSelection;
+}
+
+async function deleteSelectedItems() {
+  const selectedIds = new Set(getSelectedItems().map(item => item.id));
+  if (selectedIds.size === 0) return;
+  savedItems = savedItems.filter(item => !selectedIds.has(item.id));
+  await fdtSetSavedItems(savedItems);
+  populateLanguageFilter();
+  render();
 }
 
 function copyItems(items, btn) {
@@ -180,4 +191,38 @@ function copyItems(items, btn) {
     btn.textContent = '已複製';
     setTimeout(() => { btn.textContent = original; }, 900);
   });
+}
+
+function exportItemsToIndiHunt(items, btn) {
+  if (!items.length) return;
+  const payload = {
+    source: 'ycm-popupdict',
+    exportedAt: new Date().toISOString(),
+    items: items.map(formatIndiHuntItem),
+  };
+  navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
+    const label = btn.querySelector('span');
+    if (!label) return;
+    const original = label.textContent;
+    label.textContent = '已複製';
+    setTimeout(() => { label.textContent = original; }, 900);
+  });
+}
+
+function formatIndiHuntItem(item) {
+  return {
+    type: item.type,
+    language: item.language,
+    headword: item.headword || item.matchedWord || item.ab || '',
+    ab: item.ab || item.matchedWord || item.headword || '',
+    zh: item.zh || '',
+    root: item.root || '',
+    affixes: item.affixes || [],
+    examples: item.examples || [],
+    sourceId: item.sourceId || '',
+    sourceMeta: item.sourceMeta || item.dialect || '',
+    pageUrl: item.pageUrl || '',
+    pageTitle: item.pageTitle || '',
+    createdAt: item.createdAt || '',
+  };
 }

@@ -113,6 +113,10 @@ input {
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   min-height: 34px;
   border-radius: 7px;
   padding: 0 12px;
@@ -286,7 +290,20 @@ select {
 .item-actions {
   display: flex;
   align-items: flex-start;
+  justify-content: flex-end;
   gap: 6px;
+}
+
+.with-icon img,
+.item-indihunt-logo {
+  display: block;
+  object-fit: contain;
+}
+
+.item-indihunt-logo {
+  width: 24px;
+  height: 24px;
+  opacity: 0.72;
 }
 
 .toggle {
