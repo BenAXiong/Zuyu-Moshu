@@ -2,23 +2,19 @@
 <html lang="zh-TW">
 <head>
   <meta charset="utf-8">
-  <title>族語魔書 - 咒語庫</title>
+  <title>族語魔書</title>
   <link rel="stylesheet" href="saved.css">
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <h1>族語魔書 - 咒語庫</h1>
-      <p id="summary">0 items</p>
-    </div>
-    <div class="top-actions">
-      <label class="toggle">
-        <input id="showSenseExamples" type="checkbox" checked>
-        <span>展開義項例句</span>
-      </label>
-      <button id="copySelected" type="button">複製選取</button>
-      <button id="copyFiltered" type="button">複製目前列表</button>
-    </div>
+    <h1>族語魔書</h1>
+    <nav class="tabs" aria-label="saved workspace sections">
+      <button class="tab is-active" type="button" aria-current="page">咒語庫</button>
+      <button class="tab" type="button">Paragraph Analysis</button>
+      <button class="tab" type="button">AI Translation &amp; TTS</button>
+      <button class="tab" type="button">Kilang</button>
+    </nav>
+    <div class="topbar-spacer" aria-hidden="true"></div>
   </header>
 
   <main>
@@ -33,6 +29,18 @@
       <select id="languageFilter">
         <option value="">全部語言</option>
       </select>
+    </section>
+
+    <section class="list-tools" aria-label="saved item actions">
+      <p id="summary">0 items</p>
+      <div class="list-actions">
+        <label class="toggle">
+          <input id="showSenseExamples" type="checkbox" checked>
+          <span>展開義項例句</span>
+        </label>
+        <button id="copySelected" type="button">複製選取</button>
+        <button id="copyFiltered" type="button">複製目前列表</button>
+      </div>
     </section>
 
     <section id="empty" class="empty" hidden>尚未儲存任何項目。</section>
