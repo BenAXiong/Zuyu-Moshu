@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
   els.copySelected = document.getElementById('copySelected');
   els.deleteSelected = document.getElementById('deleteSelected');
   els.exportIndiHunt = document.getElementById('exportIndiHunt');
+  els.tabs = [...document.querySelectorAll('.tab[data-tab]')];
+  els.panels = [...document.querySelectorAll('.workspace-panel[data-panel]')];
+  els.directionOptions = [...document.querySelectorAll('.direction-option[data-direction]')];
 
   els.search.addEventListener('input', render);
   els.typeFilter.addEventListener('change', render);
@@ -42,9 +45,33 @@ document.addEventListener('DOMContentLoaded', () => {
   els.copySelected.addEventListener('click', () => copyItems(getSelectedItems(), els.copySelected));
   els.deleteSelected.addEventListener('click', deleteSelectedItems);
   els.exportIndiHunt.addEventListener('click', () => exportItemsToIndiHunt(getSelectedItems(), els.exportIndiHunt));
+  els.tabs.forEach(tab => tab.addEventListener('click', () => activateTab(tab.dataset.tab)));
+  els.directionOptions.forEach(option => {
+    option.addEventListener('click', () => activateDirection(option.dataset.direction));
+  });
 
   loadItems();
 });
+
+function activateTab(tabId) {
+  els.tabs.forEach(tab => {
+    const active = tab.dataset.tab === tabId;
+    tab.classList.toggle('is-active', active);
+    if (active) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  });
+  els.panels.forEach(panel => {
+    const active = panel.dataset.panel === tabId;
+    panel.hidden = !active;
+    panel.classList.toggle('is-active', active);
+  });
+}
+
+function activateDirection(direction) {
+  els.directionOptions.forEach(option => {
+    option.classList.toggle('is-active', option.dataset.direction === direction);
+  });
+}
 
 async function loadItems() {
   savedItems = await fdtGetSavedItems();

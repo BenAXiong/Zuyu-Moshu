@@ -173,6 +173,72 @@ select {
   padding: 0 30px 0 10px;
 }
 
+.workspace-panel[hidden] {
+  display: none;
+}
+
+.ai-panel {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.ai-direction {
+  display: inline-flex;
+  justify-self: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.direction-option {
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.direction-option.is-active {
+  background: var(--surface-hi);
+  color: var(--text);
+}
+
+.ai-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.ai-textarea {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text);
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.ai-textarea:focus {
+  border-color: var(--accent);
+}
+
+.ai-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ai-primary {
+  color: var(--bg);
+  background: var(--accent);
+}
+
 .empty {
   margin-top: 28px;
   padding: 24px;
@@ -392,9 +458,14 @@ select {
   }
 
   input,
-  select {
+  select,
+  .ai-textarea {
     width: 100%;
     min-width: 0;
+  }
+
+  .ai-grid {
+    grid-template-columns: 1fr;
   }
 
   .item {
