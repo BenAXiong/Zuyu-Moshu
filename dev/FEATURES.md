@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 23:24 +08:00
+Global timestamp: 2026-06-03 23:16 +08:00
 
 Current extension version: 1.5.0
 
@@ -78,7 +78,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Alt-spelling section headers and example rows have their own bookmarks; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
-| Saved-items page | Universal | Dedicated extension page titled `族語魔書` with centered workspace tabs. Supports search, type/language filters, sense-example show/hide toggle, delete, copy one item, copy selected, and copy the current filtered list. | `saved.html`, `saved.css`, `saved.js`. |
+| Saved-items page | Universal | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. Only `咒語庫` is functional for now. Supports search, type/language filters, sense-example show/hide toggle, delete, copy one item, copy selected, and copy the current filtered list. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Clipboard export is implemented first. The source-neutral saved item schema keeps room for future IndiHunt, Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`. |
 
@@ -118,6 +118,23 @@ Remaining work under this anchor is Citadel/data-side:
 |---|---|---|---|
 | Chrome upload zip | Project tooling | Run from repo root: `powershell -NoProfile -ExecutionPolicy Bypass -File .\dev\package-extension.ps1`. Output goes to `dev/dist/ycm-popupdict-v<manifest version>.zip`. | `dev/package-extension.ps1`. |
 | Generated artifact policy | Project tooling | `dev/dist/`, `dev/scratch/`, and `dev/tmp/` are ignored except the legacy tracked handoff zip under `dev/dist/legacy/`. | `.gitignore`. |
+
+## v1.5 Release Status
+
+Implemented:
+
+- Built-in saved-items list with local storage, tooltip save buttons, popup access, and copy/delete/export-to-clipboard basics.
+- Saved page workspace shell with future tabs for short-text analysis, AI MT/TTS, and Kilang.
+- Options page unsaved-change warning.
+
+Left before publishing:
+
+- Manual smoke test in Chrome after reloading the unpacked extension: options save warning, tooltip save/remove, saved page filters/copy/delete, and popup links.
+- Regenerate the Chrome upload zip only when explicitly preparing the dashboard upload.
+
+Deferred beyond v1.5:
+
+- Functional short-text analysis, AI MT/TTS, Kilang tree panel, cloud/sync storage, and richer export targets such as IndiHunt or Notion.
 
 ## Current Caveats
 
