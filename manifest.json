@@ -31,5 +31,11 @@
   "host_permissions": [
     "https://ycm-citadel.vercel.app/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/indivore/icon128.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "permissions": ["storage"]
 }

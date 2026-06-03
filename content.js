@@ -10,6 +10,26 @@ const MAX_CJK_CANDIDATE_GROUPS = 6;
 const MAX_CJK_RESULTS_PER_GROUP = 2;
 const MAX_MOE_ROWS = 3;
 const MAX_EXPANDED_EXAMPLES = 3;
+const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
+const INDIHUNT_MAX_ITEMS = 200;
+const INDIHUNT_LANG_CODE = {
+  Amis: 'ami',
+  Atayal: 'tay',
+  Paiwan: 'pwn',
+  Bunun: 'bnn',
+  Puyuma: 'pyu',
+  Rukai: 'dru',
+  Tsou: 'tsu',
+  Saisiyat: 'xsy',
+  Tao: 'tao',
+  Thao: 'ssf',
+  Kavalan: 'ckv',
+  Truku: 'trv',
+  Sakizaya: 'szy',
+  Sediq: 'see',
+  Kanakanavu: 'xnb',
+  Saaroa: 'sxr',
+};
 
 let tooltip = null;
 let hoverTimer = null;
@@ -805,6 +825,7 @@ function showTooltip(word, rect, settings, nav = null) {
   currentTooltipNav = tooltipNav;
   tooltip = document.createElement('div');
   tooltip.id = 'formosan-dict-tooltip';
+  tooltip._exportItems = [];
   if (settings.theme !== 'dark') tooltip.classList.add(`fdt-${settings.theme}`);
   if (settings.fontSize !== 'medium') tooltip.classList.add(`fdt-${settings.fontSize}`);
   if (settings.boldText) tooltip.classList.add('fdt-bold');
@@ -1041,6 +1062,30 @@ function createLibraryIcon() {
   return svg;
 }
 
+function createExternalWindowIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('fdt-save-icon');
+
+  const box = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  box.setAttribute('d', 'M4 5.5h6.5V12H4z');
+  const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  arrow.setAttribute('d', 'M8.2 4H12v3.8M12 4 7.3 8.7');
+  svg.append(box, arrow);
+  return svg;
+}
+
+function createIndiHuntLogo() {
+  const img = document.createElement('img');
+  img.className = 'fdt-indihunt-logo';
+  img.src = chrome.runtime.getURL('assets/indivore/icon128.png');
+  img.alt = '';
+  img.width = 22;
+  img.height = 22;
+  return img;
+}
+
 function getExampleCopyText(example) {
   return [example.ab, example.zh].filter(Boolean).join('\n');
 }
@@ -1136,11 +1181,26 @@ function createOpenSavedButton() {
   btn.className = 'fdt-saved-open';
   btn.title = '開啟已儲存項目';
   btn.setAttribute('aria-label', '開啟已儲存項目');
-  btn.appendChild(createLibraryIcon());
+  btn.appendChild(createExternalWindowIcon());
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     fdtOpenSavedPage();
+  });
+  return btn;
+}
+
+function createIndiHuntExportButton() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fdt-saved-open fdt-indihunt-open';
+  btn.title = 'Export tooltip to IndiHunt';
+  btn.setAttribute('aria-label', 'Export tooltip to IndiHunt');
+  btn.appendChild(createIndiHuntLogo());
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    exportTooltipToIndiHunt();
   });
   return btn;
 }
@@ -1193,8 +1253,13 @@ function refreshTooltipLayout() {
 
 function showFloatingSavedButton(top, left, tooltipWidth) {
   savedOpenButton?.remove();
-  savedOpenButton = createOpenSavedButton();
-  savedOpenButton.classList.add('fdt-saved-float');
+  savedOpenButton = document.createElement('div');
+  savedOpenButton.className = 'fdt-floating-actions';
+  const openSaved = createOpenSavedButton();
+  openSaved.classList.add('fdt-saved-float');
+  const exportIndiHunt = createIndiHuntExportButton();
+  exportIndiHunt.classList.add('fdt-saved-float');
+  savedOpenButton.append(openSaved, exportIndiHunt);
   const gap = 6;
   const buttonWidth = 36;
   const viewportLeft = window.scrollX + 8;
@@ -1215,6 +1280,124 @@ function showFloatingSavedButton(top, left, tooltipWidth) {
     '--fdt-shadow',
   ].forEach(name => savedOpenButton.style.setProperty(name, styles.getPropertyValue(name)));
   document.body.appendChild(savedOpenButton);
+}
+
+function addTooltipExportItem(item) {
+  if (!tooltip || !item) return;
+  const normalized = fdtNormalizeSavedItem(item);
+  if (!normalized.ab && !normalized.zh && !normalized.examples.length) return;
+  if (!Array.isArray(tooltip._exportItems)) tooltip._exportItems = [];
+  const seen = new Set(tooltip._exportItems.map(existing => existing.key));
+  if (seen.has(normalized.key)) return;
+  tooltip._exportItems.push(normalized);
+}
+
+function cleanExportText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function getIndiHuntLanguageCode(language) {
+  return INDIHUNT_LANG_CODE[language] || '';
+}
+
+function cleanIndiHuntItem(item) {
+  return Object.fromEntries(
+    Object.entries(item).filter(([, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== '';
+    })
+  );
+}
+
+function formatIndiHuntTags(item) {
+  return [item.sourceId].map(cleanExportText).filter(Boolean);
+}
+
+function formatIndiHuntNotes(item, example = null) {
+  const notes = [];
+  if (item.root) notes.push(`Root: ${item.root}`);
+  if (item.affixes?.length) notes.push(`Affixes: ${item.affixes.join(' + ')}`);
+  if (item.sourceMeta || item.dialect) notes.push(`Source: ${item.sourceMeta || item.dialect}`);
+  if (example?.source) notes.push(`Example source: ${example.source}`);
+  if (item.pageTitle) notes.push(`Page: ${item.pageTitle}`);
+  if (item.pageUrl) notes.push(item.pageUrl);
+  return notes.join(' · ');
+}
+
+function formatIndiHuntMainItem(item) {
+  const ab = cleanExportText(item.ab || item.matchedWord || item.headword);
+  const language = getIndiHuntLanguageCode(item.language);
+  if (!ab || !language) return null;
+
+  return cleanIndiHuntItem({
+    ab,
+    zh: cleanExportText(item.zh),
+    type: item.type === 'example' ? 'sentence' : 'word',
+    language,
+    dialect: cleanExportText(item.dialect),
+    audio: cleanExportText(item.audioUrl),
+    notes: formatIndiHuntNotes(item),
+    tags: formatIndiHuntTags(item),
+  });
+}
+
+function formatIndiHuntSentenceItem(example, parent) {
+  const ab = cleanExportText(example.ab);
+  const language = getIndiHuntLanguageCode(parent.language);
+  if (!ab || !language) return null;
+
+  return cleanIndiHuntItem({
+    ab,
+    zh: cleanExportText(example.zh),
+    type: 'sentence',
+    language,
+    dialect: cleanExportText(parent.dialect),
+    audio: cleanExportText(example.audioUrl || example.audio_url),
+    notes: formatIndiHuntNotes(parent, example),
+    tags: formatIndiHuntTags(parent),
+  });
+}
+
+function formatIndiHuntItems(item) {
+  const items = [];
+  const main = formatIndiHuntMainItem(item);
+  if (main) items.push(main);
+
+  (item.examples || []).forEach(example => {
+    const sentence = formatIndiHuntSentenceItem(example, item);
+    if (sentence) items.push(sentence);
+  });
+
+  return items;
+}
+
+function encodeIndiHuntPayload(payload) {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function openIndiHuntImport(payload) {
+  const b64 = encodeIndiHuntPayload(payload);
+  chrome.runtime.sendMessage({ type: 'openSavedPage', url: `${INDIHUNT_IMPORT_URL}#v1:${b64}` });
+}
+
+function exportTooltipToIndiHunt() {
+  const sourceItems = Array.isArray(tooltip?._exportItems) && tooltip._exportItems.length > 0
+    ? tooltip._exportItems
+    : [tooltip?._headerSaveItem || buildSavedHeaderFallback()];
+  const items = sourceItems.flatMap(formatIndiHuntItems).slice(0, INDIHUNT_MAX_ITEMS);
+  if (!items.length) return;
+  openIndiHuntImport({
+    version: 1,
+    source: 'ycm-popupdict',
+    exportedAt: new Date().toISOString(),
+    items,
+  });
 }
 
 function buildSavedExample(example) {
@@ -1275,6 +1458,22 @@ function buildSavedMoeHeadword({ matchedWord, root, affixSummary, senses }) {
     affixes: affixSummary ? [affixSummary] : [],
     examples: senses.flatMap(sense => sense.examples).slice(0, MAX_EXPANDED_EXAMPLES),
     audioUrl: senses.map(sense => sense.audioUrl).find(Boolean) || '',
+  };
+}
+
+function buildSavedMoeSense(sense) {
+  const row = sense?.row || {};
+  return {
+    ...getTooltipSaveContext(),
+    type: 'sense',
+    matchedWord: cleanMoeText(row.word_ab || getHeaderWord()),
+    ab: cleanMoeText(row.word_ab || getHeaderWord()),
+    zh: cleanMoeDefinition(sense?.definition || row.definition || ''),
+    sourceId: 'KILANG',
+    sourceMeta: getMoeSourceMeta(row),
+    root: cleanMoeText(row.ultimate_root || row.stem || ''),
+    examples: sense?.examples || [],
+    audioUrl: sense?.audioUrl || getAudioUrl(row),
   };
 }
 
@@ -1454,6 +1653,7 @@ function toggleMoeSenseExamples(item, examples) {
 function appendResultRow(parent, entry, settings, showRowAudio) {
   const container = document.createElement('div');
   container.className = 'fdt-result';
+  addTooltipExportItem(buildSavedHeadwordFromEntries([entry]));
 
   const row = document.createElement('div');
   row.className = 'fdt-row';
@@ -1793,6 +1993,8 @@ function renderMoeSenseRows(section, rows) {
   const senses = getMoeSenseRows(rows);
 
   senses.forEach(sense => {
+    addTooltipExportItem(buildSavedMoeSense(sense));
+
     const item = document.createElement('div');
     item.className = 'fdt-moe-sense';
 

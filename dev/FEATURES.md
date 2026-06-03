@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 03:30 +08:00
+Global timestamp: 2026-06-04 04:02 +08:00
 
 Current extension version: 1.5.1
 
@@ -47,7 +47,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
 | Tooltip drilling | Universal for drillable AB text | AB tokens in examples and ZH-to-AB primary rows are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `drillLookup()`, `normalizeTooltipNav()`. |
-| Saved-list opener | Universal | Tooltip shows a visually separate larger floating button aligned with the top border to the right of the header that opens the saved-items page. | `content.js`: `createOpenSavedButton()`, `showFloatingSavedButton()`; `saved.html`. |
+| Floating tooltip actions | Universal | Tooltip shows a visually separate vertical floating action stack aligned with the top border. The top button opens the saved-items page with an external-window icon; the second button exports the current tooltip rows/examples to IndiHunt. | `content.js`: `createOpenSavedButton()`, `createIndiHuntExportButton()`, `exportTooltipToIndiHunt()`, `showFloatingSavedButton()`; `content.css`; `manifest.json`. |
 
 ## Kilang Morphology And Sense UI
 
@@ -80,7 +80,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Alt-spelling section headers and example rows have their own bookmarks; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
 | Saved-items page | Universal | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. Only `咒語庫` is functional for now. Supports search, type/language filters, sense-example show/hide toggle, selected-item copy/delete, bulk IndiHunt export, and row-level IndiHunt export. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
-| Future export path | Universal | Selected-item IndiHunt export opens `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `assets/indivore/`. |
+| Future export path | Universal | Saved-page and tooltip IndiHunt export open `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `content.js`: `exportTooltipToIndiHunt()`; `assets/indivore/`. |
 
 ### Audio Universalization Plan
 

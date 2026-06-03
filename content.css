@@ -271,6 +271,12 @@
   border-color: var(--fdt-accent);
 }
 
+.fdt-floating-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .fdt-saved-float {
   background: var(--fdt-surface);
   box-shadow: var(--fdt-shadow);
@@ -281,6 +287,13 @@
 .fdt-saved-float .fdt-save-icon {
   width: 18px;
   height: 18px;
+}
+
+.fdt-indihunt-open .fdt-indihunt-logo {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
 }
 
 /* ── Body ───────────────────────────────────────────────── */
