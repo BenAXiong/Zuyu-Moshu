@@ -1341,6 +1341,10 @@ function cleanMoeDefinition(text) {
   return cleanMoeText(text).replace(/[。．.]+$/u, '').trim();
 }
 
+function getMoeMatchKey(word) {
+  return cleanMoeText(word).toLowerCase();
+}
+
 function getMoeSourceLabel(code) {
   return ({
     s: 'S',
@@ -1471,16 +1475,14 @@ function getMoeRecoveryAffixSummary(recovery) {
   return affixes.map(cleanMoeText).filter(Boolean).join(' + ');
 }
 
-function getMoeAffixContext({ matchedWord, affixStem, affixSummary, fallbackFrom, recovery }) {
-  return {
-    base: fallbackFrom ? matchedWord : (cleanMoeText(affixStem) || matchedWord),
-    affix: getMoeRecoveryAffixSummary(recovery) || affixSummary,
-  };
+function getMoeRecoveryOperations(recovery) {
+  return Array.isArray(recovery?.operations) ? recovery.operations : [];
 }
 
 function appendMoeDerivedHeader(section, context) {
   const header = document.createElement('div');
   header.className = 'fdt-derived-header';
+  if (context.kind) header.classList.add(`fdt-relation-${context.kind}`);
 
   const base = document.createElement('span');
   base.className = 'fdt-derived-base';
@@ -1500,6 +1502,44 @@ function appendMoeDerivedHeader(section, context) {
   }
 
   section.appendChild(header);
+}
+
+function removeDuplicateMoeAltSection(body, matchKey) {
+  if (!matchKey) return;
+  body.querySelectorAll('.fdt-moe-alt-section').forEach(section => {
+    if (section.dataset.moeAltMatchKey === matchKey || section.dataset.moeAltQueryKey === matchKey) {
+      section.remove();
+    }
+  });
+}
+
+function appendMoeRelationHeaders(section, details) {
+  const {
+    matchedWord,
+    isSameHeadword,
+    recoveryAffixSummary,
+    inferredAffixSummary,
+    affixStem,
+    recoveryOperations,
+  } = details;
+  const hasAltRecovery = recoveryOperations.includes('alt');
+  const hasGlottalRecovery = recoveryOperations.includes('glottal');
+
+  if (!isSameHeadword) {
+    appendMoeDerivedHeader(section, {
+      base: matchedWord,
+      affix: recoveryAffixSummary,
+      kind: (hasAltRecovery && !hasGlottalRecovery && !recoveryAffixSummary) ? 'alt' : 'recovery',
+    });
+  }
+
+  if (inferredAffixSummary) {
+    appendMoeDerivedHeader(section, {
+      base: cleanMoeText(affixStem) || matchedWord,
+      affix: inferredAffixSummary,
+      kind: 'derived',
+    });
+  }
 }
 
 function renderMoeSenseRows(section, rows) {
@@ -1583,36 +1623,37 @@ function renderMoeKilangSection(insights, settings) {
   const rows = Array.isArray(insights?.rows) ? insights.rows : [];
   if (rows.length === 0) {
     setHeaderRoot('');
+    body.dataset.moeMainMatchKey = '';
     showNoResultsIfEmpty(body);
     return;
   }
 
   const primary = getMoePrimaryRow(rows);
   const matchedWord = cleanMoeText(insights.match || primary.word_ab || getHeaderWord());
-  const affixBaseWord = cleanMoeText(insights.fallbackFrom || matchedWord);
   const root = cleanMoeText(primary.ultimate_root || primary.stem || '');
   const parent = cleanMoeText(primary.parent_word || '');
   const stem = cleanMoeText(parent || primary.stem || root);
-  const affixStem = insights.fallbackFrom ? matchedWord : (stem || root);
-  const affixes = getMoeAffixes(affixBaseWord, affixStem);
+  const affixStem = stem || root;
+  const affixes = getMoeAffixes(matchedWord, affixStem);
   const inferredAffixSummary = formatMoeAffixSummary(affixes);
-  const affixSummary = getMoeRecoveryAffixSummary(insights.recovery) || inferredAffixSummary;
-  const isExactHeadword = cleanMoeText(getHeaderWord()).toLowerCase() === matchedWord.toLowerCase() && !affixSummary;
+  const recoveryAffixSummary = getMoeRecoveryAffixSummary(insights.recovery);
+  const recoveryOperations = getMoeRecoveryOperations(insights.recovery);
+  const isSameHeadword = getMoeMatchKey(getHeaderWord()) === getMoeMatchKey(matchedWord);
   setHeaderRoot(root);
+  body.dataset.moeMainMatchKey = getMoeMatchKey(matchedWord);
+  removeDuplicateMoeAltSection(body, body.dataset.moeMainMatchKey);
 
   const section = document.createElement('div');
   section.className = 'fdt-moe-section';
 
-  const context = getMoeAffixContext({
+  appendMoeRelationHeaders(section, {
     matchedWord,
+    isSameHeadword,
+    recoveryAffixSummary,
+    inferredAffixSummary,
     affixStem,
-    affixSummary: inferredAffixSummary,
-    fallbackFrom: insights.fallbackFrom,
-    recovery: insights.recovery,
+    recoveryOperations,
   });
-  if (!isExactHeadword && context.base) {
-    appendMoeDerivedHeader(section, context);
-  }
 
   const senses = renderMoeSenseRows(section, rows);
   if (senses.length === 0) {
@@ -1629,8 +1670,12 @@ function renderMoeAltSection(insights, settings) {
 
   body.querySelector('.fdt-moe-alt-section')?.remove();
 
+  const queryKey = getMoeMatchKey(insights?.query || insights?.match || '');
+  if (queryKey && body.dataset.moeMainMatchKey === queryKey) return;
+
   const section = document.createElement('div');
   section.className = 'fdt-alt-section fdt-moe-alt-section';
+  section.dataset.moeAltQueryKey = queryKey;
 
   const altHeader = document.createElement('div');
   altHeader.className = 'fdt-alt-header';
@@ -1660,25 +1705,30 @@ function renderMoeAltSection(insights, settings) {
 
   const primary = getMoePrimaryRow(rows);
   const matchedWord = cleanMoeText(insights.match || primary.word_ab || insights.query || '');
-  const affixBaseWord = cleanMoeText(insights.fallbackFrom || insights.query || matchedWord);
+  const matchKey = getMoeMatchKey(matchedWord);
+  if (matchKey && body.dataset.moeMainMatchKey === matchKey) {
+    clearEmptyMessage(body);
+    return;
+  }
+  section.dataset.moeAltMatchKey = matchKey;
+
   const root = cleanMoeText(primary.ultimate_root || primary.stem || '');
   const parent = cleanMoeText(primary.parent_word || '');
   const stem = cleanMoeText(parent || primary.stem || root);
-  const affixStem = insights.fallbackFrom ? matchedWord : (stem || root);
-  const affixes = getMoeAffixes(affixBaseWord, affixStem);
+  const affixStem = stem || root;
+  const affixes = getMoeAffixes(matchedWord, affixStem);
   const inferredAffixSummary = formatMoeAffixSummary(affixes);
-  const affixSummary = getMoeRecoveryAffixSummary(insights.recovery) || inferredAffixSummary;
+  const recoveryAffixSummary = getMoeRecoveryAffixSummary(insights.recovery);
+  const recoveryOperations = getMoeRecoveryOperations(insights.recovery);
 
-  const context = getMoeAffixContext({
+  appendMoeRelationHeaders(section, {
     matchedWord,
+    isSameHeadword: queryKey === matchKey,
+    recoveryAffixSummary,
+    inferredAffixSummary,
     affixStem,
-    affixSummary: inferredAffixSummary,
-    fallbackFrom: insights.fallbackFrom,
-    recovery: insights.recovery,
+    recoveryOperations,
   });
-  if (affixSummary && context.base) {
-    appendMoeDerivedHeader(section, context);
-  }
 
   const senses = renderMoeSenseRows(section, rows);
   if (senses.length === 0) {

@@ -585,6 +585,14 @@
   margin-right: 2px;
 }
 
+.fdt-derived-header.fdt-relation-alt::before {
+  content: "~ ";
+}
+
+.fdt-derived-header.fdt-relation-recovery::before {
+  content: "↳ ";
+}
+
 .fdt-derived-base {
   min-width: 0;
   color: var(--fdt-text);
