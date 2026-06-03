@@ -1,8 +1,8 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-03 17:57 +08:00
+Global timestamp: 2026-06-03 18:01 +08:00
 
-Current extension version: 1.4.1
+Current extension version: 1.4.2
 
 This document is a current-state inventory, not a historical changelog. It lists what is implemented, whether behavior is universal or source-specific, and the main technical entry points.
 
@@ -108,7 +108,7 @@ Remaining work under this anchor is Citadel/data-side:
 ## Current Caveats
 
 - Kilang is Amis-only by design in both UI availability and content-side guards.
-- Kilang audio is not implemented because the current Kilang/MoE rows do not expose audio URLs.
+- Kilang audio rendering is extension-ready, but current Kilang/MoE rows do not expose useful audio URLs.
 - ZH-to-AB Kilang ranking prefers better source ranks (`s`, then `m`, `a`, `old-s`, then `p`) but Chinese definition search can still return broad semantic matches.
 - CJK hover multi-source lookup can make several API calls per hover event; caching limits repeat cost, but very broad text can still be heavier than AB lookup.
 - PDF support was explicitly dropped.
