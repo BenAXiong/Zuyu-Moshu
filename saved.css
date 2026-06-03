@@ -300,10 +300,22 @@ select {
   object-fit: contain;
 }
 
+.item-indihunt-button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+}
+
 .item-indihunt-logo {
   width: 24px;
   height: 24px;
   opacity: 0.72;
+}
+
+.item-indihunt-button:hover .item-indihunt-logo {
+  opacity: 1;
 }
 
 .toggle {

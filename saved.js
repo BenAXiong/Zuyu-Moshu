@@ -163,13 +163,20 @@ function renderItem(item) {
 
   const actions = document.createElement('div');
   actions.className = 'item-actions';
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.className = 'item-indihunt-button';
+  exportBtn.title = 'Export to IndiHunt';
+  exportBtn.setAttribute('aria-label', 'Export to IndiHunt');
   const indivoreLogo = document.createElement('img');
   indivoreLogo.className = 'item-indihunt-logo';
   indivoreLogo.src = 'assets/indivore/icon128.png';
-  indivoreLogo.alt = 'IndiHunt';
+  indivoreLogo.alt = '';
   indivoreLogo.width = 24;
   indivoreLogo.height = 24;
-  actions.appendChild(indivoreLogo);
+  exportBtn.appendChild(indivoreLogo);
+  exportBtn.addEventListener('click', () => exportItemsToIndiHunt([item], exportBtn));
+  actions.appendChild(exportBtn);
 
   const language = document.createElement('div');
   language.className = 'item-language';
