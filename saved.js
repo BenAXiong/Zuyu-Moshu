@@ -4,18 +4,10 @@ let savedItems = [];
 const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
 const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT  = 20000;
-const ANALYSIS_MAX_TOKENS = 200;
+const ANALYSIS_MAX_TOKENS = 500;
 const ANALYSIS_CONCURRENCY = 6;
 const ANALYSIS_PLACEHOLDER_LINE = '一';
-const ANALYSIS_SAMPLE_TEXT = `Ci Sera aci Nakaw o lalengawan si no Pangcah itira Cilangasan ko ’orip nano to’as.
-mikacomoli ci Ofad ato kaka nira
-ma paising to inacila
-nanay mihai kiso singsi to pipasela’ nira to cecay a romi’ad
-Hakelong han no kadit
-Sikol han ako a mitengil
-Marohem to ko heci
-Mapatedil no cidal
-mangicngic to a malangal ko faloco’`;
+const ANALYSIS_SAMPLE_TEXT = `Itiya ho i, away ko pida sapaising, awa:ay ko ising, ce:cay itira Posko... ko ising, tara sa mipaising, makat, away ko faso away ko paliding, iti:ya ho. Raka:t sa ci'inafa tara Posko mipaising to wawa, itiya ho. Hatira ho ko roray. Saka minokay sato i, maka:t to tahini loma', ta mahaenay kira. Tahini sato loma' maopoh to misakalafi, a to'eman to ano honi sapakalafi to wawa san... maopoh to. Mahaenay ko 'orip niyam itiya ho, to roray. Awa ko pipaisingan itiya ho, man han pi... hiya paising ko wawa? ano adada^? Hades fafa: han raka:t sa tara Posko. Ha ira ko cikawasay sa kiso. Ta ora sa oroma ya tata'angay to ko adada kiyami,foti' sanay to , tahidang han ko tamdaw, ya misacikawasay kiyami,  cingra to ko misa...makeroay mihaen, mipihpih to adadaay misan haen, itiya. ti sanga'en no loma' ko toron, sapakaen ira to kawas ira. sanga' han no loma' ko toron i, 家裡準備好 toron alaen nira panokay koraan.`;
 
 const AMI_DIALECTS = [
   { label: 'Coastal 海岸',      code: 'ami_Coas', speaker: '阿美_海岸_男聲'   },
@@ -62,6 +54,7 @@ const readerState = {
   results: [],
   segments: [],
   translations: {},
+  hideDividers: false,
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -112,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   els.readerSummary = document.getElementById('readerSummary');
   els.readerAnalyze = document.getElementById('readerAnalyze');
   els.readerSampleText = document.getElementById('readerSampleText');
+  els.readerDividerToggle = document.getElementById('readerDividerToggle');
 
   els.aiLanguage.addEventListener('change', updateAiSelectors);
   els.aiInput.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) aiTranslate(); });
@@ -121,10 +115,12 @@ document.addEventListener('DOMContentLoaded', () => {
   els.analysisSampleText.addEventListener('click', loadAnalysisSampleText);
   els.readerAnalyze.addEventListener('click', renderReaderShell);
   els.readerSampleText.addEventListener('click', loadReaderSampleText);
+  els.readerDividerToggle.addEventListener('click', toggleReaderDividers);
   els.analysisFilterButtons.forEach(button => {
     button.addEventListener('click', () => toggleAnalysisFilter(button.dataset.analysisFilter));
   });
   updateAnalysisFilterButtons();
+  updateReaderDividerToggle();
   updateAiSelectors();
 
   loadItems();
@@ -174,6 +170,17 @@ function loadAnalysisSampleText() {
 function loadReaderSampleText() {
   els.readerInput.value = ANALYSIS_SAMPLE_TEXT;
   els.readerInput.focus();
+}
+
+function toggleReaderDividers() {
+  readerState.hideDividers = !readerState.hideDividers;
+  updateReaderDividerToggle();
+}
+
+function updateReaderDividerToggle() {
+  els.readerOutput?.classList.toggle('hide-dividers', readerState.hideDividers);
+  els.readerDividerToggle?.classList.toggle('is-active', readerState.hideDividers);
+  els.readerDividerToggle?.setAttribute('aria-pressed', readerState.hideDividers ? 'true' : 'false');
 }
 
 function splitAnalysisTokens(text) {

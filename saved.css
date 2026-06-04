@@ -313,10 +313,16 @@ select {
   min-width: 96px;
 }
 
-#readerSampleText {
+#readerSampleText,
+#readerDividerToggle {
   width: 36px;
   min-width: 36px;
   padding: 0;
+}
+
+#readerDividerToggle.is-active {
+  color: var(--bg);
+  background: var(--accent);
 }
 
 .reader-input {
@@ -385,6 +391,10 @@ select {
 
 .reader-sentence:last-child {
   border-bottom: 0;
+}
+
+.reader-output.hide-dividers .reader-sentence {
+  border-bottom-color: transparent;
 }
 
 .reader-sentence-content {
