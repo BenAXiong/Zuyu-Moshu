@@ -7,6 +7,15 @@ const ILRDF_TIMEOUT  = 20000;
 const ANALYSIS_MAX_TOKENS = 200;
 const ANALYSIS_CONCURRENCY = 6;
 const ANALYSIS_PLACEHOLDER_LINE = '一';
+const ANALYSIS_SAMPLE_TEXT = `Ci Sera aci Nakaw o lalengawan si no Pangcah itira Cilangasan ko ’orip nano to’as.
+mikacomoli ci Ofad ato kaka nira
+ma paising to inacila
+nanay mihai kiso singsi to pipasela’ nira to cecay a romi’ad
+Hakelong han no kadit
+Sikol han ako a mitengil
+Marohem to ko heci
+Mapatedil no cidal
+mangicngic to a malangal ko faloco’`;
 
 const AMI_DIALECTS = [
   { label: 'Coastal 海岸',      code: 'ami_Coas', speaker: '阿美_海岸_男聲'   },
@@ -43,9 +52,9 @@ const analysisState = {
   segments: [],
   filters: {
     ab: false,
-    roots: false,
+    roots: true,
     zh: false,
-    duplicates: false,
+    duplicates: true,
     saved: false,
   },
 };
@@ -89,15 +98,18 @@ document.addEventListener('DOMContentLoaded', () => {
   els.analysisFilterButtons = [...document.querySelectorAll('.analysis-filter[data-analysis-filter]')];
   els.analysisWordCount = document.getElementById('analysisWordCount');
   els.analyzeText = document.getElementById('analyzeText');
+  els.analysisSampleText = document.getElementById('analysisSampleText');
 
   els.aiLanguage.addEventListener('change', updateAiSelectors);
   els.aiInput.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) aiTranslate(); });
   els.aiTranslate.addEventListener('click', aiTranslate);
   els.aiListen.addEventListener('click', aiListen);
   els.analyzeText.addEventListener('click', renderAnalysisShell);
+  els.analysisSampleText.addEventListener('click', loadAnalysisSampleText);
   els.analysisFilterButtons.forEach(button => {
     button.addEventListener('click', () => toggleAnalysisFilter(button.dataset.analysisFilter));
   });
+  updateAnalysisFilterButtons();
   updateAiSelectors();
 
   loadItems();
@@ -140,11 +152,23 @@ function updateAnalysisFilterButtons() {
   });
 }
 
+function loadAnalysisSampleText() {
+  els.analysisInput.value = ANALYSIS_SAMPLE_TEXT;
+  els.analysisInput.focus();
+}
+
 function splitAnalysisTokens(text) {
   return String(text || '')
     .split(/[\s,.;:!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
-    .map(token => token.trim())
+    .map(normalizeAnalysisToken)
     .filter(token => token.length > 2);
+}
+
+function normalizeAnalysisToken(token) {
+  return cleanAnalysisText(token)
+    .replace(/[‘’´`]/g, "'")
+    .replace(/^[,.";:!?()[\]{}—–，。！？；：「」『』、]+|[,.";:!?()[\]{}—–，。！？；：「」『』、]+$/g, '')
+    .toLowerCase();
 }
 
 function getAnalysisTokens(text, limit = ANALYSIS_MAX_TOKENS, unique = true) {
@@ -367,7 +391,20 @@ function uniqueAnalysisValues(values) {
 
 function getAnalysisKilangDisplayRows(rows) {
   const displayable = rows.filter(row => cleanAnalysisDefinition(row.definition));
-  return displayable.length > 0 ? displayable : rows;
+  if (displayable.length === 0) return rows;
+
+  const bestRank = Math.min(...displayable.map(row => getAnalysisKilangSourceRank(row.dict_code)));
+  return displayable.filter(row => getAnalysisKilangSourceRank(row.dict_code) === bestRank);
+}
+
+function getAnalysisKilangSourceRank(code) {
+  return ({
+    s: 0,
+    m: 1,
+    a: 2,
+    'old-s': 3,
+    p: 4,
+  })[code] ?? 9;
 }
 
 async function loadItems() {

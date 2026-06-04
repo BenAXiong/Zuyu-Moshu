@@ -267,6 +267,22 @@ select {
   gap: 8px;
 }
 
+#analysisLanguage {
+  width: 130px;
+  min-width: 130px;
+}
+
+#analysisSource {
+  width: 96px;
+  min-width: 96px;
+}
+
+#analysisSampleText {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
 .analysis-workbench {
   display: grid;
   grid-template-columns: clamp(240px, 20vw, 360px) minmax(0, 1fr);
