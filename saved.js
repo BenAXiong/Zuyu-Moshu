@@ -5,7 +5,6 @@ const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil
 const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT  = 20000;
 const ANALYSIS_MAX_TOKENS = 80;
-const ANALYSIS_MAX_EXAMPLES = 3;
 const ANALYSIS_CONCURRENCY = 6;
 
 const AMI_DIALECTS = [
@@ -134,7 +133,6 @@ async function renderAnalysisShell() {
   tokens.forEach(token => els.analysisList.appendChild(renderAnalysisRow({
     token,
     zh: 'Looking up...',
-    source: document.getElementById('analysisSource').value,
   })));
 
   const source = document.getElementById('analysisSource').value;
@@ -183,13 +181,10 @@ async function lookupAnalysisEpark(token) {
   const response = await sendRuntimeMessage({ type: 'lookup', word: token, dialects });
   const entries = Array.isArray(response?.results) ? response.results : [];
   const definitions = uniqueAnalysisValues(entries.map(entry => entry.zh || entry.word_ch || entry.definition));
-  const examples = entries.flatMap(getAnalysisEparkExamples).slice(0, ANALYSIS_MAX_EXAMPLES);
   return {
     token,
     zh: definitions.slice(0, 3).join('；') || '—',
     root: '',
-    source: 'ePark',
-    examples,
   };
 }
 
@@ -199,7 +194,6 @@ async function lookupAnalysisKilang(token) {
   const rows = Array.isArray(insights?.rows) ? insights.rows : [];
   const displayRows = getAnalysisKilangDisplayRows(rows);
   const definitions = uniqueAnalysisValues(displayRows.map(row => cleanAnalysisDefinition(row.definition)));
-  const examples = displayRows.flatMap(getAnalysisMoeExamples).slice(0, ANALYSIS_MAX_EXAMPLES);
   const primary = displayRows[0] || rows[0] || {};
   const matched = cleanAnalysisText(insights?.match || primary.word_ab || token);
   const root = cleanAnalysisText(primary.ultimate_root || primary.stem || '');
@@ -207,8 +201,6 @@ async function lookupAnalysisKilang(token) {
     token: matched && matched !== token ? `${token} → ${matched}` : token,
     zh: definitions.slice(0, 3).join('；') || '—',
     root,
-    source: formatAnalysisKilangSource(primary),
-    examples,
   };
 }
 
@@ -224,46 +216,37 @@ function renderAnalysisRow(result) {
   zh.className = 'analysis-zh';
   zh.textContent = result.zh || '—';
 
-  const root = document.createElement('div');
-  root.className = 'analysis-root';
-  root.textContent = result.root || '—';
-
-  const source = document.createElement('div');
-  source.className = 'analysis-source';
-  source.textContent = result.source || '—';
-
   const expand = document.createElement('button');
   expand.className = 'analysis-expand';
   expand.type = 'button';
   expand.textContent = '⌄';
-  expand.disabled = !result.examples?.length;
-  expand.addEventListener('click', () => toggleAnalysisExamples(row, result.examples || []));
+  expand.disabled = !result.root;
+  expand.addEventListener('click', () => toggleAnalysisDetails(row, result));
 
-  row.append(word, zh, root, source, expand);
+  row.append(word, zh, expand);
   return row;
 }
 
-function toggleAnalysisExamples(row, examples) {
-  const existing = row.querySelector('.analysis-examples');
+function toggleAnalysisDetails(row, result) {
+  const existing = row.querySelector('.analysis-details');
   if (existing) {
     existing.remove();
     return;
   }
-  if (!examples.length) return;
+  if (!result.root) return;
 
   const panel = document.createElement('div');
-  panel.className = 'analysis-examples';
-  examples.forEach(example => {
-    const item = document.createElement('div');
-    item.className = 'analysis-example';
-    const ab = document.createElement('div');
-    ab.className = 'analysis-example-ab';
-    ab.textContent = example.ab || '';
-    const zh = document.createElement('div');
-    zh.textContent = example.zh || '';
-    item.append(ab, zh);
-    panel.appendChild(item);
-  });
+  panel.className = 'analysis-details';
+  const root = document.createElement('div');
+  root.className = 'analysis-detail';
+  const label = document.createElement('span');
+  label.className = 'analysis-detail-label';
+  label.textContent = 'Root';
+  const value = document.createElement('span');
+  value.className = 'analysis-detail-value';
+  value.textContent = result.root;
+  root.append(label, value);
+  panel.appendChild(root);
   row.appendChild(panel);
 }
 
@@ -285,40 +268,9 @@ function uniqueAnalysisValues(values) {
   });
 }
 
-function parseAnalysisJsonArray(json) {
-  try {
-    const parsed = JSON.parse(json || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function getAnalysisEparkExamples(entry) {
-  if (!Array.isArray(entry?.examples)) return [];
-  return entry.examples.map(example => ({
-    ab: cleanAnalysisText(example.ab || example.word_ab || example.text),
-    zh: cleanAnalysisText(example.zh || example.word_ch || example.translation),
-  })).filter(example => example.ab || example.zh);
-}
-
-function getAnalysisMoeExamples(row) {
-  return parseAnalysisJsonArray(row?.examples_json).map(example => ({
-    ab: cleanAnalysisText(example.ab),
-    zh: cleanAnalysisText(example.zh || example.en),
-  })).filter(example => example.ab || example.zh);
-}
-
 function getAnalysisKilangDisplayRows(rows) {
-  const displayable = rows.filter(row => cleanAnalysisDefinition(row.definition) || getAnalysisMoeExamples(row).length > 0);
+  const displayable = rows.filter(row => cleanAnalysisDefinition(row.definition));
   return displayable.length > 0 ? displayable : rows;
-}
-
-function formatAnalysisKilangSource(row) {
-  const parts = [];
-  if (row?.tier) parts.push(`T${row.tier}`);
-  if (row?.dict_code) parts.push(String(row.dict_code).toUpperCase());
-  return parts.join(' ') || 'Kilang';
 }
 
 async function loadItems() {
