@@ -323,8 +323,8 @@ select {
 }
 
 .analysis-filter {
-  min-height: 28px;
-  padding: 0 10px;
+  min-height: 36px;
+  padding: 0 12px;
   color: var(--muted);
 }
 
@@ -336,7 +336,7 @@ select {
 
 .analysis-table-wrap {
   width: 100%;
-  height: calc(100vh - 186px - 5vw);
+  height: calc(100vh - 150px - 5vw);
   min-height: 420px;
   overflow: auto;
   border: 1px solid var(--line);
@@ -361,6 +361,16 @@ select {
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
   text-align: center;
+}
+
+.analysis-table-wrap > .analysis-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
 }
 
 .analysis-cell {

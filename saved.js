@@ -174,7 +174,7 @@ async function renderAnalysisShell() {
   }));
   analysisState.results = [];
   els.analysisInput.value = segments.map(segment => segment.text).join('\n');
-  els.analysisWordCount.textContent = `${tokens.length} words analyzed`;
+  updateAnalysisSummary(tokens.length, 0);
 
   if (tokens.length === 0) {
     const empty = document.createElement('div');
@@ -205,10 +205,13 @@ function renderAnalysisTable() {
   els.analysisList.replaceChildren();
   const resultMap = new Map(analysisState.results.map(result => [result.key, result]));
   const seenTokens = new Set();
+  let shownCount = 0;
   const visibleSegments = analysisState.segments.map(segment => {
     const tokens = segment.tokens.filter(token => analysisTokenPassesFilters(token, seenTokens));
+    shownCount += tokens.length;
     return { ...segment, tokens };
   });
+  updateAnalysisSummary(analysisState.results.length, shownCount);
   if (!visibleSegments.length) {
     const empty = document.createElement('div');
     empty.className = 'analysis-empty';
@@ -235,6 +238,10 @@ function renderAnalysisTable() {
   });
   table.appendChild(tbody);
   els.analysisList.appendChild(table);
+}
+
+function updateAnalysisSummary(total, shown) {
+  els.analysisWordCount.textContent = `${total} token analyzed / ${shown} shown`;
 }
 
 function analysisTokenPassesFilters(token, seenTokens) {
