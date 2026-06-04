@@ -344,38 +344,58 @@ function renderReader() {
     block.className = 'reader-sentence';
     block.id = `reader-sentence-${segment.index}`;
 
-    const text = document.createElement('p');
-    text.className = 'reader-sentence-text';
-    text.textContent = segment.text;
-    block.appendChild(text);
-
-    const tokens = document.createElement('div');
-    tokens.className = 'reader-token-grid';
-    segment.tokens.forEach(token => {
-      tokens.appendChild(renderReaderToken(resultMap.get(token) || { key: token, token, zh: 'Looking up...', root: '' }));
+    const line = document.createElement('div');
+    line.className = 'reader-annotated-line';
+    getReaderSentenceParts(segment.text).forEach(part => {
+      line.appendChild(renderReaderPart(part, resultMap));
     });
-    block.appendChild(tokens);
+    block.appendChild(line);
     els.readerOutput.appendChild(block);
   });
 }
 
-function renderReaderToken(result) {
-  const item = document.createElement('div');
+function getReaderSentenceParts(text) {
+  return String(text || '').split(/\s+/).map(raw => {
+    const display = cleanAnalysisText(raw);
+    const key = normalizeAnalysisToken(display);
+    return { display, key };
+  }).filter(part => part.display);
+}
+
+function renderReaderPart(part, resultMap) {
+  const result = part.key.length > 2
+    ? resultMap.get(part.key) || { key: part.key, token: part.display, zh: 'Looking up...', root: '' }
+    : null;
+  const item = document.createElement('span');
   item.className = 'reader-token';
-  if (!result.zh || result.zh === '—') item.classList.add('is-missing');
+  if (result && (!result.zh || result.zh === '—')) item.classList.add('is-missing');
+  if (!result) item.classList.add('is-unscoped');
 
-  const ab = document.createElement('div');
+  const top = document.createElement('span');
+  top.className = 'reader-token-top';
+  top.textContent = getReaderTopAnnotation(result);
+
+  const ab = document.createElement('span');
   ab.className = 'reader-token-ab';
-  ab.textContent = result.token || result.key || '—';
+  ab.textContent = part.display;
 
-  const zh = document.createElement('div');
+  const zh = document.createElement('span');
   zh.className = 'reader-token-zh';
-  const shortZh = getReaderShortDefinition(result.zh);
+  const shortZh = result ? getReaderShortDefinition(result.zh) : '';
   zh.textContent = shortZh;
-  zh.title = result.zh || '';
+  zh.title = result?.zh || '';
 
-  item.append(ab, zh);
+  item.append(top, ab, zh);
   return item;
+}
+
+function getReaderTopAnnotation(result) {
+  if (!result?.token || !result.key) return '';
+  const text = cleanAnalysisText(result.token);
+  const arrowIndex = text.indexOf('→');
+  if (arrowIndex >= 0) return cleanAnalysisText(text.slice(arrowIndex + 1));
+  if (normalizeAnalysisToken(text) !== result.key) return text;
+  return '';
 }
 
 function getReaderShortDefinition(text) {

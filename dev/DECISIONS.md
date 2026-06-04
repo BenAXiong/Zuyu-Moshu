@@ -174,7 +174,7 @@ The tab currently wires Amis translation both directions (`translate_1` for ZH-t
 
 ## D16 — `短章分析*` is a separate annotated-reader experiment
 
-**What:** The saved page `短章分析*` tab is no longer an alias of `短章分析`. It has its own input, source/language controls, bounded-concurrency lookup flow, sentence navigation, and reader-style output. Each sentence renders as a comfortable block with the full AB sentence above token cards; each token card shows AB text with a short ZH definition below it. The reader reuses the short-analysis tokenizer and lookup helpers so curly glottal normalization and Kilang best-source ranking stay consistent.
+**What:** The saved page `短章分析*` tab is no longer an alias of `短章分析`. It has its own input, source/language controls, bounded-concurrency lookup flow, sentence navigation, and reader-style output. Each sentence renders as inline annotated AB text: every word remains in sentence flow, a short ZH gloss is aligned below analyzed tokens, and the top annotation slot is reserved for fallback/alt display when the looked-up form differs from the visible token. The reader reuses the short-analysis tokenizer and lookup helpers so curly glottal normalization and Kilang best-source ranking stay consistent.
 
 **Why:** This tab is meant to explore reading/annotation UX, not table alignment. Keeping it separate lets `短章分析` remain a dense analysis table while `短章分析*` can later support color states, root/affix markers, sentence-level translations, and review/export actions.
 
