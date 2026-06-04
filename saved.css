@@ -12,6 +12,8 @@
   --accent: #f4f1ea;
   --accent-soft: rgba(244,241,234,0.08);
   --danger: #f28b82;
+  --analysis-line-height: 24px;
+  --analysis-row-height: calc(var(--analysis-line-height) * 2);
 }
 
 body {
@@ -283,9 +285,11 @@ select {
   background: var(--surface);
   color: var(--text);
   padding: 12px;
-  line-height: 1.55;
+  font-size: 1rem;
+  line-height: var(--analysis-line-height);
+  white-space: pre;
   resize: none;
-  overflow: auto;
+  overflow: scroll;
 }
 
 .analysis-input:focus {
@@ -348,6 +352,7 @@ select {
   border-collapse: collapse;
   table-layout: fixed;
   min-width: 100%;
+  margin-top: 12px;
 }
 
 .analysis-empty {
@@ -375,14 +380,15 @@ select {
 
 .analysis-cell {
   max-width: 140px;
-  height: 38px;
-  padding: 8px 10px;
+  height: var(--analysis-row-height);
+  padding: 0 10px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: middle;
+  vertical-align: top;
+  line-height: var(--analysis-line-height);
 }
 
 .analysis-cell-ab {

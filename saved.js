@@ -6,6 +6,7 @@ const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT  = 20000;
 const ANALYSIS_MAX_TOKENS = 200;
 const ANALYSIS_CONCURRENCY = 6;
+const ANALYSIS_PLACEHOLDER_LINE = '一';
 
 const AMI_DIALECTS = [
   { label: 'Coastal 海岸',      code: 'ami_Coas', speaker: '阿美_海岸_男聲'   },
@@ -156,6 +157,7 @@ function getAnalysisSegments(text) {
     .split(/[\n\t]+/)
     .flatMap(chunk => chunk.match(/[^.!?。！？]+[.!?。！？]?/g) || [])
     .map(segment => cleanAnalysisText(segment))
+    .filter(segment => segment !== ANALYSIS_PLACEHOLDER_LINE)
     .filter(Boolean)
     .map((text, index) => ({
       index,
@@ -173,7 +175,7 @@ async function renderAnalysisShell() {
     tokens: segment.tokens.filter(token => tokenSet.has(token)),
   }));
   analysisState.results = [];
-  els.analysisInput.value = segments.map(segment => segment.text).join('\n');
+  els.analysisInput.value = formatAnalysisInputSegments(segments);
   updateAnalysisSummary(tokens.length, 0);
 
   if (tokens.length === 0) {
@@ -199,6 +201,10 @@ async function renderAnalysisShell() {
   analysisState.results = results;
   renderAnalysisTable();
   setAnalysisLoading(false);
+}
+
+function formatAnalysisInputSegments(segments) {
+  return segments.map(segment => `${segment.text}\n${ANALYSIS_PLACEHOLDER_LINE}`).join('\n');
 }
 
 function renderAnalysisTable() {
