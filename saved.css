@@ -268,7 +268,7 @@ select {
 .analysis-input,
 .analysis-sentences {
   width: 100%;
-  min-height: 162px;
+  height: 162px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   outline: none;
@@ -279,7 +279,8 @@ select {
 }
 
 .analysis-input {
-  resize: vertical;
+  resize: none;
+  overflow: auto;
 }
 
 .analysis-input:focus {
@@ -649,7 +650,8 @@ select {
   input,
   select,
   .ai-textarea,
-  .analysis-input {
+  .analysis-input,
+  .analysis-sentences {
     width: 100%;
     min-width: 0;
   }

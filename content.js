@@ -1086,6 +1086,16 @@ function createIndiHuntLogo() {
   return img;
 }
 
+function createKilangLogo() {
+  const img = document.createElement('img');
+  img.className = 'fdt-kilang-logo';
+  img.src = chrome.runtime.getURL('assets/kilang/Kilang_5_nobg_noring2.png');
+  img.alt = '';
+  img.width = 22;
+  img.height = 22;
+  return img;
+}
+
 function getExampleCopyText(example) {
   return [example.ab, example.zh].filter(Boolean).join('\n');
 }
@@ -1205,6 +1215,21 @@ function createIndiHuntExportButton() {
   return btn;
 }
 
+function createKilangExportButton() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fdt-saved-open fdt-kilang-open';
+  btn.title = 'Export tooltip';
+  btn.setAttribute('aria-label', 'Export tooltip');
+  btn.appendChild(createKilangLogo());
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    exportTooltipToIndiHunt();
+  });
+  return btn;
+}
+
 function createHeaderSaveButton() {
   const btn = createSaveButton(() => tooltip?._headerSaveItem || buildSavedHeaderFallback());
   btn.classList.add('fdt-header-save');
@@ -1259,7 +1284,9 @@ function showFloatingSavedButton(top, left, tooltipWidth) {
   openSaved.classList.add('fdt-saved-float');
   const exportIndiHunt = createIndiHuntExportButton();
   exportIndiHunt.classList.add('fdt-saved-float');
-  savedOpenButton.append(openSaved, exportIndiHunt);
+  const exportKilang = createKilangExportButton();
+  exportKilang.classList.add('fdt-saved-float');
+  savedOpenButton.append(openSaved, exportIndiHunt, exportKilang);
   const gap = 6;
   const buttonWidth = 36;
   const viewportLeft = window.scrollX + 8;
