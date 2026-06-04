@@ -354,11 +354,11 @@ select {
 
 .reader-output {
   display: grid;
-  gap: 14px;
+  gap: 0;
   min-height: 420px;
-  padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  overflow: hidden;
   background: var(--surface);
 }
 
@@ -370,14 +370,35 @@ select {
 }
 
 .reader-sentence {
-  padding: 18px 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 14px 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
 }
 
 .reader-sentence:target {
-  border-color: var(--accent);
+  background: var(--surface-hi);
+}
+
+.reader-sentence:last-child {
+  border-bottom: 0;
+}
+
+.reader-sentence-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+.reader-export-button {
+  opacity: 0.7;
+}
+
+.reader-export-button:hover {
+  opacity: 1;
 }
 
 .reader-annotated-line {

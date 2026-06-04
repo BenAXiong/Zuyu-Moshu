@@ -350,6 +350,11 @@ function renderReader() {
       line.appendChild(renderReaderPart(part, resultMap));
     });
     block.appendChild(line);
+
+    const actions = document.createElement('div');
+    actions.className = 'reader-sentence-actions';
+    actions.appendChild(createReaderSentenceExportButton(segment, resultMap));
+    block.appendChild(actions);
     els.readerOutput.appendChild(block);
   });
 }
@@ -396,6 +401,46 @@ function getReaderTopAnnotation(result) {
   if (arrowIndex >= 0) return cleanAnalysisText(text.slice(arrowIndex + 1));
   if (normalizeAnalysisToken(text) !== result.key) return text;
   return '';
+}
+
+function createReaderSentenceExportButton(segment, resultMap) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'item-indihunt-button reader-export-button';
+  btn.title = 'Export sentence to IndiHunt';
+  btn.setAttribute('aria-label', 'Export sentence to IndiHunt');
+
+  const logo = document.createElement('img');
+  logo.className = 'item-indihunt-logo';
+  logo.src = 'assets/indivore/icon128.png';
+  logo.alt = '';
+  logo.width = 24;
+  logo.height = 24;
+  btn.appendChild(logo);
+
+  btn.addEventListener('click', () => exportItemsToIndiHunt([buildReaderSentenceExportItem(segment, resultMap)], btn));
+  return btn;
+}
+
+function buildReaderSentenceExportItem(segment, resultMap) {
+  return {
+    type: 'example',
+    language: els.readerLanguage.value,
+    sourceId: els.readerSource.value,
+    ab: segment.text,
+    zh: getReaderSentenceZh(segment, resultMap),
+  };
+}
+
+function getReaderSentenceZh(segment, resultMap) {
+  const seen = new Set();
+  return segment.tokens.map(token => {
+    const zh = getReaderShortDefinition(resultMap.get(token)?.zh);
+    const key = `${token}:${zh}`;
+    if (!zh || zh === '—' || zh === 'Looking up...' || seen.has(key)) return '';
+    seen.add(key);
+    return `${token}: ${zh}`;
+  }).filter(Boolean).join('；');
 }
 
 function getReaderShortDefinition(text) {
