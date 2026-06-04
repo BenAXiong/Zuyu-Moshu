@@ -2016,6 +2016,12 @@ function appendMoeRelationHeaders(section, details) {
   }
 }
 
+function appendMoeRelationSaveButton(section, getItem) {
+  const header = section.querySelector('.fdt-derived-header');
+  if (!header || header.querySelector('.fdt-save')) return;
+  header.appendChild(createSaveButton(getItem));
+}
+
 function renderMoeSenseRows(section, rows) {
   const senses = getMoeSenseRows(rows);
 
@@ -2145,6 +2151,13 @@ function renderMoeKilangSection(insights, settings) {
     showNoResultsIfEmpty(body);
     return;
   }
+
+  appendMoeRelationSaveButton(section, () => buildSavedMoeHeadword({
+    matchedWord,
+    root,
+    affixSummary: saveAffixSummary,
+    senses,
+  }));
 
   setHeaderSaveItem(buildSavedMoeHeadword({
     matchedWord,

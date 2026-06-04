@@ -809,6 +809,10 @@
   margin-left: auto;
 }
 
+.fdt-derived-header .fdt-save {
+  margin-left: auto;
+}
+
 .fdt-moe-alt-section .fdt-derived-header {
   padding: 6px 14px 0;
   margin-bottom: 0;
