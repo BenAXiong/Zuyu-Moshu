@@ -1,8 +1,8 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 01:54 +08:00
+Global timestamp: 2026-06-05 02:14 +08:00
 
-Current extension version: 1.5.4
+Current extension version: 1.6.0
 
 This document is a current-state inventory, not a historical changelog. It lists what is implemented, whether behavior is universal or source-specific, and the main technical entry points.
 
@@ -146,5 +146,5 @@ Deferred beyond v1.5:
 - CJK hover multi-source lookup can make several API calls per hover event; caching limits repeat cost, but very broad text can still be heavier than AB lookup.
 - PDF support was explicitly dropped.
 - ILRDF is configured as a disabled source placeholder, not an active lookup path.
-- Saved items are local to the current Chrome profile/device in v1.5.4. Cross-device sync/export is not implemented yet.
+- Saved items are local to the current Chrome profile/device in v1.6.0. Cross-device sync/export is not implemented yet.
 - The `AI MT & TTS` tab adds `https://ai-labs.ilrdf.org.tw/*` as a host permission and currently only performs live MT/TTS for Amis.
