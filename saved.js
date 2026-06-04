@@ -113,7 +113,7 @@ function getAnalysisTokens(text) {
     String(text || '')
       .split(/[\s,.;:!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
       .map(token => token.trim())
-      .filter(Boolean)
+      .filter(token => token.length > 2)
   )].slice(0, ANALYSIS_MAX_TOKENS);
 }
 
