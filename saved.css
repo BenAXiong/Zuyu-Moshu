@@ -454,7 +454,7 @@ select {
 
 .analysis-cell-zh {
   width: 150px;
-  color: var(--muted);
+  color: #d8d2c7;
 }
 
 .analysis-cell-empty {
