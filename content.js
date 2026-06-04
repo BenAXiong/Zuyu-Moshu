@@ -2030,7 +2030,7 @@ function appendPhraseAiButtons(phrase) {
   group.className = 'fdt-phrase-ai';
   group.append(
     createPhraseAiButton('✦', 'AI 翻譯', () => translatePhrase(phrase)),
-    createPhraseAiButton('〰', 'TTS', btn => speakPhrase(phrase, btn))
+    createPhraseAiButton('🔊', 'TTS', btn => speakPhrase(phrase, btn))
   );
   wordWrap.appendChild(group);
 }
@@ -2055,6 +2055,7 @@ async function translatePhrase(phrase) {
   if (!text) return;
   const btn = tooltip?.querySelector('.fdt-phrase-ai-btn[aria-label="AI 翻譯"]');
   setPhraseAiBusy(btn, true);
+  renderPhraseMt('AI 翻譯中…');
   try {
     const result = await gradioCall(ILRDF_MT_BASE, 'translate', [text, AMIS_MALAN_DIALECT, 'zho_Hant']);
     renderPhraseMt(typeof result === 'string' ? result : 'AI 翻譯失敗');

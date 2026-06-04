@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 02:55 +08:00
+Global timestamp: 2026-06-05 03:03 +08:00
 
 Current extension version: 1.5.5
 
@@ -50,7 +50,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
 | Tooltip drilling | Universal for drillable AB text | AB tokens in examples, ZH-to-AB primary rows, and Kilang derived/recovery relation headers are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `appendMoeDerivedHeader()`, `drillLookup()`, `normalizeTooltipNav()`. |
 | Floating tooltip actions | Universal | Tooltip shows a visually separate vertical floating action stack aligned with the top border. The top button opens the saved-items page with an external-window icon; the second button exports the current tooltip rows/examples to IndiHunt. | `content.js`: `createOpenSavedButton()`, `createIndiHuntExportButton()`, `exportTooltipToIndiHunt()`, `showFloatingSavedButton()`; `content.css`; `manifest.json`. |
-| Phrase AI tools | Amis AI, popup-gated | When the popup AI toggle is enabled, phrase-assist tooltips add header buttons for Amis-to-ZH MT and Amis TTS using Malan defaults. MT renders a separate AI line below the ZH hint sequence. | `content.js`: `appendPhraseAiButtons()`, `translatePhrase()`, `speakPhrase()`, `gradioCall()`; `popup.html`, `popup.js`, `shared.js`. |
+| Phrase AI tools | Amis AI, popup-gated | When the popup `AI工具` toggle is enabled, phrase-assist tooltips add header buttons for Amis-to-ZH MT and Amis TTS using Malan defaults. MT renders a separate AI line below the ZH hint sequence and shows a loading message while running. | `content.js`: `appendPhraseAiButtons()`, `translatePhrase()`, `speakPhrase()`, `gradioCall()`; `popup.html`, `popup.js`, `shared.js`. |
 
 ## Kilang Morphology And Sense UI
 
@@ -113,7 +113,7 @@ Remaining work under this anchor is Citadel/data-side:
 | Kilang availability | Amis only | Kilang source checkbox is disabled outside Amis. Content-side checks also require Amis. | `options.js`: `updateSourceAvailability()`; `content.js`: `canUseMoeKilang()`, `canUseKilangZhToAb()`. |
 | Appearance settings | Universal | Theme, font size, bold translations, and dialect display are stored in `chrome.storage.sync`. | `options.js`, `popup.js`, `content.css`. |
 | Unsaved options warning | Universal | Options page prompts with the browser's native leave-page warning when form controls differ from the last loaded/saved settings. | `options.js`: `readCurrentOptions()`, `hasUnsavedOptions()`. |
-| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, AI tools toggle, and has two icon+label buttons for options and saved items. | `popup.html`, `popup.js`. |
+| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, `AI工具` toggle, and has two icon+label buttons for options and saved items. | `popup.html`, `popup.js`. |
 
 ## Packaging
 
