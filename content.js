@@ -1960,7 +1960,7 @@ function appendMoeDerivedHeader(section, context) {
 
   const base = document.createElement('span');
   base.className = 'fdt-derived-base';
-  base.textContent = context.base;
+  appendDrillableText(base, context.base);
   header.appendChild(base);
 
   if (context.affix) {

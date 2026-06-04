@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 01:09 +08:00
+Global timestamp: 2026-06-05 01:54 +08:00
 
 Current extension version: 1.5.4
 
@@ -47,7 +47,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | No-results state | Universal | Shows `查無此詞` only if no enabled source/section produced content. | `content.js`: `showNoResultsIfEmpty()`. |
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
-| Tooltip drilling | Universal for drillable AB text | AB tokens in examples and ZH-to-AB primary rows are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `drillLookup()`, `normalizeTooltipNav()`. |
+| Tooltip drilling | Universal for drillable AB text | AB tokens in examples, ZH-to-AB primary rows, and Kilang derived/recovery relation headers are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `appendMoeDerivedHeader()`, `drillLookup()`, `normalizeTooltipNav()`. |
 | Floating tooltip actions | Universal | Tooltip shows a visually separate vertical floating action stack aligned with the top border. The top button opens the saved-items page with an external-window icon; the second button exports the current tooltip rows/examples to IndiHunt. | `content.js`: `createOpenSavedButton()`, `createIndiHuntExportButton()`, `exportTooltipToIndiHunt()`, `showFloatingSavedButton()`; `content.css`; `manifest.json`. |
 
 ## Kilang Morphology And Sense UI

@@ -676,6 +676,11 @@
   white-space: nowrap;
 }
 
+.fdt-derived-base .fdt-drill {
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
 .fdt-derived-plus {
   color: var(--fdt-dim);
   opacity: 0.75;
