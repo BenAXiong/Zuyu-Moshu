@@ -55,6 +55,10 @@ const readerState = {
   segments: [],
   translations: {},
   hideDividers: false,
+  hideZh: false,
+  hideFurigana: false,
+  layout: 'full',
+  singleIndex: 0,
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -100,12 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
   els.readerLanguage = document.getElementById('readerLanguage');
   els.readerSource = document.getElementById('readerSource');
   els.readerInput = document.getElementById('readerInput');
-  els.readerNav = document.getElementById('readerNav');
   els.readerOutput = document.getElementById('readerOutput');
   els.readerSummary = document.getElementById('readerSummary');
   els.readerAnalyze = document.getElementById('readerAnalyze');
   els.readerSampleText = document.getElementById('readerSampleText');
   els.readerDividerToggle = document.getElementById('readerDividerToggle');
+  els.readerZhToggle = document.getElementById('readerZhToggle');
+  els.readerAffixToggle = document.getElementById('readerAffixToggle');
+  els.readerLayoutButtons = [...document.querySelectorAll('.reader-layout-button[data-reader-layout]')];
 
   els.aiLanguage.addEventListener('change', updateAiSelectors);
   els.aiInput.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) aiTranslate(); });
@@ -116,11 +122,16 @@ document.addEventListener('DOMContentLoaded', () => {
   els.readerAnalyze.addEventListener('click', renderReaderShell);
   els.readerSampleText.addEventListener('click', loadReaderSampleText);
   els.readerDividerToggle.addEventListener('click', toggleReaderDividers);
+  els.readerZhToggle.addEventListener('click', toggleReaderZh);
+  els.readerAffixToggle.addEventListener('click', toggleReaderFurigana);
+  els.readerLayoutButtons.forEach(button => {
+    button.addEventListener('click', () => setReaderLayout(button.dataset.readerLayout));
+  });
   els.analysisFilterButtons.forEach(button => {
     button.addEventListener('click', () => toggleAnalysisFilter(button.dataset.analysisFilter));
   });
   updateAnalysisFilterButtons();
-  updateReaderDividerToggle();
+  updateReaderControls();
   updateAiSelectors();
 
   loadItems();
@@ -174,13 +185,50 @@ function loadReaderSampleText() {
 
 function toggleReaderDividers() {
   readerState.hideDividers = !readerState.hideDividers;
-  updateReaderDividerToggle();
+  updateReaderControls();
 }
 
-function updateReaderDividerToggle() {
+function toggleReaderZh() {
+  readerState.hideZh = !readerState.hideZh;
+  updateReaderControls();
+}
+
+function toggleReaderFurigana() {
+  readerState.hideFurigana = !readerState.hideFurigana;
+  updateReaderControls();
+}
+
+function setReaderLayout(layout) {
+  if (!['full', 'split', 'single'].includes(layout) || readerState.layout === layout) return;
+  readerState.layout = layout;
+  readerState.singleIndex = 0;
+  updateReaderControls();
+  if (readerState.segments.length > 0) renderReader();
+}
+
+function updateReaderControls() {
+  updateReaderOutputClasses();
   els.readerOutput?.classList.toggle('hide-dividers', readerState.hideDividers);
   els.readerDividerToggle?.classList.toggle('is-active', readerState.hideDividers);
   els.readerDividerToggle?.setAttribute('aria-pressed', readerState.hideDividers ? 'true' : 'false');
+  els.readerZhToggle?.classList.toggle('is-active', readerState.hideZh);
+  els.readerZhToggle?.setAttribute('aria-pressed', readerState.hideZh ? 'true' : 'false');
+  els.readerAffixToggle?.classList.toggle('is-active', readerState.hideFurigana);
+  els.readerAffixToggle?.setAttribute('aria-pressed', readerState.hideFurigana ? 'true' : 'false');
+  els.readerLayoutButtons?.forEach(button => {
+    const active = button.dataset.readerLayout === readerState.layout;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function updateReaderOutputClasses() {
+  if (!els.readerOutput) return;
+  els.readerOutput.classList.toggle('hide-zh', readerState.hideZh);
+  els.readerOutput.classList.toggle('hide-furigana', readerState.hideFurigana);
+  els.readerOutput.classList.toggle('layout-full', readerState.layout === 'full');
+  els.readerOutput.classList.toggle('layout-split', readerState.layout === 'split');
+  els.readerOutput.classList.toggle('layout-single', readerState.layout === 'single');
 }
 
 function splitAnalysisTokens(text) {
@@ -312,11 +360,11 @@ async function renderReaderShell() {
   }));
   readerState.results = [];
   readerState.translations = {};
+  readerState.singleIndex = 0;
   updateReaderSummary(tokens.length, segments.length);
 
   if (tokens.length === 0) {
     renderReaderEmpty('Paste text and run Analyze.');
-    renderReaderNav();
     return;
   }
 
@@ -339,47 +387,91 @@ async function renderReaderShell() {
 
 function renderReader() {
   els.readerOutput.replaceChildren();
-  renderReaderNav();
+  updateReaderControls();
   const resultMap = new Map(readerState.results.map(result => [result.key, result]));
-  const visibleSegments = readerState.segments.filter(segment => segment.tokens.length > 0);
+  const visibleSegments = getVisibleReaderSegments();
   updateReaderSummary(readerState.results.length, readerState.segments.length);
   if (!visibleSegments.length) {
     renderReaderEmpty('No analyzed text.');
     return;
   }
 
+  if (readerState.layout === 'single') {
+    renderReaderSingle(visibleSegments, resultMap);
+    return;
+  }
+
   visibleSegments.forEach(segment => {
-    const block = document.createElement('article');
-    block.className = 'reader-sentence';
-    block.id = `reader-sentence-${segment.index}`;
-
-    const content = document.createElement('div');
-    content.className = 'reader-sentence-content';
-
-    const line = document.createElement('div');
-    line.className = 'reader-annotated-line';
-    getReaderSentenceParts(segment.text).forEach(part => {
-      line.appendChild(renderReaderPart(part, resultMap));
-    });
-    content.appendChild(line);
-
-    const translation = cleanAnalysisText(readerState.translations[segment.index]);
-    if (translation) {
-      const mt = document.createElement('div');
-      mt.className = 'reader-sentence-mt';
-      mt.textContent = translation;
-      content.appendChild(mt);
-    }
-    block.appendChild(content);
-
-    const actions = document.createElement('div');
-    actions.className = 'reader-sentence-actions';
-    actions.appendChild(createReaderTtsButton(segment));
-    actions.appendChild(createReaderMtButton(segment));
-    actions.appendChild(createReaderSentenceExportButton(segment));
-    block.appendChild(actions);
-    els.readerOutput.appendChild(block);
+    els.readerOutput.appendChild(renderReaderSentence(segment, resultMap));
   });
+}
+
+function getVisibleReaderSegments() {
+  return readerState.segments.filter(segment => segment.tokens.length > 0);
+}
+
+function renderReaderSingle(visibleSegments, resultMap) {
+  readerState.singleIndex = Math.min(Math.max(readerState.singleIndex, 0), visibleSegments.length - 1);
+  const segment = visibleSegments[readerState.singleIndex];
+
+  const stage = document.createElement('div');
+  stage.className = 'reader-single-stage';
+  stage.appendChild(createReaderSingleArrow(-1, readerState.singleIndex === 0));
+  stage.appendChild(renderReaderSentence(segment, resultMap));
+  stage.appendChild(createReaderSingleArrow(1, readerState.singleIndex === visibleSegments.length - 1));
+  els.readerOutput.appendChild(stage);
+}
+
+function renderReaderSentence(segment, resultMap) {
+  const block = document.createElement('article');
+  block.className = 'reader-sentence';
+  block.id = `reader-sentence-${segment.index}`;
+
+  const content = document.createElement('div');
+  content.className = 'reader-sentence-content';
+
+  const line = document.createElement('div');
+  line.className = 'reader-annotated-line';
+  getReaderSentenceParts(segment.text).forEach(part => {
+    line.appendChild(renderReaderPart(part, resultMap));
+  });
+  content.appendChild(line);
+
+  const translation = cleanAnalysisText(readerState.translations[segment.index]);
+  if (translation) {
+    const mt = document.createElement('div');
+    mt.className = 'reader-sentence-mt';
+    mt.textContent = translation;
+    content.appendChild(mt);
+  }
+  block.appendChild(content);
+
+  const actions = document.createElement('div');
+  actions.className = 'reader-sentence-actions';
+  actions.appendChild(createReaderTtsButton(segment));
+  actions.appendChild(createReaderMtButton(segment));
+  actions.appendChild(createReaderSentenceExportButton(segment));
+  block.appendChild(actions);
+  return block;
+}
+
+function createReaderSingleArrow(direction, disabled) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'reader-single-arrow';
+  btn.textContent = direction < 0 ? '‹' : '›';
+  btn.title = direction < 0 ? 'Previous sentence' : 'Next sentence';
+  btn.setAttribute('aria-label', btn.title);
+  btn.disabled = disabled;
+  btn.addEventListener('click', () => changeReaderSingleSentence(direction));
+  return btn;
+}
+
+function changeReaderSingleSentence(direction) {
+  const visibleSegments = getVisibleReaderSegments();
+  if (!visibleSegments.length) return;
+  readerState.singleIndex = Math.min(Math.max(readerState.singleIndex + direction, 0), visibleSegments.length - 1);
+  renderReader();
 }
 
 function getReaderSentenceParts(text) {
@@ -559,24 +651,9 @@ function getReaderShortDefinition(text) {
   return value.split(/[；;，,、]/)[0] || value;
 }
 
-function renderReaderNav() {
-  els.readerNav.replaceChildren();
-  if (!readerState.segments.length) return;
-  readerState.segments.forEach((segment, index) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'reader-nav-btn';
-    btn.textContent = String(index + 1);
-    btn.title = segment.text;
-    btn.addEventListener('click', () => {
-      document.getElementById(`reader-sentence-${segment.index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-    els.readerNav.appendChild(btn);
-  });
-}
-
 function renderReaderEmpty(text) {
   els.readerOutput.replaceChildren();
+  updateReaderControls();
   const empty = document.createElement('div');
   empty.className = 'reader-empty';
   empty.textContent = text;

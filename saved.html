@@ -110,12 +110,20 @@
           <button id="readerAnalyze" class="ai-primary" type="button">Analyze</button>
           <button id="readerSampleText" type="button" title="Load sample text">.</button>
           <button id="readerDividerToggle" type="button" title="Toggle sentence lines" aria-pressed="false">-</button>
+          <span class="reader-tool-spacer" aria-hidden="true"></span>
+          <button id="readerZhToggle" type="button" title="Toggle Chinese annotations" aria-pressed="false">中文</button>
+          <button id="readerAffixToggle" type="button" title="Toggle top annotations" aria-pressed="false">affixes</button>
+          <span class="reader-tool-spacer" aria-hidden="true"></span>
+          <div class="reader-layout-toggle" role="group" aria-label="Reader layout">
+            <button class="reader-layout-button is-active" type="button" data-reader-layout="full" aria-pressed="true">full</button>
+            <button class="reader-layout-button" type="button" data-reader-layout="split" aria-pressed="false">split</button>
+            <button class="reader-layout-button" type="button" data-reader-layout="single" aria-pressed="false">single</button>
+          </div>
         </div>
         <span id="readerSummary" class="analysis-summary" aria-live="polite">0 token analyzed / 0 sentence</span>
       </section>
 
       <textarea id="readerInput" class="reader-input" rows="5" placeholder="貼上族語短文"></textarea>
-      <nav id="readerNav" class="reader-nav" aria-label="sentence navigation"></nav>
       <section id="readerOutput" class="reader-output" aria-label="annotated text output">
         <div class="reader-empty">Paste text and run Analyze.</div>
       </section>
