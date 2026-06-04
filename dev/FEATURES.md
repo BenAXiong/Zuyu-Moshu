@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 16:17 +08:00
+Global timestamp: 2026-06-04 16:27 +08:00
 
 Current extension version: 1.5.3
 
@@ -79,7 +79,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Alt-spelling section headers and example rows have their own bookmarks; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
-| Saved-items page | Universal plus Amis AI | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`, `族語考試`, and `?`. `咒語庫` is functional. `短章分析` tokenizes pasted text, runs bounded-concurrency lookup against Kilang or ePark, and renders a full-width sentence-by-sentence AB/root/ZH table with column-hiding toggles and duplicate hiding. `AI MT & TTS` supports Amis ZH-to-Amis / Amis-to-ZH translation and Amis TTS through ILRDF AI Labs; the language selector lists 16 language codes but non-Amis currently reports Amis-only support. `Kilang`, `族語考試`, and `?` remain empty shells. | `saved.html`, `saved.css`, `saved.js`. |
+| Saved-items page | Universal plus Amis AI | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `短章分析*`, `AI MT & TTS`, `Kilang`, `族語考試`, and `?`. `咒語庫` is functional. `短章分析` tokenizes pasted text, runs bounded-concurrency lookup against Kilang or ePark, and renders a full-width sentence-by-sentence AB/root/ZH table with column-hiding toggles and duplicate hiding; `短章分析*` is an alias tab to the same panel. `AI MT & TTS` supports Amis ZH-to-Amis / Amis-to-ZH translation and Amis TTS through ILRDF AI Labs; the language selector lists 16 language codes but non-Amis currently reports Amis-only support. `Kilang`, `族語考試`, and `?` remain empty shells. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Saved-page and tooltip IndiHunt export open `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `content.js`: `exportTooltipToIndiHunt()`; `assets/indivore/`. |
 

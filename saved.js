@@ -104,7 +104,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function activateTab(tabId) {
-  document.body.dataset.activeTab = tabId;
+  const panelId = tabId === 'paragraph-star' ? 'paragraph' : tabId;
+  document.body.dataset.activeTab = panelId;
   els.tabs.forEach(tab => {
     const active = tab.dataset.tab === tabId;
     tab.classList.toggle('is-active', active);
@@ -112,7 +113,7 @@ function activateTab(tabId) {
     else tab.removeAttribute('aria-current');
   });
   els.panels.forEach(panel => {
-    const active = panel.dataset.panel === tabId;
+    const active = panel.dataset.panel === panelId;
     panel.hidden = !active;
     panel.classList.toggle('is-active', active);
   });
