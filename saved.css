@@ -12,7 +12,7 @@
   --accent: #f4f1ea;
   --accent-soft: rgba(244,241,234,0.08);
   --danger: #f28b82;
-  --analysis-line-height: 24px;
+  --analysis-line-height: 22px;
   --analysis-row-height: calc(var(--analysis-line-height) * 2);
 }
 
@@ -285,7 +285,7 @@ select {
   background: var(--surface);
   color: var(--text);
   padding: 12px;
-  font-size: 1rem;
+  font-size: 0.94rem;
   line-height: var(--analysis-line-height);
   white-space: pre;
   resize: none;
@@ -387,7 +387,7 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  vertical-align: top;
+  vertical-align: middle;
   line-height: var(--analysis-line-height);
 }
 
