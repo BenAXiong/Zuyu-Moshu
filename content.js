@@ -10,6 +10,13 @@ const MAX_CJK_CANDIDATE_GROUPS = 6;
 const MAX_CJK_RESULTS_PER_GROUP = 2;
 const MAX_MOE_ROWS = 3;
 const MAX_EXPANDED_EXAMPLES = 3;
+const MAX_PHRASE_TOKENS = 16;
+const PHRASE_LOOKUP_CONCURRENCY = 4;
+const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
+const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
+const ILRDF_TIMEOUT  = 20000;
+const AMIS_MALAN_DIALECT = 'ami_Mala';
+const AMIS_MALAN_SPEAKER = '阿美_馬蘭_女聲';
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
 const INDIHUNT_MAX_ITEMS = 200;
 const INDIHUNT_LANG_CODE = {
@@ -383,10 +390,29 @@ function handleHover(clientX, clientY, settings) {
 }
 
 function lookupRawSelection(raw, rect, settings) {
+  const phraseTokens = getPhraseTokens(raw);
+  if (phraseTokens.length >= 2) {
+    triggerPhraseLookup(cleanPhraseText(raw), phraseTokens, rect, settings);
+    return;
+  }
+
   const word = cleanWord(raw);
   if (!hasLookupLength(word) || word.length > MAX_WORD_LEN) return;
   lastHoverKey = '';
   triggerLookup(word, rect, settings);
+}
+
+function cleanPhraseText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function getPhraseTokens(raw) {
+  if (hasCjk(raw)) return [];
+  return cleanPhraseText(raw)
+    .split(/[\s,;!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
+    .map(cleanWord)
+    .filter(token => token && token.length <= MAX_WORD_LEN && !hasCjk(token))
+    .slice(0, MAX_PHRASE_TOKENS);
 }
 
 function setHeaderWord(word) {
@@ -628,6 +654,109 @@ function triggerLookup(word, rect, settings, nav = null) {
     if (kilangEnabled) doMoeKilangLookup(word, settings, lookupId);
     if (canUseAltSpelling(settings)) doAltLookup(word, settings);
   });
+}
+
+async function triggerPhraseLookup(phrase, tokens, rect, settings) {
+  const lookupId = ++lookupSerial;
+  showTooltip(phrase, rect, settings);
+  tooltip?.classList.add('fdt-phrase-tooltip');
+  if (settings.aiToolsEnabled) appendPhraseAiButtons(phrase);
+  setHeaderAudioUrl('');
+  setLoading(true);
+
+  const uniqueTokens = [...new Set(tokens)];
+  const lookedUp = await mapWithConcurrency(uniqueTokens, PHRASE_LOOKUP_CONCURRENCY, token => lookupPhraseToken(token, settings));
+  if (lookupId !== lookupSerial) return;
+
+  const byToken = new Map(lookedUp.map(result => [result.token, result]));
+  renderPhraseResults(phrase, tokens.map(token => byToken.get(token) || { token, zh: '', sourceId: '', root: '' }), settings);
+  setLoading(false);
+}
+
+async function mapWithConcurrency(items, limit, mapper) {
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await mapper(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
+async function lookupPhraseToken(token, settings) {
+  const sources = Array.isArray(settings.sources) && settings.sources.length > 0
+    ? settings.sources
+    : DEFAULTS.sources;
+
+  for (const source of sources) {
+    if (source === 'KILANG' && canUseMoeKilang(settings, token)) {
+      const result = await lookupPhraseKilangToken(token);
+      if (result) return result;
+    }
+
+    if ((source === 'EPARK' || source === 'ILRDF') && canUseDict(settings)) {
+      const result = await lookupPhraseDictToken(token, settings);
+      if (result) return result;
+    }
+  }
+
+  return { token, displayToken: token, zh: '', root: '', sourceId: '' };
+}
+
+async function lookupPhraseKilangToken(token) {
+  const cacheKey = `moe:${token}`;
+  let insights = moeFetched.get(cacheKey);
+  if (!insights) {
+    const response = await sendRuntimeMessage({ type: 'moeInsights', word: token });
+    insights = response?.insights ?? { rows: [] };
+    if (moeFetched.size >= MAX_CACHE) moeFetched.delete(moeFetched.keys().next().value);
+    moeFetched.set(cacheKey, insights);
+  }
+
+  const rows = Array.isArray(insights.rows) ? insights.rows : [];
+  if (rows.length === 0) return null;
+
+  const senses = getMoeSenseRows(rows);
+  const sense = senses[0];
+  const row = sense?.row || getMoePrimaryRow(rows) || {};
+  const matched = cleanMoeText(insights.match || row.word_ab || token);
+  const definition = cleanMoeDefinition(sense?.definition || row.definition || '');
+  return {
+    token,
+    displayToken: matched || token,
+    zh: definition,
+    root: cleanMoeText(row.ultimate_root || row.stem || ''),
+    sourceId: 'KILANG',
+    metaLabel: getMoeSourceMeta(row),
+  };
+}
+
+async function lookupPhraseDictToken(token, settings) {
+  const cacheKey = `${token}:${settings.language}`;
+  let results = fetched.get(cacheKey);
+  if (!results) {
+    const dialects = settings.language && LANG_TO_DIALECTS[settings.language]
+      ? LANG_TO_DIALECTS[settings.language]
+      : '';
+    const response = await sendRuntimeMessage({ type: 'lookup', word: token, dialects });
+    results = response?.results ?? [];
+    if (fetched.size >= MAX_CACHE) fetched.delete(fetched.keys().next().value);
+    fetched.set(cacheKey, results);
+  }
+
+  const entry = prepareResults(results, token)[0];
+  if (!entry) return null;
+  return {
+    token,
+    displayToken: token,
+    zh: cleanDisplayText(entry.displayText || entry.zh || ''),
+    root: '',
+    sourceId: 'EPARK',
+    metaLabel: entry.metaLabel || getDialectLabel(entry.dialect_name || '', settings),
+  };
 }
 
 function normalizeTooltipNav(nav) {
@@ -937,6 +1066,43 @@ function showNoResultsIfEmpty(body = tooltip?.querySelector('.fdt-body')) {
   empty.className = 'fdt-empty';
   empty.textContent = '查無此詞';
   body.appendChild(empty);
+}
+
+async function gradioCall(base, fn, data) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const submitRes = await fetch(`${base}/gradio_api/call/${fn}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+      signal: controller.signal,
+    });
+    if (!submitRes.ok) return null;
+    const { event_id } = await submitRes.json();
+    if (!event_id) return null;
+
+    const streamRes = await fetch(`${base}/gradio_api/call/${fn}/${event_id}`, { signal: controller.signal });
+    if (!streamRes.ok || !streamRes.body) return null;
+
+    const reader = streamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const match = /event:\s*complete[\r\n]+data:\s*(\[[\s\S]+?\])\s*$/.exec(buf);
+        if (match) return JSON.parse(match[1])[0];
+      }
+    } finally {
+      reader.cancel().catch(() => {});
+    }
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function playAudio(url, btn) {
@@ -1803,6 +1969,165 @@ function renderCandidateSections(groups, settings) {
     group.results.forEach(entry => appendResultRow(section, entry, settings, true));
     body.appendChild(section);
   });
+  refreshTooltipLayout();
+}
+
+function renderPhraseResults(phrase, results, settings) {
+  const body = tooltip?.querySelector('.fdt-body');
+  if (!body) return;
+  body.classList.remove('fdt-loading');
+  body.innerHTML = '';
+  setHeaderAudioUrl('');
+
+  const section = document.createElement('div');
+  section.className = 'fdt-phrase-section';
+
+  const grid = document.createElement('div');
+  grid.className = 'fdt-phrase-grid';
+
+  results.forEach(result => {
+    const item = document.createElement('div');
+    item.className = 'fdt-phrase-token';
+    if (!result.zh) item.classList.add('is-missing');
+
+    const ab = document.createElement('button');
+    ab.type = 'button';
+    ab.className = 'fdt-phrase-ab';
+    ab.textContent = result.displayToken || result.token;
+    ab.title = '查詢此詞';
+    ab.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      drillPhraseTokenLookup(result.displayToken || result.token);
+    });
+
+    const zh = document.createElement('div');
+    zh.className = 'fdt-phrase-zh';
+    zh.textContent = getShortPhraseDefinition(result.zh) || '—';
+    zh.title = result.zh || '';
+
+    item.append(ab, zh);
+
+    const metaText = [result.root && result.root !== result.displayToken ? `√ ${result.root}` : '', result.metaLabel || result.sourceId]
+      .filter(Boolean)
+      .join(' · ');
+    if (metaText) {
+      const meta = document.createElement('div');
+      meta.className = 'fdt-phrase-meta';
+      meta.textContent = metaText;
+      item.appendChild(meta);
+    }
+
+    grid.appendChild(item);
+  });
+
+  section.appendChild(grid);
+
+  if (results.every(result => !result.zh)) {
+    const note = document.createElement('div');
+    note.className = 'fdt-phrase-note';
+    note.textContent = '查無詞彙提示';
+    section.appendChild(note);
+  }
+
+  body.appendChild(section);
+  tooltip._phraseText = phrase;
+  refreshTooltipLayout();
+}
+
+function getShortPhraseDefinition(text) {
+  const clean = cleanDisplayText(text);
+  if (!clean) return '';
+  return clean.split(/[；;，,、]/)[0] || clean;
+}
+
+function appendPhraseAiButtons(phrase) {
+  const wordWrap = tooltip?.querySelector('.fdt-word-wrap');
+  if (!wordWrap || wordWrap.querySelector('.fdt-phrase-ai')) return;
+
+  const group = document.createElement('span');
+  group.className = 'fdt-phrase-ai';
+  group.append(
+    createPhraseAiButton('✦', 'AI 翻譯', () => translatePhrase(phrase)),
+    createPhraseAiButton('〰', 'TTS', btn => speakPhrase(phrase, btn))
+  );
+  wordWrap.appendChild(group);
+}
+
+function createPhraseAiButton(icon, label, action) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fdt-phrase-ai-btn';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.textContent = icon;
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    action(btn);
+  });
+  return btn;
+}
+
+async function translatePhrase(phrase) {
+  const text = cleanPhraseText(phrase);
+  if (!text) return;
+  const btn = tooltip?.querySelector('.fdt-phrase-ai-btn[aria-label="AI 翻譯"]');
+  setPhraseAiBusy(btn, true);
+  try {
+    const result = await gradioCall(ILRDF_MT_BASE, 'translate', [text, AMIS_MALAN_DIALECT, 'zho_Hant']);
+    renderPhraseMt(typeof result === 'string' ? result : 'AI 翻譯失敗');
+  } catch {
+    renderPhraseMt('AI 翻譯服務暫時無法使用');
+  } finally {
+    setPhraseAiBusy(btn, false);
+  }
+}
+
+async function speakPhrase(phrase, btn) {
+  const text = cleanPhraseText(phrase);
+  if (!text) return;
+  setPhraseAiBusy(btn, true);
+  try {
+    const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [AMIS_MALAN_SPEAKER, text]);
+    const url = result?.url ?? (typeof result === 'string' ? result : '');
+    if (url) playAudio(url, btn);
+  } catch {
+    btn?.classList.add('error');
+  } finally {
+    setPhraseAiBusy(btn, false);
+  }
+}
+
+function drillPhraseTokenLookup(rawWord) {
+  const word = cleanWord(rawWord || '');
+  if (!word || word === cleanWord(getHeaderWord())) return;
+  triggerLookup(
+    word,
+    currentTooltipRect,
+    currentTooltipSettings,
+    getNextDrillNav()
+  );
+}
+
+function setPhraseAiBusy(btn, on) {
+  if (!btn) return;
+  btn.disabled = on;
+  btn.classList.toggle('loading', on);
+  if (on) btn.classList.remove('error');
+}
+
+function renderPhraseMt(text) {
+  const body = tooltip?.querySelector('.fdt-body');
+  if (!body) return;
+  const clean = cleanDisplayText(text);
+  let row = body.querySelector('.fdt-phrase-mt');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'fdt-phrase-mt';
+    body.appendChild(row);
+  }
+  row.textContent = clean || '—';
   refreshTooltipLayout();
 }
 

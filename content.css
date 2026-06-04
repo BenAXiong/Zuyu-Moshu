@@ -237,6 +237,50 @@
 
 .fdt-audio[hidden] { display: none; }
 
+.fdt-phrase-ai {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fdt-phrase-ai-btn {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--fdt-border);
+  border-radius: 50%;
+  background: var(--fdt-tag-bg);
+  color: var(--fdt-dim);
+  font-family: inherit;
+  font-size: 0.72em;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.fdt-phrase-ai-btn:hover,
+.fdt-phrase-ai-btn.playing {
+  color: var(--fdt-accent);
+  background: var(--fdt-accent-soft);
+  border-color: var(--fdt-accent);
+}
+
+.fdt-phrase-ai-btn:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.fdt-phrase-ai-btn.error {
+  opacity: 0.55;
+}
+
+.fdt-phrase-ai-btn.loading {
+  animation: fdt-pulse 0.9s ease-in-out infinite alternate;
+}
+
 .fdt-label {
   flex-shrink: 0;
   font-size: 0.62em;
@@ -380,6 +424,94 @@
   font-weight: 400;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.fdt-phrase-section {
+  padding: 10px 12px 12px;
+}
+
+.fdt-phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 7px;
+}
+
+.fdt-phrase-token {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--fdt-divider);
+  border-radius: 8px;
+  background: var(--fdt-tag-bg);
+}
+
+.fdt-phrase-token.is-missing {
+  opacity: 0.62;
+}
+
+.fdt-phrase-ab {
+  display: block;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--fdt-text);
+  font: inherit;
+  font-family: ui-monospace, 'SF Mono', Menlo, 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.78em;
+  font-weight: 700;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fdt-phrase-ab:hover,
+.fdt-phrase-ab:focus-visible {
+  color: var(--fdt-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  outline: none;
+}
+
+.fdt-phrase-zh {
+  margin-top: 3px;
+  color: var(--fdt-accent);
+  font-size: 0.74em;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.fdt-phrase-meta {
+  margin-top: 3px;
+  color: var(--fdt-dim);
+  font-size: 0.58em;
+  letter-spacing: 0.04em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.fdt-phrase-note,
+.fdt-phrase-mt {
+  margin: 8px 12px 12px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--fdt-divider);
+  color: var(--fdt-dim);
+  font-size: 0.78em;
+  line-height: 1.4;
+}
+
+.fdt-phrase-mt {
+  color: var(--fdt-text);
+  background: var(--fdt-accent-soft);
+  border: 1px solid var(--fdt-divider);
+  border-radius: 8px;
+}
+
+@keyframes fdt-pulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
 }
 
 .fdt-drill {

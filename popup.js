@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setToggle(s.enabled);
     setAltSpellingToggle(s.altSpelling, s.language);
     setHoverToggle(s.triggerHover);
+    setAiToolsToggle(s.aiToolsEnabled);
   });
 
   // Language: save on change
@@ -77,6 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  document.getElementById('aiTools').addEventListener('click', () => {
+    chrome.storage.sync.get(DEFAULTS, (s) => {
+      const next = !s.aiToolsEnabled;
+      patch({ aiToolsEnabled: next });
+      setAiToolsToggle(next);
+    });
+  });
+
   // Full settings link
   document.getElementById('opts').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
@@ -105,6 +114,10 @@ function setAltSpellingToggle(enabled, language) {
 
 function setHoverToggle(enabled) {
   document.getElementById('triggerHover').classList.toggle('off', !enabled);
+}
+
+function setAiToolsToggle(enabled) {
+  document.getElementById('aiTools').classList.toggle('off', !enabled);
 }
 
 function activatePill(group, value) {

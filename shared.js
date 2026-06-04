@@ -18,6 +18,7 @@ const DEFAULTS = {
   enabled: true,
   altSpelling: true,
   moeKilangInsights: false,
+  aiToolsEnabled: false,
 };
 
 const LANG_TO_DIALECTS = {
