@@ -52,7 +52,10 @@ const moeFetched = new Map();
 
 // ' (apostrophe) intentionally excluded — it's a glottal stop character in these orthographies
 function cleanWord(w) {
-  return w.replace(/^[,.";:!?()[\]{}—–，。！？；：「」『』、]+|[,.";:!?()[\]{}—–，。！？；：「」『』、]+$/g, '').toLowerCase();
+  return w
+    .replace(/[‘’ʼ´`]/g, "'")
+    .replace(/^[,.";:!?()[\]{}—–，。！？；：「」『』、]+|[,.";:!?()[\]{}—–，。！？；：「」『』、]+$/g, '')
+    .toLowerCase();
 }
 
 function getShortDialect(full) {
@@ -411,7 +414,7 @@ function getPhraseTokens(raw) {
   return cleanPhraseText(raw)
     .split(/[\s,;!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
     .map(cleanWord)
-    .filter(token => token.length > 2 && token.length <= MAX_WORD_LEN && !hasCjk(token))
+    .filter(token => token && token.length <= MAX_WORD_LEN && !hasCjk(token))
     .slice(0, MAX_PHRASE_TOKENS);
 }
 
@@ -664,12 +667,21 @@ async function triggerPhraseLookup(phrase, tokens, rect, settings) {
   setHeaderAudioUrl('');
   setLoading(true);
 
-  const uniqueTokens = [...new Set(tokens)];
-  const lookedUp = await mapWithConcurrency(uniqueTokens, PHRASE_LOOKUP_CONCURRENCY, token => lookupPhraseToken(token, settings));
+  const lookupTokens = [...new Set(tokens.filter(token => token.length > 2))];
+  const lookedUp = await mapWithConcurrency(lookupTokens, PHRASE_LOOKUP_CONCURRENCY, token => lookupPhraseToken(token, settings));
   if (lookupId !== lookupSerial) return;
 
   const byToken = new Map(lookedUp.map(result => [result.token, result]));
-  renderPhraseResults(phrase, tokens.map(token => byToken.get(token) || { token, zh: '', sourceId: '', root: '' }), settings);
+  renderPhraseResults(phrase, tokens.map(token => (
+    byToken.get(token) || {
+      token,
+      displayToken: token,
+      zh: token.length <= 2 ? token : '',
+      sourceId: '',
+      root: '',
+      passthrough: token.length <= 2,
+    }
+  )), settings);
   setLoading(false);
 }
 
@@ -2005,7 +2017,9 @@ function getShortPhraseDefinition(text) {
   const clean = cleanDisplayText(text);
   if (!clean) return '';
   const withoutParen = clean
-    .replace(/[（(][^（）()]*[）)]/g, '')
+    .replace(/[（(][^（）()]*[）)]/g, ' ')
+    .replace(/[（）()]/g, ' ')
+    .replace(/^[\s,.;:，。；、]+|[\s,.;:，。；、]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
   const candidates = withoutParen
