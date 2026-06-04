@@ -510,6 +510,7 @@ function renderReaderPart(part, resultMap) {
 }
 
 function getReaderTopAnnotation(result) {
+  if (result?.furigana) return result.furigana;
   if (!result?.token || !result.key) return '';
   const text = cleanAnalysisText(result.token);
   const arrowIndex = text.indexOf('→');
@@ -731,12 +732,76 @@ async function lookupAnalysisKilang(token) {
   const primary = displayRows[0] || rows[0] || {};
   const matched = cleanAnalysisText(insights?.match || primary.word_ab || token);
   const root = cleanAnalysisText(primary.ultimate_root || primary.stem || '');
+  const furigana = formatAnalysisKilangFurigana({ token, matched, primary, recovery: insights?.recovery });
   return {
     key: token,
     token: matched && matched !== token ? `${token} → ${matched}` : token,
     zh: definitions.slice(0, 3).join('；') || '—',
     root,
+    furigana,
   };
+}
+
+function formatAnalysisKilangFurigana({ token, matched, primary, recovery }) {
+  const isSameWord = normalizeAnalysisToken(token) === normalizeAnalysisToken(matched);
+  const operations = Array.isArray(recovery?.operations) ? recovery.operations : [];
+  const recoveryAffixSummary = getAnalysisRecoveryAffixSummary(recovery);
+  const root = cleanAnalysisText(primary.ultimate_root || primary.stem || '');
+  const stem = cleanAnalysisText(primary.parent_word || primary.stem || root);
+  const affixBase = stem || root || matched;
+  const inferredAffixSummary = formatAnalysisAffixSummary(getAnalysisAffixes(matched, affixBase));
+  const hasAltRecovery = operations.includes('alt');
+  const hasGlottalRecovery = operations.includes('glottal');
+
+  const altPrefix = !isSameWord && hasAltRecovery ? '~ ' : '';
+
+  if (!isSameWord && recoveryAffixSummary) {
+    return `${altPrefix}${formatAnalysisRootAffixes(matched, recoveryAffixSummary)}`;
+  }
+  if (inferredAffixSummary) {
+    return `${altPrefix}${formatAnalysisRootAffixes(affixBase, inferredAffixSummary)}`;
+  }
+  if (!isSameWord && hasAltRecovery && !hasGlottalRecovery) return `~ ${matched}`;
+  if (!isSameWord) return matched;
+  return '';
+}
+
+function getAnalysisAffixes(word, stem) {
+  const cleanWord = cleanAnalysisText(word).toLowerCase();
+  const cleanStem = cleanAnalysisText(stem).toLowerCase();
+  if (!cleanWord || !cleanStem || cleanWord === cleanStem) return [];
+
+  const start = cleanWord.indexOf(cleanStem);
+  if (start < 0) return [];
+
+  const affixes = [];
+  const prefix = cleanWord.slice(0, start);
+  const suffix = cleanWord.slice(start + cleanStem.length);
+  if (prefix) affixes.push({ type: 'prefix', label: `${prefix}-` });
+  if (suffix) affixes.push({ type: 'suffix', label: `-${suffix}` });
+  return affixes;
+}
+
+function formatAnalysisAffixSummary(affixes) {
+  const prefix = affixes.find(affix => affix.type === 'prefix')?.label.replace(/-$/, '');
+  const suffix = affixes.find(affix => affix.type === 'suffix')?.label.replace(/^-/, '');
+  if (prefix && suffix) return `${prefix}-...-${suffix}`;
+  if (prefix) return `${prefix}-`;
+  if (suffix) return `-${suffix}`;
+  return '';
+}
+
+function getAnalysisRecoveryAffixSummary(recovery) {
+  const affixes = Array.isArray(recovery?.affixes) ? recovery.affixes : [];
+  return affixes.map(cleanAnalysisText).filter(Boolean).join(' + ');
+}
+
+function formatAnalysisRootAffixes(root, affixes) {
+  const cleanRoot = cleanAnalysisText(root);
+  const cleanAffixes = cleanAnalysisText(affixes);
+  if (!cleanRoot) return cleanAffixes;
+  if (!cleanAffixes) return cleanRoot;
+  return `${cleanRoot} + ${cleanAffixes}`;
 }
 
 function appendAnalysisTableCells(row, result) {
