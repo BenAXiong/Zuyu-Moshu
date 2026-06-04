@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 11:30 +08:00
+Global timestamp: 2026-06-04 11:33 +08:00
 
 Current extension version: 1.5.3
 
@@ -125,7 +125,7 @@ Remaining work under this anchor is Citadel/data-side:
 Implemented:
 
 - Built-in saved-items list with local storage, tooltip save buttons, popup access, and copy/delete/export-to-clipboard basics.
-- Saved page workspace shell with wired short-text token lookup, a future Kilang tab, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import. Short-text analysis shows token definitions only, with Kilang roots hidden in expandable details; it intentionally omits sentence/example lookup and source/tier display.
+- Saved page workspace shell with wired short-text token lookup, a future Kilang tab, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import. Short-text analysis caps at 200 unique tokens, shows token definitions only, and has a sentence selector that filters analyzed rows without re-querying; Kilang roots are hidden in expandable details, while sentence/example lookup and source/tier display are intentionally omitted.
 - Options page unsaved-change warning.
 
 Left before publishing:

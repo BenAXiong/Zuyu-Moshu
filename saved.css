@@ -258,10 +258,17 @@ select {
   gap: 8px;
 }
 
-.analysis-input {
+.analysis-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.analysis-input,
+.analysis-sentences {
   width: 100%;
-  min-height: 190px;
-  resize: vertical;
+  min-height: 162px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   outline: none;
@@ -271,8 +278,51 @@ select {
   line-height: 1.55;
 }
 
+.analysis-input {
+  resize: vertical;
+}
+
 .analysis-input:focus {
   border-color: var(--accent);
+}
+
+.analysis-sentences {
+  overflow: auto;
+}
+
+.analysis-sentences .analysis-empty {
+  border: 0;
+  padding: 8px 0;
+  text-align: left;
+}
+
+.analysis-sentence-list {
+  display: grid;
+  gap: 6px;
+}
+
+.analysis-sentence {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 8px 10px;
+  border-color: transparent;
+  color: var(--muted);
+  background: transparent;
+  text-align: left;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.analysis-sentence:hover,
+.analysis-sentence.is-active {
+  border-color: var(--line-strong);
+  color: var(--text);
+  background: var(--surface-strong);
+}
+
+.analysis-sentence:disabled {
+  opacity: 0.45;
 }
 
 .analysis-summary {
@@ -602,6 +652,10 @@ select {
   .analysis-input {
     width: 100%;
     min-width: 0;
+  }
+
+  .analysis-workbench {
+    grid-template-columns: 1fr;
   }
 
   .ai-grid {

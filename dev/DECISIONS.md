@@ -164,7 +164,7 @@ The tab currently wires Amis translation both directions (`translate_1` for ZH-t
 
 ## D15 — Short-text analysis starts as a saved-page shell
 
-**What:** The saved page `短章分析` tab has a minimal whole-text analysis UI: language/source selectors, a large indigenous text input, an Analyze button, a word count, and a two-column result grid with token and ZH definitions. Kilang roots move into row expanders. Sentence/example lookup and source/tier display are intentionally omitted from this tab. It tokenizes pasted text locally, skips tokens with length 2 or less, caps unique tokens, and runs bounded-concurrency lookups through the existing background message contracts (`moeInsights` for Kilang, `lookup` for ePark).
+**What:** The saved page `短章分析` tab has a minimal whole-text analysis UI: language/source selectors, a split input/sentence panel, an Analyze button, a word count, and a two-column result grid with token and ZH definitions. Kilang roots move into row expanders. Sentence rows filter the already analyzed token results without re-querying. Sentence/example lookup and source/tier display are intentionally omitted from this tab. It tokenizes pasted text locally, skips tokens with length 2 or less, caps unique tokens at 200, and runs bounded-concurrency lookups through the existing background message contracts (`moeInsights` for Kilang, `lookup` for ePark).
 
 **Why:** Whole-text analysis can become expensive and UX-sensitive once it performs many lookups. A bounded token cap and concurrency limit keep the first implementation responsive while fixing the workspace shape for later save/export actions or Kilang tree integration.
 

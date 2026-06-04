@@ -4,7 +4,7 @@ let savedItems = [];
 const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
 const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT  = 20000;
-const ANALYSIS_MAX_TOKENS = 80;
+const ANALYSIS_MAX_TOKENS = 200;
 const ANALYSIS_CONCURRENCY = 6;
 
 const AMI_DIALECTS = [
@@ -37,6 +37,11 @@ const INDIHUNT_LANG_CODE = {
 };
 
 const els = {};
+const analysisState = {
+  results: [],
+  sentences: [],
+  selectedSentence: -1,
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   els.summary = document.getElementById('summary');
@@ -73,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
   els.aiTranslate = document.getElementById('aiTranslate');
   els.aiListen    = document.getElementById('aiListen');
   els.analysisInput = document.getElementById('analysisInput');
+  els.analysisSentences = document.getElementById('analysisSentences');
   els.analysisList = document.getElementById('analysisList');
   els.analysisWordCount = document.getElementById('analysisWordCount');
   els.analyzeText = document.getElementById('analyzeText');
@@ -107,19 +113,39 @@ function activateDirection(direction) {
   });
 }
 
-function getAnalysisTokens(text) {
+function getAnalysisTokens(text, limit = ANALYSIS_MAX_TOKENS) {
   return [...new Set(
     String(text || '')
       .split(/[\s,.;:!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
       .map(token => token.trim())
       .filter(token => token.length > 2)
-  )].slice(0, ANALYSIS_MAX_TOKENS);
+  )].slice(0, limit);
+}
+
+function getAnalysisSentences(text) {
+  return (String(text || '').match(/[^.!?。！？\n\r]+[.!?。！？]?/g) || [])
+    .map(sentence => cleanAnalysisText(sentence))
+    .filter(Boolean)
+    .map((text, index) => ({
+      index,
+      text,
+      tokens: getAnalysisTokens(text, Number.POSITIVE_INFINITY),
+    }));
 }
 
 async function renderAnalysisShell() {
+  const sentences = getAnalysisSentences(els.analysisInput.value);
   const tokens = getAnalysisTokens(els.analysisInput.value);
+  const tokenSet = new Set(tokens);
+  analysisState.sentences = sentences.map(sentence => ({
+    ...sentence,
+    tokens: sentence.tokens.filter(token => tokenSet.has(token)),
+  }));
+  analysisState.results = [];
+  analysisState.selectedSentence = -1;
   els.analysisWordCount.textContent = `${tokens.length} words analyzed`;
   els.analysisList.replaceChildren();
+  renderAnalysisSentences();
 
   if (tokens.length === 0) {
     const empty = document.createElement('div');
@@ -131,15 +157,70 @@ async function renderAnalysisShell() {
 
   setAnalysisLoading(true);
   tokens.forEach(token => els.analysisList.appendChild(renderAnalysisRow({
+    key: token,
     token,
     zh: 'Looking up...',
   })));
 
   const source = document.getElementById('analysisSource').value;
   const results = await mapWithConcurrency(tokens, ANALYSIS_CONCURRENCY, token => lookupAnalysisToken(token, source));
-  els.analysisList.replaceChildren();
-  results.forEach(result => els.analysisList.appendChild(renderAnalysisRow(result)));
+  analysisState.results = results;
+  renderAnalysisResults();
   setAnalysisLoading(false);
+}
+
+function renderAnalysisSentences() {
+  els.analysisSentences.replaceChildren();
+  if (!analysisState.sentences.length) {
+    const empty = document.createElement('div');
+    empty.className = 'analysis-empty';
+    empty.textContent = 'Run Analyze to split sentences.';
+    els.analysisSentences.appendChild(empty);
+    return;
+  }
+
+  const all = document.createElement('button');
+  all.className = `analysis-sentence${analysisState.selectedSentence === -1 ? ' is-active' : ''}`;
+  all.type = 'button';
+  all.textContent = 'All sentences';
+  all.addEventListener('click', () => selectAnalysisSentence(-1));
+  els.analysisSentences.appendChild(all);
+
+  analysisState.sentences.forEach(sentence => {
+    const button = document.createElement('button');
+    button.className = `analysis-sentence${analysisState.selectedSentence === sentence.index ? ' is-active' : ''}`;
+    button.type = 'button';
+    button.textContent = sentence.text;
+    button.disabled = sentence.tokens.length === 0;
+    button.addEventListener('click', () => selectAnalysisSentence(sentence.index));
+    els.analysisSentences.appendChild(button);
+  });
+}
+
+function selectAnalysisSentence(index) {
+  analysisState.selectedSentence = index;
+  renderAnalysisSentences();
+  renderAnalysisResults();
+}
+
+function renderAnalysisResults() {
+  els.analysisList.replaceChildren();
+  let results = analysisState.results;
+  if (analysisState.selectedSentence !== -1) {
+    const sentence = analysisState.sentences.find(item => item.index === analysisState.selectedSentence);
+    const tokenSet = new Set(sentence?.tokens || []);
+    results = results.filter(result => tokenSet.has(result.key));
+  }
+
+  if (!results.length) {
+    const empty = document.createElement('div');
+    empty.className = 'analysis-empty';
+    empty.textContent = 'No analyzed words for this sentence.';
+    els.analysisList.appendChild(empty);
+    return;
+  }
+
+  results.forEach(result => els.analysisList.appendChild(renderAnalysisRow(result)));
 }
 
 async function mapWithConcurrency(items, limit, mapper) {
@@ -182,6 +263,7 @@ async function lookupAnalysisEpark(token) {
   const entries = Array.isArray(response?.results) ? response.results : [];
   const definitions = uniqueAnalysisValues(entries.map(entry => entry.zh || entry.word_ch || entry.definition));
   return {
+    key: token,
     token,
     zh: definitions.slice(0, 3).join('；') || '—',
     root: '',
@@ -198,6 +280,7 @@ async function lookupAnalysisKilang(token) {
   const matched = cleanAnalysisText(insights?.match || primary.word_ab || token);
   const root = cleanAnalysisText(primary.ultimate_root || primary.stem || '');
   return {
+    key: token,
     token: matched && matched !== token ? `${token} → ${matched}` : token,
     zh: definitions.slice(0, 3).join('；') || '—',
     root,
