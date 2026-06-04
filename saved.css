@@ -374,7 +374,7 @@ select {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: start;
-  padding: 14px 14px 16px;
+  padding: 7px 14px 8px;
   border-bottom: 1px solid var(--line);
   background: transparent;
 }
@@ -387,10 +387,42 @@ select {
   border-bottom: 0;
 }
 
+.reader-sentence-content {
+  min-width: 0;
+}
+
 .reader-sentence-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 4px;
   padding-top: 12px;
+}
+
+.reader-action-button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.reader-action-button:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.reader-action-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.reader-action-button.is-loading span {
+  animation: reader-spin 0.9s linear infinite;
 }
 
 .reader-export-button {
@@ -399,6 +431,19 @@ select {
 
 .reader-export-button:hover {
   opacity: 1;
+}
+
+.reader-sentence-mt {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+@keyframes reader-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .reader-annotated-line {

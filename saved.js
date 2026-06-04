@@ -61,6 +61,7 @@ const analysisState = {
 const readerState = {
   results: [],
   segments: [],
+  translations: {},
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -303,6 +304,7 @@ async function renderReaderShell() {
     tokens: segment.tokens.filter(token => tokenSet.has(token)),
   }));
   readerState.results = [];
+  readerState.translations = {};
   updateReaderSummary(tokens.length, segments.length);
 
   if (tokens.length === 0) {
@@ -344,16 +346,30 @@ function renderReader() {
     block.className = 'reader-sentence';
     block.id = `reader-sentence-${segment.index}`;
 
+    const content = document.createElement('div');
+    content.className = 'reader-sentence-content';
+
     const line = document.createElement('div');
     line.className = 'reader-annotated-line';
     getReaderSentenceParts(segment.text).forEach(part => {
       line.appendChild(renderReaderPart(part, resultMap));
     });
-    block.appendChild(line);
+    content.appendChild(line);
+
+    const translation = cleanAnalysisText(readerState.translations[segment.index]);
+    if (translation) {
+      const mt = document.createElement('div');
+      mt.className = 'reader-sentence-mt';
+      mt.textContent = translation;
+      content.appendChild(mt);
+    }
+    block.appendChild(content);
 
     const actions = document.createElement('div');
     actions.className = 'reader-sentence-actions';
-    actions.appendChild(createReaderSentenceExportButton(segment, resultMap));
+    actions.appendChild(createReaderTtsButton(segment));
+    actions.appendChild(createReaderMtButton(segment));
+    actions.appendChild(createReaderSentenceExportButton(segment));
     block.appendChild(actions);
     els.readerOutput.appendChild(block);
   });
@@ -403,7 +419,19 @@ function getReaderTopAnnotation(result) {
   return '';
 }
 
-function createReaderSentenceExportButton(segment, resultMap) {
+function createReaderTtsButton(segment) {
+  const btn = createReaderIconButton('🔊', 'Listen to sentence');
+  btn.addEventListener('click', () => playReaderSentenceTts(segment, btn));
+  return btn;
+}
+
+function createReaderMtButton(segment) {
+  const btn = createReaderIconButton('✦', 'Translate sentence to Chinese');
+  btn.addEventListener('click', () => translateReaderSentence(segment, btn));
+  return btn;
+}
+
+function createReaderSentenceExportButton(segment) {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'item-indihunt-button reader-export-button';
@@ -418,29 +446,103 @@ function createReaderSentenceExportButton(segment, resultMap) {
   logo.height = 24;
   btn.appendChild(logo);
 
-  btn.addEventListener('click', () => exportItemsToIndiHunt([buildReaderSentenceExportItem(segment, resultMap)], btn));
+  btn.addEventListener('click', () => exportItemsToIndiHunt([buildReaderSentenceExportItem(segment)], btn));
   return btn;
 }
 
-function buildReaderSentenceExportItem(segment, resultMap) {
+function createReaderIconButton(icon, label) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'reader-action-button';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+
+  const symbol = document.createElement('span');
+  symbol.setAttribute('aria-hidden', 'true');
+  symbol.textContent = icon;
+  btn.appendChild(symbol);
+  return btn;
+}
+
+async function playReaderSentenceTts(segment, btn) {
+  const text = cleanAnalysisText(segment.text);
+  if (!text || btn.disabled) return;
+
+  const { speaker } = getReaderAmiDialect();
+  let audioStarted = false;
+  if (currentReaderTtsButton && currentReaderTtsButton !== btn) {
+    setReaderActionBusy(currentReaderTtsButton, false);
+  }
+  setReaderActionBusy(btn, true);
+  currentTtsAudio?.pause();
+  currentReaderTtsButton = btn;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text], controller.signal);
+    const url = result?.url ?? (typeof result === 'string' ? result : null);
+    if (!url) return;
+
+    const audio = new Audio(url);
+    currentTtsAudio = audio;
+    audioStarted = true;
+    const finish = () => {
+      setReaderActionBusy(btn, false);
+      if (currentReaderTtsButton === btn) currentReaderTtsButton = null;
+    };
+    audio.onended = finish;
+    audio.onerror = finish;
+    audio.play().catch(finish);
+  } catch {
+    audioStarted = false;
+  } finally {
+    clearTimeout(timeout);
+    if (!audioStarted) {
+      setReaderActionBusy(btn, false);
+      if (currentReaderTtsButton === btn) currentReaderTtsButton = null;
+    }
+  }
+}
+
+async function translateReaderSentence(segment, btn) {
+  const text = cleanAnalysisText(segment.text);
+  if (!text || btn.disabled) return;
+
+  const dialectCode = getReaderAmiDialect().code;
+  setReaderActionBusy(btn, true);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const result = await gradioCall(ILRDF_MT_BASE, 'translate', [text, dialectCode, 'zho_Hant'], controller.signal);
+    if (typeof result === 'string' && cleanAnalysisText(result)) {
+      readerState.translations[segment.index] = cleanAnalysisText(result);
+      renderReader();
+    }
+  } finally {
+    clearTimeout(timeout);
+    setReaderActionBusy(btn, false);
+  }
+}
+
+function getReaderAmiDialect() {
+  return AMI_DIALECTS.find(dialect => dialect.code === 'ami_Mala') ?? AMI_DIALECTS[0];
+}
+
+function setReaderActionBusy(btn, on) {
+  btn.disabled = on;
+  btn.classList.toggle('is-loading', on);
+}
+
+function buildReaderSentenceExportItem(segment) {
   return {
     type: 'example',
     language: els.readerLanguage.value,
     sourceId: els.readerSource.value,
     ab: segment.text,
-    zh: getReaderSentenceZh(segment, resultMap),
+    zh: cleanAnalysisText(readerState.translations[segment.index]),
   };
-}
-
-function getReaderSentenceZh(segment, resultMap) {
-  const seen = new Set();
-  return segment.tokens.map(token => {
-    const zh = getReaderShortDefinition(resultMap.get(token)?.zh);
-    const key = `${token}:${zh}`;
-    if (!zh || zh === '—' || zh === 'Looking up...' || seen.has(key)) return '';
-    seen.add(key);
-    return `${token}: ${zh}`;
-  }).filter(Boolean).join('；');
 }
 
 function getReaderShortDefinition(text) {
@@ -991,6 +1093,7 @@ async function aiTranslate() {
 }
 
 let currentTtsAudio = null;
+let currentReaderTtsButton = null;
 
 async function aiListen() {
   if (els.aiListen.hidden || els.aiListen.disabled) return;
@@ -1002,6 +1105,10 @@ async function aiListen() {
   const { speaker } = getActiveDialect();
 
   setAiListening(true);
+  if (currentReaderTtsButton) {
+    setReaderActionBusy(currentReaderTtsButton, false);
+    currentReaderTtsButton = null;
+  }
   currentTtsAudio?.pause();
 
   const controller = new AbortController();
