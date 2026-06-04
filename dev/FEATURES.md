@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 02:34 +08:00
+Global timestamp: 2026-06-05 02:41 +08:00
 
 Current extension version: 1.5.5
 
@@ -23,7 +23,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Double-click lookup | Universal | Enabled by default unless hover mode replaces it. | `content.js`: `dblclick` listener, `handleSelection()`, `triggerLookup()`. |
 | Ctrl + select lookup | Universal | Enabled by default and remains active even when hover mode is enabled. | `content.js`: `mouseup` listener with `e.ctrlKey`. |
-| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. It shows a compact pipe-separated ZH hint sequence using the best available enabled-source result per token. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`. |
+| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. It shows a compact pipe-separated ZH hint sequence using the best available enabled-source result per token. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`, `getShortPhraseDefinition()`. |
 | Hover lookup | Universal trigger, source-dependent lookup | Optional. Replaces double-click when enabled, does not replace Ctrl + select. | `content.js`: `mousemove`, `handleHover()`, `triggerCandidateLookup()`. |
 | Text input lookup | Universal | Selection lookup works in useful text inputs and textareas. | `content.js`: `getDeepActiveElement()`, `getInputSelection()`. |
 

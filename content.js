@@ -2004,7 +2004,22 @@ function renderPhraseResults(phrase, results, settings) {
 function getShortPhraseDefinition(text) {
   const clean = cleanDisplayText(text);
   if (!clean) return '';
-  return clean.split(/[；;，,、]/)[0] || clean;
+  const withoutParen = clean
+    .replace(/[（(][^（）()]*[）)]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const candidates = withoutParen
+    .split(/[；;。，,、/／]|或|及|和|與|表示|指/u)
+    .map(part => part.replace(/^[的地得之]|[的地得之]$/g, '').trim())
+    .filter(Boolean);
+  const picked = candidates.find(part => countCjk(part) <= 6) || candidates[0] || withoutParen;
+  return truncatePhraseHint(picked);
+}
+
+function truncatePhraseHint(text) {
+  const chars = [...cleanDisplayText(text)];
+  if (chars.length <= 6) return chars.join('');
+  return `${chars.slice(0, 5).join('')}…`;
 }
 
 function appendPhraseAiButtons(phrase) {
