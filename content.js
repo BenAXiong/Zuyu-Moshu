@@ -1982,46 +1982,12 @@ function renderPhraseResults(phrase, results, settings) {
   const section = document.createElement('div');
   section.className = 'fdt-phrase-section';
 
-  const grid = document.createElement('div');
-  grid.className = 'fdt-phrase-grid';
-
-  results.forEach(result => {
-    const item = document.createElement('div');
-    item.className = 'fdt-phrase-token';
-    if (!result.zh) item.classList.add('is-missing');
-
-    const ab = document.createElement('button');
-    ab.type = 'button';
-    ab.className = 'fdt-phrase-ab';
-    ab.textContent = result.displayToken || result.token;
-    ab.title = '查詢此詞';
-    ab.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      drillPhraseTokenLookup(result.displayToken || result.token);
-    });
-
-    const zh = document.createElement('div');
-    zh.className = 'fdt-phrase-zh';
-    zh.textContent = getShortPhraseDefinition(result.zh) || '—';
-    zh.title = result.zh || '';
-
-    item.append(ab, zh);
-
-    const metaText = [result.root && result.root !== result.displayToken ? `√ ${result.root}` : '', result.metaLabel || result.sourceId]
-      .filter(Boolean)
-      .join(' · ');
-    if (metaText) {
-      const meta = document.createElement('div');
-      meta.className = 'fdt-phrase-meta';
-      meta.textContent = metaText;
-      item.appendChild(meta);
-    }
-
-    grid.appendChild(item);
-  });
-
-  section.appendChild(grid);
+  const sequence = document.createElement('div');
+  sequence.className = 'fdt-phrase-sequence';
+  sequence.textContent = results
+    .map(result => getShortPhraseDefinition(result.zh) || '—')
+    .join(' | ');
+  section.appendChild(sequence);
 
   if (results.every(result => !result.zh)) {
     const note = document.createElement('div');
@@ -2097,17 +2063,6 @@ async function speakPhrase(phrase, btn) {
   } finally {
     setPhraseAiBusy(btn, false);
   }
-}
-
-function drillPhraseTokenLookup(rawWord) {
-  const word = cleanWord(rawWord || '');
-  if (!word || word === cleanWord(getHeaderWord())) return;
-  triggerLookup(
-    word,
-    currentTooltipRect,
-    currentTooltipSettings,
-    getNextDrillNav()
-  );
 }
 
 function setPhraseAiBusy(btn, on) {

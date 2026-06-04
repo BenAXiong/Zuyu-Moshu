@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 02:23 +08:00
+Global timestamp: 2026-06-05 02:34 +08:00
 
 Current extension version: 1.5.5
 
@@ -23,7 +23,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Double-click lookup | Universal | Enabled by default unless hover mode replaces it. | `content.js`: `dblclick` listener, `handleSelection()`, `triggerLookup()`. |
 | Ctrl + select lookup | Universal | Enabled by default and remains active even when hover mode is enabled. | `content.js`: `mouseup` listener with `e.ctrlKey`. |
-| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. It shows a compact token-by-token gloss grid using the best available enabled-source result per token. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`. |
+| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. It shows a compact pipe-separated ZH hint sequence using the best available enabled-source result per token. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`. |
 | Hover lookup | Universal trigger, source-dependent lookup | Optional. Replaces double-click when enabled, does not replace Ctrl + select. | `content.js`: `mousemove`, `handleHover()`, `triggerCandidateLookup()`. |
 | Text input lookup | Universal | Selection lookup works in useful text inputs and textareas. | `content.js`: `getDeepActiveElement()`, `getInputSelection()`. |
 
@@ -50,7 +50,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
 | Tooltip drilling | Universal for drillable AB text | AB tokens in examples, ZH-to-AB primary rows, and Kilang derived/recovery relation headers are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `appendMoeDerivedHeader()`, `drillLookup()`, `normalizeTooltipNav()`. |
 | Floating tooltip actions | Universal | Tooltip shows a visually separate vertical floating action stack aligned with the top border. The top button opens the saved-items page with an external-window icon; the second button exports the current tooltip rows/examples to IndiHunt. | `content.js`: `createOpenSavedButton()`, `createIndiHuntExportButton()`, `exportTooltipToIndiHunt()`, `showFloatingSavedButton()`; `content.css`; `manifest.json`. |
-| Phrase AI tools | Amis AI, popup-gated | When the popup AI toggle is enabled, phrase-assist tooltips add header buttons for Amis-to-ZH MT and Amis TTS using Malan defaults. MT renders a separate AI line below the token gloss grid. | `content.js`: `appendPhraseAiButtons()`, `translatePhrase()`, `speakPhrase()`, `gradioCall()`; `popup.html`, `popup.js`, `shared.js`. |
+| Phrase AI tools | Amis AI, popup-gated | When the popup AI toggle is enabled, phrase-assist tooltips add header buttons for Amis-to-ZH MT and Amis TTS using Malan defaults. MT renders a separate AI line below the ZH hint sequence. | `content.js`: `appendPhraseAiButtons()`, `translatePhrase()`, `speakPhrase()`, `gradioCall()`; `popup.html`, `popup.js`, `shared.js`. |
 
 ## Kilang Morphology And Sense UI
 
