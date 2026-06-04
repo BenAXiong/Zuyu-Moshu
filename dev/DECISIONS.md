@@ -164,8 +164,8 @@ The tab currently wires Amis translation both directions (`translate_1` for ZH-t
 
 ## D15 — Short-text analysis starts as a saved-page shell
 
-**What:** The saved page `短章分析` tab has a minimal whole-text analysis UI: language/source selectors, a large indigenous text input, an Analyze button, a word count, and a result grid with token, ZH, root, source, and future expand columns. The current implementation tokenizes pasted text locally and renders placeholder rows only; it does not call dictionary APIs yet.
+**What:** The saved page `短章分析` tab has a minimal whole-text analysis UI: language/source selectors, a large indigenous text input, an Analyze button, a word count, and a two-column result grid with token, ZH, root, source, and expandable examples. It tokenizes pasted text locally, caps unique tokens, and runs bounded-concurrency lookups through the existing background message contracts (`moeInsights` for Kilang, `lookup` for ePark).
 
-**Why:** Whole-text analysis can become expensive and UX-sensitive once it performs many lookups. Starting with the shell fixes the workspace shape and stable DOM hooks before adding lookup batching, caching, examples, save/export actions, or Kilang tree integration.
+**Why:** Whole-text analysis can become expensive and UX-sensitive once it performs many lookups. A bounded token cap and concurrency limit keep the first implementation responsive while fixing the workspace shape for later save/export actions or Kilang tree integration.
 
-**How to apply:** Wire future lookup logic behind `renderAnalysisShell()` or a replacement analysis pipeline. Keep token caps and caching explicit, because analyzing long text can otherwise fan out into many API calls.
+**How to apply:** Keep future analysis lookup work behind `renderAnalysisShell()` or a replacement analysis pipeline. Preserve explicit token caps, concurrency limits, and caching decisions, because analyzing long text can otherwise fan out into many API calls.

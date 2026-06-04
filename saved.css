@@ -289,16 +289,8 @@ select {
   gap: 8px;
 }
 
-.analysis-header,
-.analysis-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 0.9fr) minmax(240px, 1.8fr) minmax(96px, 0.8fr) minmax(80px, 0.6fr) 32px;
-  gap: 12px;
-  align-items: start;
-}
-
 .analysis-header {
-  padding: 0 14px 0;
+  display: none;
   color: var(--dim);
   font-size: 0.76rem;
   letter-spacing: 0.04em;
@@ -306,10 +298,14 @@ select {
 
 .analysis-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .analysis-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -322,7 +318,11 @@ select {
   overflow-wrap: anywhere;
 }
 
-.analysis-zh,
+.analysis-zh {
+  grid-column: 1 / -1;
+  color: var(--text);
+}
+
 .analysis-root,
 .analysis-source,
 .analysis-empty {
@@ -331,7 +331,17 @@ select {
   overflow-wrap: anywhere;
 }
 
+.analysis-root,
+.analysis-source {
+  font-size: 0.84rem;
+}
+
+.analysis-source {
+  justify-self: end;
+}
+
 .analysis-empty {
+  grid-column: 1 / -1;
   padding: 24px;
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
@@ -339,11 +349,34 @@ select {
 }
 
 .analysis-expand {
+  grid-column: 2;
+  grid-row: 1;
   width: 32px;
   min-width: 32px;
   height: 32px;
   min-height: 32px;
   padding: 0;
+}
+
+.analysis-examples {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line-strong);
+}
+
+.analysis-example {
+  padding: 6px 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.analysis-example + .analysis-example {
+  border-top: 1px solid var(--line);
+}
+
+.analysis-example-ab {
+  color: var(--text);
 }
 
 .empty {
@@ -582,8 +615,17 @@ select {
     display: none;
   }
 
+  .analysis-list {
+    grid-template-columns: 1fr;
+  }
+
   .analysis-row {
     grid-template-columns: 1fr;
+  }
+
+  .analysis-expand,
+  .analysis-source {
+    justify-self: start;
   }
 
   .item {
