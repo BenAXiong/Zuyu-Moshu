@@ -253,9 +253,9 @@ select {
 }
 
 .paragraph-tools {
-  display: flex;
+  display: grid;
+  grid-template-columns: clamp(240px, 20vw, 360px) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
@@ -296,16 +296,22 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  margin-left: auto;
   min-height: 24px;
   color: var(--muted);
   font-size: 0.86rem;
   white-space: nowrap;
 }
 
+.analysis-toolbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .analysis-results {
   display: grid;
-  gap: 8px;
   min-width: 0;
 }
 
@@ -384,6 +390,12 @@ select {
 .analysis-cell-zh {
   width: 150px;
   color: var(--muted);
+}
+
+.analysis-cell-empty {
+  width: 64px;
+  color: var(--dim);
+  text-align: center;
 }
 
 .empty {
@@ -593,9 +605,14 @@ select {
   .filters,
   .list-tools,
   .paragraph-tools,
+  .analysis-toolbar-right,
   .paragraph-selectors {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .paragraph-tools {
+    display: flex;
   }
 
   .filters {

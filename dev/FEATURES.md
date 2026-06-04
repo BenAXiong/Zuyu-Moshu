@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 15:39 +08:00
+Global timestamp: 2026-06-04 15:44 +08:00
 
 Current extension version: 1.5.3
 
@@ -79,7 +79,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Local saved-item storage | Universal | Saves words, Kilang senses, and examples to `chrome.storage.local` under `savedItemsV1`. Items dedupe by a stable source/text/provenance key. | `saved_store.js`: `fdtToggleSavedItem()`, `fdtGetSavedItems()`, `fdtNormalizeSavedItem()`. |
 | Tooltip save buttons | Universal | Tooltip header has the current headword/current matched fallback bookmark. Alt-spelling section headers and example rows have their own bookmarks; clicking a saved bookmark removes it. | `content.js`: `createHeaderSaveButton()`, `setHeaderSaveItem()`, `createSaveButton()`, `buildSavedExample()`. |
-| Saved-items page | Universal plus Amis AI | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`. `咒語庫` is functional. `短章分析` tokenizes pasted text, runs bounded-concurrency lookup against Kilang or ePark, and renders two-column result cards with ZH/root/source plus expandable examples. `AI MT & TTS` supports Amis ZH-to-Amis / Amis-to-ZH translation and Amis TTS through ILRDF AI Labs; the language selector lists 16 language codes but non-Amis currently reports Amis-only support. `Kilang` remains an empty shell. | `saved.html`, `saved.css`, `saved.js`. |
+| Saved-items page | Universal plus Amis AI | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `AI MT & TTS`, `Kilang`, `族語考試`, and `?`. `咒語庫` is functional. `短章分析` tokenizes pasted text, runs bounded-concurrency lookup against Kilang or ePark, and renders a full-width sentence-by-sentence AB/root/ZH table with column-hiding toggles and duplicate hiding. `AI MT & TTS` supports Amis ZH-to-Amis / Amis-to-ZH translation and Amis TTS through ILRDF AI Labs; the language selector lists 16 language codes but non-Amis currently reports Amis-only support. `Kilang`, `族語考試`, and `?` remain empty shells. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Saved-page and tooltip IndiHunt export open `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `content.js`: `exportTooltipToIndiHunt()`; `assets/indivore/`. |
 
@@ -125,7 +125,7 @@ Remaining work under this anchor is Citadel/data-side:
 Implemented:
 
 - Built-in saved-items list with local storage, tooltip save buttons, popup access, and copy/delete/export-to-clipboard basics.
-- Saved page workspace shell with wired short-text token lookup, future Kilang / 族語考試 / ? tabs, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import. Short-text analysis caps at 200 unique tokens, normalizes pasted text into one segment per line, and renders a full-width sentence-by-sentence table with repeated AB/root/ZH columns; ZH cells are compact ellipsized cells with full text on hover. The analysis table has roots and duplicates filters; the saved filter button is present but intentionally not wired yet. Sentence/example lookup and source/tier display are intentionally omitted.
+- Saved page workspace shell with wired short-text token lookup, future Kilang / 族語考試 / ? tabs, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import. Short-text analysis caps at 200 unique tokens, normalizes pasted text into one segment per line, and renders a full-width sentence-by-sentence table with repeated AB/root/ZH columns; ZH cells are compact ellipsized cells with full text on hover. The analysis toolbar has column-hiding toggles for 族語/root/中文 plus a duplicate-hiding toggle; the saved filter button is present but intentionally not wired yet. Sentence/example lookup and source/tier display are intentionally omitted.
 - Options page unsaved-change warning.
 
 Left before publishing:

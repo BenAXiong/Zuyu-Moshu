@@ -41,7 +41,9 @@ const analysisState = {
   results: [],
   segments: [],
   filters: {
+    ab: false,
     roots: false,
+    zh: false,
     duplicates: false,
     saved: false,
   },
@@ -125,7 +127,7 @@ function toggleAnalysisFilter(filter) {
   if (!Object.hasOwn(analysisState.filters, filter)) return;
   analysisState.filters[filter] = !analysisState.filters[filter];
   updateAnalysisFilterButtons();
-  if (filter !== 'saved') renderAnalysisTable();
+  if (filter !== 'saved' && analysisState.segments.length > 0) renderAnalysisTable();
 }
 
 function updateAnalysisFilterButtons() {
@@ -202,13 +204,11 @@ async function renderAnalysisShell() {
 function renderAnalysisTable() {
   els.analysisList.replaceChildren();
   const resultMap = new Map(analysisState.results.map(result => [result.key, result]));
-  const duplicateKeys = getAnalysisDuplicateKeys();
-  const visibleSegments = analysisState.segments
-    .map(segment => ({
-      ...segment,
-      tokens: segment.tokens.filter(token => analysisTokenPassesFilters(token, resultMap, duplicateKeys)),
-    }))
-    .filter(segment => segment.tokens.length > 0);
+  const seenTokens = new Set();
+  const visibleSegments = analysisState.segments.map(segment => {
+    const tokens = segment.tokens.filter(token => analysisTokenPassesFilters(token, seenTokens));
+    return { ...segment, tokens };
+  });
   if (!visibleSegments.length) {
     const empty = document.createElement('div');
     empty.className = 'analysis-empty';
@@ -225,23 +225,21 @@ function renderAnalysisTable() {
     segment.tokens.forEach(token => {
       appendAnalysisTableCells(row, resultMap.get(token) || { key: token, token, zh: 'Looking up...', root: '' });
     });
+    if (row.children.length === 0) {
+      const empty = document.createElement('td');
+      empty.className = 'analysis-cell analysis-cell-empty';
+      empty.textContent = '—';
+      row.appendChild(empty);
+    }
     tbody.appendChild(row);
   });
   table.appendChild(tbody);
   els.analysisList.appendChild(table);
 }
 
-function getAnalysisDuplicateKeys() {
-  const counts = new Map();
-  analysisState.segments.forEach(segment => {
-    segment.tokens.forEach(token => counts.set(token, (counts.get(token) || 0) + 1));
-  });
-  return new Set([...counts].filter(([, count]) => count > 1).map(([token]) => token));
-}
-
-function analysisTokenPassesFilters(token, resultMap, duplicateKeys) {
-  if (analysisState.filters.roots && !resultMap.get(token)?.root) return false;
-  if (analysisState.filters.duplicates && !duplicateKeys.has(token)) return false;
+function analysisTokenPassesFilters(token, seenTokens) {
+  if (analysisState.filters.duplicates && seenTokens.has(token)) return false;
+  seenTokens.add(token);
   return true;
 }
 
@@ -310,22 +308,29 @@ async function lookupAnalysisKilang(token) {
 }
 
 function appendAnalysisTableCells(row, result) {
-  const ab = document.createElement('td');
-  ab.className = 'analysis-cell analysis-cell-ab';
-  ab.textContent = result.token || result.key || '—';
-  ab.title = result.token || result.key || '';
+  if (!analysisState.filters.ab) {
+    const ab = document.createElement('td');
+    ab.className = 'analysis-cell analysis-cell-ab';
+    ab.textContent = result.token || result.key || '—';
+    ab.title = result.token || result.key || '';
+    row.appendChild(ab);
+  }
 
-  const root = document.createElement('td');
-  root.className = 'analysis-cell analysis-cell-root';
-  root.textContent = result.root || '—';
-  root.title = result.root || '';
+  if (!analysisState.filters.roots) {
+    const root = document.createElement('td');
+    root.className = 'analysis-cell analysis-cell-root';
+    root.textContent = result.root || '—';
+    root.title = result.root || '';
+    row.appendChild(root);
+  }
 
-  const zh = document.createElement('td');
-  zh.className = 'analysis-cell analysis-cell-zh';
-  zh.textContent = result.zh || '—';
-  zh.title = result.zh || '';
-
-  row.append(ab, root, zh);
+  if (!analysisState.filters.zh) {
+    const zh = document.createElement('td');
+    zh.className = 'analysis-cell analysis-cell-zh';
+    zh.textContent = result.zh || '—';
+    zh.title = result.zh || '';
+    row.appendChild(zh);
+  }
 }
 
 function cleanAnalysisText(text) {
