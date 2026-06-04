@@ -82,6 +82,7 @@
 #formosan-dict-tooltip.fdt-large { font-size: 20px; }
 
 #formosan-dict-tooltip.fdt-phrase-tooltip {
+  width: min(920px, calc(100vw - 56px));
   max-width: min(920px, calc(100vw - 56px));
 }
 

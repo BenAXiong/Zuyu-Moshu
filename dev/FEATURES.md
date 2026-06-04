@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 02:49 +08:00
+Global timestamp: 2026-06-05 02:55 +08:00
 
 Current extension version: 1.5.5
 
@@ -23,7 +23,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Double-click lookup | Universal | Enabled by default unless hover mode replaces it. | `content.js`: `dblclick` listener, `handleSelection()`, `triggerLookup()`. |
 | Ctrl + select lookup | Universal | Enabled by default and remains active even when hover mode is enabled. | `content.js`: `mouseup` listener with `e.ctrlKey`. |
-| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. It shows a compact pipe-separated ZH hint sequence using the best available enabled-source result per token. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`, `getShortPhraseDefinition()`. |
+| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. Phrase mode ignores tokens of 2 characters or less, then shows a compact pipe-separated ZH hint sequence using the best available enabled-source result per remaining token. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`, `getShortPhraseDefinition()`. |
 | Hover lookup | Universal trigger, source-dependent lookup | Optional. Replaces double-click when enabled, does not replace Ctrl + select. | `content.js`: `mousemove`, `handleHover()`, `triggerCandidateLookup()`. |
 | Text input lookup | Universal | Selection lookup works in useful text inputs and textareas. | `content.js`: `getDeepActiveElement()`, `getInputSelection()`. |
 
@@ -42,7 +42,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Feature | Scope | Current state | Implementation |
 |---|---|---|---|
 | Main result rows | Universal | Compact rows with primary text, optional secondary text, optional dialect/source label, optional row audio. | `content.js`: `appendResultRow()`, `renderResults()`, `renderZhResults()`. |
-| Responsive tooltip width | Universal plus phrase mode | Normal tooltip width can grow from 304px up to 608px, capped by viewport width. Phrase-assist tooltips can grow up to 920px to fit selected phrases and ZH hint sequences. Layout is remeasured after results render so the tooltip and floating saved-list button stay clamped. | `content.css`: `#formosan-dict-tooltip`, `.fdt-phrase-tooltip`; `content.js`: `positionTooltipAndSavedButton()`, `refreshTooltipLayout()`. |
+| Responsive tooltip width | Universal plus phrase mode | Normal tooltip width can grow from 304px up to 608px, capped by viewport width. Phrase-assist tooltips request a wider 920px viewport-capped width to fit selected phrases and ZH hint sequences. Layout is remeasured after results render so the tooltip and floating saved-list button stay clamped. | `content.css`: `#formosan-dict-tooltip`, `.fdt-phrase-tooltip`; `content.js`: `positionTooltipAndSavedButton()`, `refreshTooltipLayout()`. |
 | ZH-to-AB normalized rows | Universal across enabled zh-capable sources | AB is primary text. ZH definition/translation is secondary text. ePark and Kilang share the row UI. | `content.js`: `normalizeDictZhEntries()`, `normalizeMoeZhEntries()`, `getZhLookupEntries()`. |
 | CJK hover candidate groups | Universal across enabled zh-capable sources | Shows at most 6 candidate groups, each with at most 2 unique AB results. Longer candidates are prioritized. | `content.js`: `makeCjkCandidates()`, `triggerCandidateLookup()`, `renderCandidateSections()`. |
 | No-results state | Universal | Shows `查無此詞` only if no enabled source/section produced content. | `content.js`: `showNoResultsIfEmpty()`. |

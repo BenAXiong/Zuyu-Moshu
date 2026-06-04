@@ -411,7 +411,7 @@ function getPhraseTokens(raw) {
   return cleanPhraseText(raw)
     .split(/[\s,;!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
     .map(cleanWord)
-    .filter(token => token && token.length <= MAX_WORD_LEN && !hasCjk(token))
+    .filter(token => token.length > 2 && token.length <= MAX_WORD_LEN && !hasCjk(token))
     .slice(0, MAX_PHRASE_TOKENS);
 }
 
