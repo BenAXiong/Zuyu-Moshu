@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-04 15:29 +08:00
+Global timestamp: 2026-06-04 15:39 +08:00
 
 Current extension version: 1.5.3
 
@@ -125,7 +125,7 @@ Remaining work under this anchor is Citadel/data-side:
 Implemented:
 
 - Built-in saved-items list with local storage, tooltip save buttons, popup access, and copy/delete/export-to-clipboard basics.
-- Saved page workspace shell with wired short-text token lookup, future Kilang / 族語考試 / ? tabs, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import. Short-text analysis caps at 200 unique tokens, normalizes pasted text into one segment per line, and renders a full-width sentence-by-sentence table with repeated AB/root/ZH columns; ZH cells are compact ellipsized cells with full text on hover. Sentence/example lookup and source/tier display are intentionally omitted.
+- Saved page workspace shell with wired short-text token lookup, future Kilang / 族語考試 / ? tabs, a wired Amis AI MT/TTS panel, plus selected-item IndiHunt direct import. Short-text analysis caps at 200 unique tokens, normalizes pasted text into one segment per line, and renders a full-width sentence-by-sentence table with repeated AB/root/ZH columns; ZH cells are compact ellipsized cells with full text on hover. The analysis table has roots and duplicates filters; the saved filter button is present but intentionally not wired yet. Sentence/example lookup and source/tier display are intentionally omitted.
 - Options page unsaved-change warning.
 
 Left before publishing:

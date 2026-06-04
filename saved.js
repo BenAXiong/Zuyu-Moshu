@@ -40,6 +40,11 @@ const els = {};
 const analysisState = {
   results: [],
   segments: [],
+  filters: {
+    roots: false,
+    duplicates: false,
+    saved: false,
+  },
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -78,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   els.aiListen    = document.getElementById('aiListen');
   els.analysisInput = document.getElementById('analysisInput');
   els.analysisList = document.getElementById('analysisList');
+  els.analysisFilterButtons = [...document.querySelectorAll('.analysis-filter[data-analysis-filter]')];
   els.analysisWordCount = document.getElementById('analysisWordCount');
   els.analyzeText = document.getElementById('analyzeText');
 
@@ -86,6 +92,9 @@ document.addEventListener('DOMContentLoaded', () => {
   els.aiTranslate.addEventListener('click', aiTranslate);
   els.aiListen.addEventListener('click', aiListen);
   els.analyzeText.addEventListener('click', renderAnalysisShell);
+  els.analysisFilterButtons.forEach(button => {
+    button.addEventListener('click', () => toggleAnalysisFilter(button.dataset.analysisFilter));
+  });
   updateAiSelectors();
 
   loadItems();
@@ -109,6 +118,21 @@ function activateTab(tabId) {
 function activateDirection(direction) {
   els.directionOptions.forEach(option => {
     option.classList.toggle('is-active', option.dataset.direction === direction);
+  });
+}
+
+function toggleAnalysisFilter(filter) {
+  if (!Object.hasOwn(analysisState.filters, filter)) return;
+  analysisState.filters[filter] = !analysisState.filters[filter];
+  updateAnalysisFilterButtons();
+  if (filter !== 'saved') renderAnalysisTable();
+}
+
+function updateAnalysisFilterButtons() {
+  els.analysisFilterButtons.forEach(button => {
+    const active = !!analysisState.filters[button.dataset.analysisFilter];
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
 }
 
@@ -178,7 +202,13 @@ async function renderAnalysisShell() {
 function renderAnalysisTable() {
   els.analysisList.replaceChildren();
   const resultMap = new Map(analysisState.results.map(result => [result.key, result]));
-  const visibleSegments = analysisState.segments.filter(segment => segment.tokens.length > 0);
+  const duplicateKeys = getAnalysisDuplicateKeys();
+  const visibleSegments = analysisState.segments
+    .map(segment => ({
+      ...segment,
+      tokens: segment.tokens.filter(token => analysisTokenPassesFilters(token, resultMap, duplicateKeys)),
+    }))
+    .filter(segment => segment.tokens.length > 0);
   if (!visibleSegments.length) {
     const empty = document.createElement('div');
     empty.className = 'analysis-empty';
@@ -199,6 +229,20 @@ function renderAnalysisTable() {
   });
   table.appendChild(tbody);
   els.analysisList.appendChild(table);
+}
+
+function getAnalysisDuplicateKeys() {
+  const counts = new Map();
+  analysisState.segments.forEach(segment => {
+    segment.tokens.forEach(token => counts.set(token, (counts.get(token) || 0) + 1));
+  });
+  return new Set([...counts].filter(([, count]) => count > 1).map(([token]) => token));
+}
+
+function analysisTokenPassesFilters(token, resultMap, duplicateKeys) {
+  if (analysisState.filters.roots && !resultMap.get(token)?.root) return false;
+  if (analysisState.filters.duplicates && !duplicateKeys.has(token)) return false;
+  return true;
 }
 
 async function mapWithConcurrency(items, limit, mapper) {

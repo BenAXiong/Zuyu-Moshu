@@ -304,12 +304,33 @@ select {
 }
 
 .analysis-results {
+  display: grid;
+  gap: 8px;
   min-width: 0;
+}
+
+.analysis-filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.analysis-filter {
+  min-height: 28px;
+  padding: 0 10px;
+  color: var(--muted);
+}
+
+.analysis-filter.is-active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .analysis-table-wrap {
   width: 100%;
-  height: calc(100vh - 150px - 5vw);
+  height: calc(100vh - 186px - 5vw);
   min-height: 420px;
   overflow: auto;
   border: 1px solid var(--line);

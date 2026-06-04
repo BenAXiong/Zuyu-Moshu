@@ -79,8 +79,13 @@
       <section class="analysis-workbench" aria-label="analysis input and sentences">
         <textarea id="analysisInput" class="analysis-input" rows="7" placeholder="貼上族語短文"></textarea>
         <section class="analysis-results" aria-label="analysis results">
+          <div class="analysis-filterbar" aria-label="analysis filters">
+            <button class="analysis-filter" type="button" data-analysis-filter="roots" aria-pressed="false">roots</button>
+            <button class="analysis-filter" type="button" data-analysis-filter="duplicates" aria-pressed="false">duplicates</button>
+            <button class="analysis-filter" type="button" data-analysis-filter="saved" aria-pressed="false">saved</button>
+          </div>
           <div id="analysisList" class="analysis-table-wrap">
-          <div class="analysis-empty">Paste text and run Analyze.</div>
+            <div class="analysis-empty">Paste text and run Analyze.</div>
           </div>
         </section>
       </section>
