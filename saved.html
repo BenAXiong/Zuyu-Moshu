@@ -69,15 +69,12 @@
             <option value="KILANG">Kilang</option>
             <option value="EPARK">ePark</option>
           </select>
-          <button id="analyzeText" class="ai-primary" type="button">Analyze</button>
+          <span id="analysisWordCount" class="analysis-summary" aria-live="polite">0 words analyzed</span>
         </div>
+        <button id="analyzeText" class="ai-primary" type="button">Analyze</button>
       </section>
 
       <textarea id="analysisInput" class="analysis-input" rows="8" placeholder="貼上族語短文"></textarea>
-
-      <section class="analysis-summary" aria-live="polite">
-        <span id="analysisWordCount">0 words analyzed</span>
-      </section>
 
       <section class="analysis-results" aria-label="analysis results">
         <div class="analysis-header" aria-hidden="true">

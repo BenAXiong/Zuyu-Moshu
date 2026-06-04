@@ -276,12 +276,13 @@ select {
 }
 
 .analysis-summary {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-start;
   min-height: 24px;
   color: var(--muted);
   font-size: 0.86rem;
+  white-space: nowrap;
 }
 
 .analysis-results {
