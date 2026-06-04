@@ -58,6 +58,10 @@ const analysisState = {
     saved: false,
   },
 };
+const readerState = {
+  results: [],
+  segments: [],
+};
 
 document.addEventListener('DOMContentLoaded', () => {
   els.summary = document.getElementById('summary');
@@ -99,6 +103,14 @@ document.addEventListener('DOMContentLoaded', () => {
   els.analysisWordCount = document.getElementById('analysisWordCount');
   els.analyzeText = document.getElementById('analyzeText');
   els.analysisSampleText = document.getElementById('analysisSampleText');
+  els.readerLanguage = document.getElementById('readerLanguage');
+  els.readerSource = document.getElementById('readerSource');
+  els.readerInput = document.getElementById('readerInput');
+  els.readerNav = document.getElementById('readerNav');
+  els.readerOutput = document.getElementById('readerOutput');
+  els.readerSummary = document.getElementById('readerSummary');
+  els.readerAnalyze = document.getElementById('readerAnalyze');
+  els.readerSampleText = document.getElementById('readerSampleText');
 
   els.aiLanguage.addEventListener('change', updateAiSelectors);
   els.aiInput.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) aiTranslate(); });
@@ -106,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
   els.aiListen.addEventListener('click', aiListen);
   els.analyzeText.addEventListener('click', renderAnalysisShell);
   els.analysisSampleText.addEventListener('click', loadAnalysisSampleText);
+  els.readerAnalyze.addEventListener('click', renderReaderShell);
+  els.readerSampleText.addEventListener('click', loadReaderSampleText);
   els.analysisFilterButtons.forEach(button => {
     button.addEventListener('click', () => toggleAnalysisFilter(button.dataset.analysisFilter));
   });
@@ -116,8 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function activateTab(tabId) {
-  const panelId = tabId === 'paragraph-star' ? 'paragraph' : tabId;
-  document.body.dataset.activeTab = panelId;
+  document.body.dataset.activeTab = tabId;
   els.tabs.forEach(tab => {
     const active = tab.dataset.tab === tabId;
     tab.classList.toggle('is-active', active);
@@ -125,7 +138,7 @@ function activateTab(tabId) {
     else tab.removeAttribute('aria-current');
   });
   els.panels.forEach(panel => {
-    const active = panel.dataset.panel === panelId;
+    const active = panel.dataset.panel === tabId;
     panel.hidden = !active;
     panel.classList.toggle('is-active', active);
   });
@@ -155,6 +168,11 @@ function updateAnalysisFilterButtons() {
 function loadAnalysisSampleText() {
   els.analysisInput.value = ANALYSIS_SAMPLE_TEXT;
   els.analysisInput.focus();
+}
+
+function loadReaderSampleText() {
+  els.readerInput.value = ANALYSIS_SAMPLE_TEXT;
+  els.readerInput.focus();
 }
 
 function splitAnalysisTokens(text) {
@@ -222,7 +240,8 @@ async function renderAnalysisShell() {
   renderAnalysisTable();
 
   const source = document.getElementById('analysisSource').value;
-  const results = await mapWithConcurrency(tokens, ANALYSIS_CONCURRENCY, token => lookupAnalysisToken(token, source));
+  const language = document.getElementById('analysisLanguage').value;
+  const results = await mapWithConcurrency(tokens, ANALYSIS_CONCURRENCY, token => lookupAnalysisToken(token, source, language));
   analysisState.results = results;
   renderAnalysisTable();
   setAnalysisLoading(false);
@@ -275,6 +294,130 @@ function updateAnalysisSummary(total, shown) {
   els.analysisWordCount.textContent = `${total} token analyzed / ${shown} shown`;
 }
 
+async function renderReaderShell() {
+  const segments = getAnalysisSegments(els.readerInput.value);
+  const tokens = getAnalysisTokens(els.readerInput.value);
+  const tokenSet = new Set(tokens);
+  readerState.segments = segments.map(segment => ({
+    ...segment,
+    tokens: segment.tokens.filter(token => tokenSet.has(token)),
+  }));
+  readerState.results = [];
+  updateReaderSummary(tokens.length, segments.length);
+
+  if (tokens.length === 0) {
+    renderReaderEmpty('Paste text and run Analyze.');
+    renderReaderNav();
+    return;
+  }
+
+  setReaderLoading(true);
+  readerState.results = tokens.map(token => ({
+    key: token,
+    token,
+    zh: 'Looking up...',
+    root: '',
+  }));
+  renderReader();
+
+  const source = els.readerSource.value;
+  const language = els.readerLanguage.value;
+  const results = await mapWithConcurrency(tokens, ANALYSIS_CONCURRENCY, token => lookupAnalysisToken(token, source, language));
+  readerState.results = results;
+  renderReader();
+  setReaderLoading(false);
+}
+
+function renderReader() {
+  els.readerOutput.replaceChildren();
+  renderReaderNav();
+  const resultMap = new Map(readerState.results.map(result => [result.key, result]));
+  const visibleSegments = readerState.segments.filter(segment => segment.tokens.length > 0);
+  updateReaderSummary(readerState.results.length, readerState.segments.length);
+  if (!visibleSegments.length) {
+    renderReaderEmpty('No analyzed text.');
+    return;
+  }
+
+  visibleSegments.forEach(segment => {
+    const block = document.createElement('article');
+    block.className = 'reader-sentence';
+    block.id = `reader-sentence-${segment.index}`;
+
+    const text = document.createElement('p');
+    text.className = 'reader-sentence-text';
+    text.textContent = segment.text;
+    block.appendChild(text);
+
+    const tokens = document.createElement('div');
+    tokens.className = 'reader-token-grid';
+    segment.tokens.forEach(token => {
+      tokens.appendChild(renderReaderToken(resultMap.get(token) || { key: token, token, zh: 'Looking up...', root: '' }));
+    });
+    block.appendChild(tokens);
+    els.readerOutput.appendChild(block);
+  });
+}
+
+function renderReaderToken(result) {
+  const item = document.createElement('div');
+  item.className = 'reader-token';
+  if (!result.zh || result.zh === '—') item.classList.add('is-missing');
+
+  const ab = document.createElement('div');
+  ab.className = 'reader-token-ab';
+  ab.textContent = result.token || result.key || '—';
+
+  const zh = document.createElement('div');
+  zh.className = 'reader-token-zh';
+  const shortZh = getReaderShortDefinition(result.zh);
+  zh.textContent = shortZh;
+  zh.title = result.zh || '';
+
+  item.append(ab, zh);
+  return item;
+}
+
+function getReaderShortDefinition(text) {
+  const value = cleanAnalysisText(text);
+  if (!value || value === 'Looking up...') return value || '—';
+  if (value === '—') return '—';
+  return value.split(/[；;，,、]/)[0] || value;
+}
+
+function renderReaderNav() {
+  els.readerNav.replaceChildren();
+  if (!readerState.segments.length) return;
+  readerState.segments.forEach((segment, index) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'reader-nav-btn';
+    btn.textContent = String(index + 1);
+    btn.title = segment.text;
+    btn.addEventListener('click', () => {
+      document.getElementById(`reader-sentence-${segment.index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    els.readerNav.appendChild(btn);
+  });
+}
+
+function renderReaderEmpty(text) {
+  els.readerOutput.replaceChildren();
+  const empty = document.createElement('div');
+  empty.className = 'reader-empty';
+  empty.textContent = text;
+  els.readerOutput.appendChild(empty);
+}
+
+function updateReaderSummary(total, sentenceCount) {
+  els.readerSummary.textContent = `${total} token analyzed / ${sentenceCount} sentence`;
+}
+
+function setReaderLoading(on) {
+  els.readerAnalyze.disabled = on;
+  els.readerAnalyze.textContent = on ? 'Analyzing...' : 'Analyze';
+}
+
 function analysisTokenPassesFilters(token, seenTokens) {
   if (analysisState.filters.duplicates && seenTokens.has(token)) return false;
   seenTokens.add(token);
@@ -308,14 +451,14 @@ function sendRuntimeMessage(message) {
   });
 }
 
-async function lookupAnalysisToken(token, source) {
-  if (source === 'EPARK') return lookupAnalysisEpark(token);
+async function lookupAnalysisToken(token, source, language = 'Amis') {
+  if (source === 'EPARK') return lookupAnalysisEpark(token, language);
   return lookupAnalysisKilang(token);
 }
 
-async function lookupAnalysisEpark(token) {
+async function lookupAnalysisEpark(token, language = 'Amis') {
   const dialects = typeof LANG_TO_DIALECTS === 'object'
-    ? LANG_TO_DIALECTS[document.getElementById('analysisLanguage').value] || ''
+    ? LANG_TO_DIALECTS[language] || ''
     : '';
   const response = await sendRuntimeMessage({ type: 'lookup', word: token, dialects });
   const entries = Array.isArray(response?.results) ? response.results : [];

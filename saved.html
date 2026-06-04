@@ -97,6 +97,29 @@
       </section>
     </section>
 
+    <section id="panel-paragraph-star" class="workspace-panel reader-panel" data-panel="paragraph-star" hidden>
+      <section class="reader-tools" aria-label="annotated analysis controls">
+        <div class="reader-selectors">
+          <select id="readerLanguage" aria-label="Reader analysis language">
+            <option value="Amis">Amis 阿美語</option>
+          </select>
+          <select id="readerSource" aria-label="Reader analysis source">
+            <option value="KILANG">Kilang</option>
+            <option value="EPARK">ePark</option>
+          </select>
+          <button id="readerAnalyze" class="ai-primary" type="button">Analyze</button>
+          <button id="readerSampleText" type="button" title="Load sample text">.</button>
+        </div>
+        <span id="readerSummary" class="analysis-summary" aria-live="polite">0 token analyzed / 0 sentence</span>
+      </section>
+
+      <textarea id="readerInput" class="reader-input" rows="5" placeholder="貼上族語短文"></textarea>
+      <nav id="readerNav" class="reader-nav" aria-label="sentence navigation"></nav>
+      <section id="readerOutput" class="reader-output" aria-label="annotated text output">
+        <div class="reader-empty">Paste text and run Analyze.</div>
+      </section>
+    </section>
+
     <section id="panel-ai-mt-tts" class="workspace-panel ai-panel" data-panel="ai-mt-tts" hidden>
       <div class="ai-direction">
         <button class="direction-option is-active" type="button" data-direction="zh-to-x">ZH → 族語</button>
