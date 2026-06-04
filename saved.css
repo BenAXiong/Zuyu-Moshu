@@ -433,7 +433,7 @@ select {
 }
 
 .reader-single-stage {
-  width: min(100%, 980px);
+  width: min(100%, 80vw);
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
