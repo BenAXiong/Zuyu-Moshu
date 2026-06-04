@@ -81,6 +81,10 @@
 #formosan-dict-tooltip.fdt-small { font-size: 14px; }
 #formosan-dict-tooltip.fdt-large { font-size: 20px; }
 
+#formosan-dict-tooltip.fdt-phrase-tooltip {
+  max-width: min(920px, calc(100vw - 56px));
+}
+
 /* ── Header ─────────────────────────────────────────────── */
 .fdt-header {
   display: flex;
@@ -129,6 +133,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+#formosan-dict-tooltip.fdt-phrase-tooltip .fdt-word {
+  max-width: 62vw;
 }
 
 .fdt-word-wrap {
