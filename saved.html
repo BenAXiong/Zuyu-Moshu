@@ -71,29 +71,18 @@
             <option value="KILANG">Kilang</option>
             <option value="EPARK">ePark</option>
           </select>
-          <span id="analysisWordCount" class="analysis-summary" aria-live="polite">0 words analyzed</span>
+          <button id="analyzeText" class="ai-primary" type="button">Analyze</button>
         </div>
-        <button id="analyzeText" class="ai-primary" type="button">Analyze</button>
+        <span id="analysisWordCount" class="analysis-summary" aria-live="polite">0 words analyzed</span>
       </section>
 
       <section class="analysis-workbench" aria-label="analysis input and sentences">
         <textarea id="analysisInput" class="analysis-input" rows="7" placeholder="貼上族語短文"></textarea>
-        <div class="analysis-sentences" aria-label="sentence filter">
-          <div id="analysisSentences" class="analysis-sentence-list">
-            <div class="analysis-empty">Run Analyze to split sentences.</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="analysis-results" aria-label="analysis results">
-        <div class="analysis-header" aria-hidden="true">
-          <span>Word</span>
-          <span>ZH</span>
-          <span></span>
-        </div>
-        <div id="analysisList" class="analysis-list">
+        <section class="analysis-results" aria-label="analysis results">
+          <div id="analysisList" class="analysis-table-wrap">
           <div class="analysis-empty">Paste text and run Analyze.</div>
-        </div>
+          </div>
+        </section>
       </section>
     </section>
 
