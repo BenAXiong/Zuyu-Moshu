@@ -160,15 +160,12 @@ function makeLookupHeader(context, word) {
   lang.className = 'pill';
   lang.textContent = context.language || '族語';
   top.append(title, lang);
-
-  const sub = document.createElement('div');
-  sub.className = 'lookup-meta';
-  sub.append(
-    makeMetaText(getTriggerLabel(context.trigger)),
-    makeMetaText(context.page?.title || ''),
-    makeMetaText(formatTimestamp(context.timestamp))
-  );
-  card.append(top, sub);
+  card.append(top, makeContextDetails(context, [
+    ['觸發', getTriggerLabel(context.trigger)],
+    ['頁面', context.page?.title || ''],
+    ['網址', context.page?.url || ''],
+    ['時間', formatTimestamp(context.timestamp)],
+  ]));
   return card;
 }
 
@@ -342,15 +339,36 @@ function makeAnalysisHeader(context, tokens, lookupCount) {
   count.className = 'pill';
   count.textContent = `${tokens.length} token / ${lookupCount} lookup`;
   top.append(title, count);
-  const sub = document.createElement('div');
-  sub.className = 'lookup-meta';
-  sub.append(
-    makeMetaText(context.language || ''),
-    makeMetaText(context.page?.title || ''),
-    makeMetaText(formatTimestamp(context.timestamp))
-  );
-  card.append(top, sub);
+  card.append(top, makeContextDetails(context, [
+    ['語言', context.language || ''],
+    ['觸發', getTriggerLabel(context.trigger)],
+    ['頁面', context.page?.title || ''],
+    ['網址', context.page?.url || ''],
+    ['時間', formatTimestamp(context.timestamp)],
+  ]));
   return card;
+}
+
+function makeContextDetails(_context, rows) {
+  const details = document.createElement('details');
+  details.className = 'context-details';
+  const summary = document.createElement('summary');
+  summary.textContent = '詳細資訊';
+  details.appendChild(summary);
+
+  const list = document.createElement('dl');
+  list.className = 'context-detail-list';
+  rows
+    .filter(([, value]) => value)
+    .forEach(([label, value]) => {
+      const term = document.createElement('dt');
+      term.textContent = label;
+      const desc = document.createElement('dd');
+      desc.textContent = value;
+      list.append(term, desc);
+    });
+  details.appendChild(list);
+  return details;
 }
 
 function makeAnalysisGrid(rows) {

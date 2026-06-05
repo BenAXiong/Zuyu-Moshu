@@ -215,17 +215,40 @@ a {
   font-size: 0.95rem;
 }
 
-.lookup-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 8px;
+.context-details {
+  margin-top: 7px;
   color: var(--dim);
   font-size: 0.78rem;
 }
 
-.lookup-meta span:empty {
-  display: none;
+.context-details summary {
+  width: max-content;
+  max-width: 100%;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.context-details summary:hover {
+  color: var(--accent);
+}
+
+.context-detail-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 9px;
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.context-detail-list dt,
+.context-detail-list dd {
+  margin: 0;
+}
+
+.context-detail-list dd {
+  color: var(--soft);
+  overflow-wrap: anywhere;
 }
 
 .pill,
