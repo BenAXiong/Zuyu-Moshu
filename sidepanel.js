@@ -127,6 +127,7 @@ function contextToSettings(context) {
 
 async function buildLookupView(context, settings) {
   const word = FDT_LOOKUP_CORE.cleanWord(context.rawText);
+  const isZhLookup = FDT_LOOKUP_CORE.hasCjk(context.rawText || word);
   const wrap = document.createElement('div');
   wrap.className = 'companion-stack';
   wrap.appendChild(makeLookupHeader(context, word));
@@ -136,7 +137,9 @@ async function buildLookupView(context, settings) {
     return wrap;
   }
 
-  const sections = await fetchWordSections(word, settings);
+  const sections = isZhLookup
+    ? await fetchZhSections(word || context.rawText, settings)
+    : await fetchWordSections(word, settings);
   if (sections.length === 0) {
     wrap.appendChild(makeNotice('沒有結果'));
     return wrap;
@@ -185,6 +188,36 @@ async function fetchWordSections(word, settings) {
   return sections;
 }
 
+async function fetchZhSections(word, settings) {
+  const sources = getSources(settings);
+  const tasks = [];
+
+  if (canUseDict(settings)) {
+    tasks.push((async () => {
+      const response = await sendRuntimeMessage({ type: 'lookup', word, dialects: getDialects(settings) });
+      return FDT_LOOKUP_CORE.normalizeDictZhEntries(response?.results);
+    })());
+  }
+
+  if (canUseKilangZh(settings, word)) {
+    tasks.push((async () => {
+      const response = await sendRuntimeMessage({ type: 'moeZhLookup', word });
+      return FDT_LOOKUP_CORE.normalizeMoeZhEntries(response?.insights?.rows);
+    })());
+  }
+
+  const entries = FDT_LOOKUP_CORE.sortZhEntries(
+    FDT_LOOKUP_CORE.dedupeZhEntries((await Promise.all(tasks)).flat()),
+    sources
+  );
+  if (entries.length === 0) return [];
+
+  const section = document.createElement('section');
+  section.className = 'companion-card';
+  entries.slice(0, 24).forEach(entry => section.appendChild(makeZhRow(entry)));
+  return [section];
+}
+
 async function fetchKilangSection(word) {
   const response = await sendRuntimeMessage({ type: 'moeInsights', word });
   const insights = response?.insights;
@@ -195,6 +228,8 @@ async function fetchKilangSection(word) {
   section.className = 'companion-card';
 
   const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
+  const relation = makeKilangRelationRow(word, insights, primary);
+  if (relation) section.appendChild(relation);
   const chain = getMoeChain(primary, insights);
   if (chain.length > 0) section.appendChild(makeChain(chain));
 
@@ -229,6 +264,65 @@ function makeChain(chain) {
     row.appendChild(makeDrillButton(item, 'chain-chip chain-button'));
   });
   return row;
+}
+
+function makeKilangRelationRow(query, insights, primary) {
+  const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || '');
+  const fallbackFrom = FDT_LOOKUP_CORE.cleanMoeText(insights?.fallbackFrom || '');
+  const relationAffix = getRecoveryAffixSummary(insights?.recovery);
+  const inferred = getInferredAffixSummary(matched, primary);
+  if (!fallbackFrom && !inferred) return null;
+
+  const row = document.createElement('div');
+  row.className = 'relation-row';
+  const icon = document.createElement('span');
+  icon.className = 'relation-icon';
+  icon.textContent = isPureAltRecovery(insights?.recovery) && !relationAffix ? '~' : '↳';
+  const base = makeDrillButton(matched || query, 'relation-base inline-drill');
+  row.append(icon, base);
+
+  const affix = relationAffix || inferred;
+  if (affix) {
+    const plus = document.createElement('span');
+    plus.className = 'relation-plus';
+    plus.textContent = '+';
+    const label = document.createElement('span');
+    label.className = 'relation-affix';
+    label.textContent = affix;
+    row.append(plus, label);
+  }
+  return row;
+}
+
+function getRecoveryAffixSummary(recovery) {
+  const affixes = Array.isArray(recovery?.affixes) ? recovery.affixes : [];
+  return affixes.map(FDT_LOOKUP_CORE.cleanMoeText).filter(Boolean).join(' + ');
+}
+
+function getRecoveryOperations(recovery) {
+  return Array.isArray(recovery?.operations) ? recovery.operations : [];
+}
+
+function isPureAltRecovery(recovery) {
+  const operations = getRecoveryOperations(recovery);
+  return operations.includes('alt') && !operations.includes('glottal') && getRecoveryAffixSummary(recovery) === '';
+}
+
+function getInferredAffixSummary(word, row) {
+  const stem = FDT_LOOKUP_CORE.cleanMoeText(row?.stem || row?.ultimate_root || '');
+  const cleanWord = FDT_LOOKUP_CORE.cleanMoeText(word).toLowerCase();
+  const cleanStem = stem.toLowerCase();
+  if (!cleanWord || !cleanStem || cleanWord === cleanStem) return '';
+
+  const start = cleanWord.indexOf(cleanStem);
+  if (start < 0) return '';
+
+  const prefix = cleanWord.slice(0, start);
+  const suffix = cleanWord.slice(start + cleanStem.length);
+  if (prefix && suffix) return `${prefix}-...-${suffix}`;
+  if (prefix) return `${prefix}-`;
+  if (suffix) return `-${suffix}`;
+  return '';
 }
 
 function makeSenseBlock(sense, number) {
@@ -286,6 +380,31 @@ function makeDictRow(row) {
     ab.title = `查詢 ${row.ab}`;
     ab.addEventListener('click', () => drillLookup(row.ab));
     item.appendChild(ab);
+  }
+  return item;
+}
+
+function makeZhRow(row) {
+  const item = document.createElement('article');
+  item.className = 'dict-row zh-row';
+  const main = document.createElement('div');
+  main.className = 'dict-main';
+  const ab = document.createElement('button');
+  ab.type = 'button';
+  ab.className = 'dict-ab dict-drill';
+  ab.textContent = row.displayText || row.ab || '';
+  ab.title = `查詢 ${ab.textContent}`;
+  ab.addEventListener('click', () => drillLookup(ab.textContent));
+  const meta = document.createElement('span');
+  meta.textContent = row.metaLabel || row.dialect || '';
+  main.append(ab, meta);
+  item.appendChild(main);
+
+  if (row.secondaryText) {
+    const zh = document.createElement('div');
+    zh.className = 'example-zh';
+    zh.textContent = row.secondaryText;
+    item.appendChild(zh);
   }
   return item;
 }
@@ -395,7 +514,9 @@ function makeDrillButton(word, className) {
 function makeHeaderActions(text, context) {
   const group = document.createElement('div');
   group.className = 'lookup-head-actions';
+  const mt = createCompanionMtButton(text, context);
   const tts = createCompanionTtsButton(text, context);
+  if (mt) group.appendChild(mt);
   if (tts) group.appendChild(tts);
   return group;
 }
@@ -524,6 +645,24 @@ function createCompanionTtsButton(text, context = currentContext) {
   return btn;
 }
 
+function createCompanionMtButton(text, context = currentContext) {
+  const clean = FDT_LOOKUP_CORE.cleanPhraseText(text);
+  if (!clean || FDT_LOOKUP_CORE.hasCjk(clean) || context?.language !== 'Amis') return null;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'companion-ai-button';
+  btn.title = 'AI 翻譯';
+  btn.setAttribute('aria-label', 'AI 翻譯');
+  btn.textContent = '✦';
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await translateCompanionText(clean, btn);
+  });
+  return btn;
+}
+
 async function playCompanionTts(text, btn) {
   if (!text || btn.disabled) return;
   btn.disabled = true;
@@ -538,6 +677,40 @@ async function playCompanionTts(text, btn) {
     btn.disabled = false;
     btn.classList.remove('loading');
   }
+}
+
+async function translateCompanionText(text, btn) {
+  if (!text || btn.disabled) return;
+  const header = btn.closest('.lookup-head');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.classList.remove('error');
+  renderCompanionMt(header, 'AI 翻譯中...');
+  try {
+    const response = await sendRuntimeMessage({ type: 'translateIlrdfText', text });
+    if (response?.ok) renderCompanionMt(header, response.text);
+    else {
+      btn.classList.add('error');
+      renderCompanionMt(header, 'AI 翻譯失敗');
+    }
+  } catch {
+    btn.classList.add('error');
+    renderCompanionMt(header, 'AI 翻譯服務暫時無法使用');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
+}
+
+function renderCompanionMt(header, text) {
+  if (!header) return;
+  let row = header.querySelector('.companion-mt-row');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'companion-mt-row';
+    header.appendChild(row);
+  }
+  row.textContent = FDT_LOOKUP_CORE.cleanDisplayText(text) || '—';
 }
 
 function makeNotice(text) {
@@ -563,6 +736,12 @@ function canUseKilang(settings, word) {
   return settings.language === 'Amis'
     && getSources(settings).includes('KILANG')
     && !FDT_LOOKUP_CORE.hasCjk(word);
+}
+
+function canUseKilangZh(settings, word) {
+  return settings.language === 'Amis'
+    && getSources(settings).includes('KILANG')
+    && FDT_LOOKUP_CORE.hasCjk(word);
 }
 
 function canUseDict(settings) {

@@ -162,6 +162,11 @@ Done in current v1.6 Companion branch work:
   - tooltip phrase TTS and Companion TTS both call background `playIlrdfTts`;
   - content script no longer has its own generated TTS URL cache/polling path;
   - saved page TTS remains a separate direct Gradio caller for now.
+- Added Companion parity items:
+  - ZH-to-AB lookup across enabled ePark/DICT and Kilang `moeZhLookup` sources;
+  - shared ZH lookup row normalization/sorting helpers in `lookup_core.js`;
+  - Kilang relation labels for fallback/alt/derived matches;
+  - Companion Amis-to-ZH MT button in lookup/analysis headers, backed by background ILRDF MT.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -177,6 +182,9 @@ Done in current v1.6 Companion branch work:
 Remaining v1.6.0 work:
 
 - Smoke-test Companion header/example TTS in Chrome after the new implementation.
+- Smoke-test Companion ZH-to-AB lookup.
+- Smoke-test Companion fallback/alt/derived relation labels.
+- Smoke-test Companion MT button.
 - Final UI pass after that smoke test, if needed.
 
 Passed smoke tests as of 2026-06-06 +08:00:

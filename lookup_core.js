@@ -240,6 +240,89 @@ const FDT_LOOKUP_CORE = (() => {
       .filter(entry => entry.displayText && (!chineseQuery || !hasCjk(entry.displayText)));
   }
 
+  function normalizeDictZhEntries(results) {
+    return (Array.isArray(results) ? results : [])
+      .map(entry => ({
+        ...entry,
+        sourceId: 'EPARK',
+        ab: cleanDisplayText(entry?.ab || entry?.word_ab || ''),
+        zh: cleanDisplayText(entry?.zh || entry?.word_ch || ''),
+        dialect: cleanDisplayText(entry?.dialect_name || ''),
+        displayText: cleanDisplayText(entry?.ab || entry?.word_ab || ''),
+        secondaryText: cleanDisplayText(entry?.zh || entry?.word_ch || ''),
+        audioUrl: getAudioUrl(entry),
+      }))
+      .filter(entry => entry.displayText && !hasCjk(entry.displayText));
+  }
+
+  function normalizeMoeZhEntries(rows) {
+    const groups = [];
+    const byWord = new Map();
+
+    (Array.isArray(rows) ? rows : [])
+      .filter(row => cleanMoeText(row.word_ab))
+      .forEach(row => {
+        const word = cleanMoeText(row.word_ab);
+        let group = byWord.get(word.toLowerCase());
+        if (!group) {
+          group = { word, rows: [] };
+          byWord.set(word.toLowerCase(), group);
+          groups.push(group);
+        }
+        group.rows.push(row);
+      });
+
+    return groups.map(group => {
+      const bestRank = Math.min(...group.rows.map(row => getMoeSourceRank(row.dict_code)));
+      const bestRows = group.rows.filter(row => getMoeSourceRank(row.dict_code) === bestRank);
+      const definitions = [...new Set(
+        bestRows.map(row => cleanMoeDefinition(row.definition)).filter(Boolean)
+      )];
+      const examples = dedupeMoeExamples(bestRows.flatMap(getMoeExampleRows));
+      const primary = bestRows[0] || group.rows[0];
+
+      return {
+        sourceId: 'KILANG',
+        ab: group.word,
+        zh: definitions.join('；'),
+        displayText: group.word,
+        secondaryText: definitions.slice(0, 2).join('；'),
+        metaLabel: getMoeSourceMeta(primary),
+        audioUrl: getAudioUrl(primary),
+        examples,
+        moeRows: bestRows,
+        root: cleanMoeText(primary?.ultimate_root || primary?.stem || ''),
+        sourceRank: bestRank,
+      };
+    }).filter(entry => entry.displayText);
+  }
+
+  function sortZhEntries(entries, sourceOrder = []) {
+    const order = Array.isArray(sourceOrder) && sourceOrder.length > 0 ? sourceOrder : [];
+    const sourceRank = source => {
+      const index = order.indexOf(source);
+      return index >= 0 ? index : order.length;
+    };
+
+    return [...entries].sort((a, b) => {
+      const bySource = sourceRank(a.sourceId) - sourceRank(b.sourceId);
+      if (bySource !== 0) return bySource;
+      const byMoeSource = (a.sourceRank ?? 0) - (b.sourceRank ?? 0);
+      if (byMoeSource !== 0) return byMoeSource;
+      return a.displayText.localeCompare(b.displayText);
+    });
+  }
+
+  function dedupeZhEntries(entries) {
+    const seen = new Set();
+    return entries.filter(entry => {
+      const key = `${entry.sourceId}:${entry.displayText}:${entry.secondaryText || ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   return {
     cleanWord,
     cleanDisplayText,
@@ -256,5 +339,9 @@ const FDT_LOOKUP_CORE = (() => {
     getMoeSourceMeta,
     getPhraseGlossesFromTexts,
     normalizeDictEntries,
+    normalizeDictZhEntries,
+    normalizeMoeZhEntries,
+    sortZhEntries,
+    dedupeZhEntries,
   };
 })();

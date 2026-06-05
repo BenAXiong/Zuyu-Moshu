@@ -1,7 +1,9 @@
 const API_BASE = 'https://ycm-citadel.vercel.app/api/search';
 const MOE_SHADOW_BASE = 'https://ycm-citadel.vercel.app/api/moe_shadow';
+const ILRDF_MT_BASE = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
 const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT = 20000;
+const AMIS_MALAN_DIALECT = 'ami_Mala';
 const AMIS_MALAN_SPEAKER = '阿美_馬蘭_女聲';
 const MOE_COMMON_PREFIXES = ['sapi', 'paka', 'pina', 'maka', 'mala', 'mipa', 'misa', 'ma', 'mi', 'pa', 'pi', 'ka', 'sa', 'si', 'ni'];
 const MOE_COMMON_SUFFIXES = ['ayay', 'anay', 'enay', 'ay', 'en', 'an', 'aw', 'to'];
@@ -401,6 +403,15 @@ async function playIlrdfTts(text, speaker = AMIS_MALAN_SPEAKER) {
   return await playOffscreenAudio(url);
 }
 
+async function translateIlrdfText(text, dialect = AMIS_MALAN_DIALECT) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return { ok: false, reason: 'missingText' };
+  const result = await gradioCall(ILRDF_MT_BASE, 'translate', [clean, dialect, 'zho_Hant']);
+  return typeof result === 'string'
+    ? { ok: true, text: result }
+    : { ok: false, reason: 'translateFailed' };
+}
+
 async function openCompanion(sender, context = null) {
   const contextWrite = context
     ? chrome.storage.session.set({ companionContext: context })
@@ -463,6 +474,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     playIlrdfTts(msg.text, msg.speaker)
       .then(response => sendResponse(response || { ok: false }))
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'ttsFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'translateIlrdfText') {
+    translateIlrdfText(msg.text, msg.dialect)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'translateFailed' }));
 
     return true;
   }

@@ -230,6 +230,38 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
+.relation-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--soft);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+}
+
+.relation-icon {
+  color: var(--dim);
+  font-weight: 700;
+}
+
+.relation-base {
+  font-weight: 700;
+}
+
+.relation-plus {
+  color: var(--dim);
+}
+
+.relation-affix {
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 1px 7px;
+  font-size: 0.78rem;
+}
+
 .chain-button,
 .analysis-token-button,
 .dict-drill,
@@ -297,7 +329,8 @@ a {
   font: inherit;
 }
 
-.companion-tts-button {
+.companion-tts-button,
+.companion-ai-button {
   flex: none;
   width: 25px;
   height: 25px;
@@ -313,19 +346,34 @@ a {
 }
 
 .companion-tts-button:hover,
-.companion-tts-button.loading {
+.companion-tts-button.loading,
+.companion-ai-button:hover,
+.companion-ai-button.loading {
   color: var(--accent);
   border-color: var(--accent);
 }
 
-.companion-tts-button.error {
+.companion-tts-button.error,
+.companion-ai-button.error {
   color: #fca5a5;
   border-color: rgba(252,165,165,0.5);
 }
 
-.companion-tts-button:disabled {
+.companion-tts-button:disabled,
+.companion-ai-button:disabled {
   cursor: wait;
   opacity: 0.75;
+}
+
+.companion-mt-row {
+  margin-top: 10px;
+  border: 1px solid rgba(232,223,200,0.16);
+  border-radius: 7px;
+  background: rgba(232,223,200,0.07);
+  color: var(--accent);
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .example-zh {
