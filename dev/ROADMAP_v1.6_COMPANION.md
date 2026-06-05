@@ -1,6 +1,6 @@
 # v1.6 Companion Roadmap
 
-Status: implementation started; first coding slice in progress
+Status: implementation in progress; Side Panel shell plus first lookup/analysis rendering are implemented
 Started: 2026-06-06 +08:00
 
 This document is the source-of-truth roadmap for the v1.6 Companion work. Companion is a native Chrome Side Panel surface for workflows that are too large for tooltips and too immediate for the saved page.
@@ -113,7 +113,7 @@ Do not expose empty future tabs.
 
 ## First Coding Slice
 
-Side Panel plumbing only:
+Done in commit `b958410`:
 
 - Add manifest side panel permission/config.
 - Add `sidepanel.html`, `sidepanel.js`, and `sidepanel.css`.
@@ -123,17 +123,44 @@ Side Panel plumbing only:
 - Background stores latest context in `chrome.storage.session`.
 - Background opens Side Panel.
 - Side Panel renders raw selected text, detected mode, page title/url, trigger, and timestamp.
-- No lookup in this first slice.
+
+## Second Coding Slice
+
+Done in current v1.6 Companion branch work:
+
+- Added `lookup_core.js` as a namespaced pure helper layer (`FDT_LOOKUP_CORE`) for Companion.
+- Loaded `lookup_core.js` into the Side Panel and included it in the packaging manifest script.
+- Built Companion `查詢` rendering:
+  - enabled-source ordered lookup;
+  - Kilang full sense rows;
+  - Kilang examples;
+  - compact source/tier metadata;
+  - first textual root/parent/matched-word chain;
+  - dictionary rows when ePark/ILRDF-like dictionary sources are enabled.
+- Built Companion `分析` rendering:
+  - selected phrase/sentence token grid;
+  - skip lookup for tokens of 2 characters or less;
+  - bounded-concurrency lookup for longer unique tokens;
+  - source-ordered Kilang/dictionary lookup;
+  - short ZH glosses and root labels when available.
+- Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
 
 1. Add thin native Side Panel shell.
 2. Add popup target routing and `chrome.storage.session` handoff.
 3. Verify selection opens/updates Companion with raw context.
-4. Extract shared core/TTS utilities.
-5. Build word lookup view.
-6. Build phrase/sentence analysis view.
-7. Add morphology textual chain.
+4. Extract shared text/lookup core utilities. Done for Companion lookup helpers; TTS utilities still pending.
+5. Build word lookup view. Done.
+6. Build phrase/sentence analysis view. Done at MVP/token-grid level.
+7. Add morphology textual chain. Started with root/parent/matched-word chain; richer derivation drilling remains pending.
+
+Remaining v1.6.0 work:
+
+- Fix or hide/disable phrase tooltip TTS before release.
+- Add token drill inside Companion.
+- Add minimal Companion navigation/back behavior if drilling lands in v1.6.0.
+- Smoke-test the Side Panel in Chrome with tooltip target fallback behavior.
 
 ## v1.6.x Sequence
 

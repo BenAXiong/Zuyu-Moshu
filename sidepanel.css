@@ -89,6 +89,11 @@ button {
   padding: 14px;
 }
 
+.companion-stack {
+  display: grid;
+  gap: 12px;
+}
+
 .empty-state {
   min-height: 180px;
   display: grid;
@@ -151,4 +156,185 @@ button {
 a {
   color: var(--soft);
   overflow-wrap: anywhere;
+}
+
+.companion-card,
+.lookup-head {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.lookup-head {
+  padding: 12px;
+}
+
+.lookup-head-main,
+.section-title,
+.sense-head,
+.dict-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lookup-head h2,
+.section-title h2,
+.sense-head h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.lookup-head h2 {
+  min-width: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.section-title {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.section-title h2 {
+  font-size: 0.95rem;
+}
+
+.lookup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+  color: var(--dim);
+  font-size: 0.78rem;
+}
+
+.lookup-meta span:empty {
+  display: none;
+}
+
+.pill,
+.chain-chip {
+  flex: none;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.pill.subtle {
+  background: var(--surface-hi);
+  color: var(--soft);
+}
+
+.chain-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chain-arrow {
+  color: var(--dim);
+}
+
+.sense-block,
+.dict-row {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sense-block:last-child,
+.dict-row:last-child {
+  border-bottom: 0;
+}
+
+.sense-head h3,
+.dict-main strong {
+  color: var(--accent);
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.examples {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+.example-ab,
+.dict-ab {
+  color: var(--text);
+}
+
+.example-zh {
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+
+.dict-main span,
+.dict-ab {
+  color: var(--dim);
+  font-size: 0.84rem;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+  gap: 0;
+}
+
+.analysis-token {
+  min-height: 78px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  padding: 10px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.analysis-token strong {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.analysis-token:not(.found) strong {
+  color: var(--dim);
+}
+
+.analysis-gloss {
+  color: var(--soft);
+  font-size: 0.88rem;
+}
+
+.analysis-root {
+  color: var(--dim);
+  font-size: 0.76rem;
+}
+
+.notice,
+.loading-card {
+  padding: 18px 14px;
+  color: var(--dim);
+  text-align: center;
+}
+
+.loading-card h2 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1rem;
+}
+
+.loading-card p {
+  margin: 0;
 }

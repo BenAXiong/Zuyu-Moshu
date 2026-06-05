@@ -30,6 +30,7 @@ $payloadFiles = @(
   'background.js',
   'content.css',
   'content.js',
+  'lookup_core.js',
   'options.css',
   'options.html',
   'options.js',
