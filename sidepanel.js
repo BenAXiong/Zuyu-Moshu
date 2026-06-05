@@ -1,10 +1,31 @@
 const CONTEXT_KEY = 'companionContext';
 const LOOKUP_CONCURRENCY = 4;
 const MAX_ANALYSIS_TOKENS = 80;
+const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
+const INDIHUNT_MAX_ITEMS = 200;
+const INDIHUNT_LANG_CODE = {
+  Amis: 'ami',
+  Atayal: 'tay',
+  Paiwan: 'pwn',
+  Bunun: 'bnn',
+  Puyuma: 'pyu',
+  Rukai: 'dru',
+  Tsou: 'tsu',
+  Saisiyat: 'xsy',
+  Tao: 'tao',
+  Thao: 'ssf',
+  Kavalan: 'ckv',
+  Truku: 'trv',
+  Sakizaya: 'szy',
+  Sediq: 'see',
+  Kanakanavu: 'xnb',
+  Saaroa: 'sxr',
+};
 
 let renderSerial = 0;
 let currentContext = null;
 let companionHistory = [];
+let currentExportItems = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
@@ -59,6 +80,7 @@ async function renderContext(context, options = {}) {
   setActiveMode(mode);
   content.className = 'content';
   content.replaceChildren(makeLoadingState(context));
+  currentExportItems = [];
 
   const settings = contextToSettings(context);
   const view = context.mode === 'word'
@@ -326,6 +348,7 @@ function getInferredAffixSummary(word, row) {
 }
 
 function makeSenseBlock(sense, number) {
+  const savedItem = registerExportItem(buildSavedMoeSense(sense));
   const block = document.createElement('article');
   block.className = 'sense-block';
   const head = document.createElement('div');
@@ -335,13 +358,16 @@ function makeSenseBlock(sense, number) {
   const meta = document.createElement('span');
   meta.className = 'pill subtle';
   meta.textContent = FDT_LOOKUP_CORE.getMoeSourceMeta(sense.row) || `#${number}`;
-  head.append(def, meta);
+  const actions = document.createElement('div');
+  actions.className = 'row-actions';
+  actions.append(meta, createCompanionSaveButton(() => savedItem));
+  head.append(def, actions);
   block.appendChild(head);
 
   if (sense.examples.length > 0) {
     const examples = document.createElement('div');
     examples.className = 'examples';
-    sense.examples.forEach(example => examples.appendChild(makeExample(example)));
+    sense.examples.forEach(example => examples.appendChild(makeExample(example, savedItem)));
     block.appendChild(examples);
   }
 
@@ -362,6 +388,7 @@ async function fetchDictSection(word, settings, source) {
 }
 
 function makeDictRow(row) {
+  const savedItem = registerExportItem(buildSavedDictRow(row));
   const item = document.createElement('article');
   item.className = 'dict-row';
   const main = document.createElement('div');
@@ -370,7 +397,11 @@ function makeDictRow(row) {
   zh.textContent = row.displayText;
   const dialect = document.createElement('span');
   dialect.textContent = row.dialect || '';
-  main.append(zh, dialect);
+  const actions = document.createElement('div');
+  actions.className = 'row-actions';
+  if (row.audioUrl) actions.appendChild(createDirectAudioButton(row.audioUrl));
+  actions.append(dialect, createCompanionSaveButton(() => savedItem));
+  main.append(zh, actions);
   item.appendChild(main);
   if (row.ab) {
     const ab = document.createElement('button');
@@ -385,6 +416,7 @@ function makeDictRow(row) {
 }
 
 function makeZhRow(row) {
+  const savedItem = registerExportItem(buildSavedZhRow(row));
   const item = document.createElement('article');
   item.className = 'dict-row zh-row';
   const main = document.createElement('div');
@@ -397,7 +429,11 @@ function makeZhRow(row) {
   ab.addEventListener('click', () => drillLookup(ab.textContent));
   const meta = document.createElement('span');
   meta.textContent = row.metaLabel || row.dialect || '';
-  main.append(ab, meta);
+  const actions = document.createElement('div');
+  actions.className = 'row-actions';
+  if (row.audioUrl) actions.appendChild(createDirectAudioButton(row.audioUrl));
+  actions.append(meta, createCompanionSaveButton(() => savedItem));
+  main.append(ab, actions);
   item.appendChild(main);
 
   if (row.secondaryText) {
@@ -516,9 +552,187 @@ function makeHeaderActions(text, context) {
   group.className = 'lookup-head-actions';
   const mt = createCompanionMtButton(text, context);
   const tts = createCompanionTtsButton(text, context);
+  const exportBtn = createCompanionExportButton();
   if (mt) group.appendChild(mt);
   if (tts) group.appendChild(tts);
+  group.appendChild(exportBtn);
   return group;
+}
+
+function createCompanionSaveButton(getItem) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'companion-icon-button companion-save-button';
+  const setState = saved => {
+    btn.classList.toggle('saved', saved);
+    btn.title = saved ? '移除儲存' : '儲存';
+    btn.setAttribute('aria-label', saved ? '移除儲存' : '儲存');
+    btn.textContent = saved ? '◆' : '◇';
+  };
+  setState(false);
+
+  const readItem = () => fdtNormalizeSavedItem(getItem());
+  try {
+    const item = readItem();
+    fdtFindSavedItemKey(item.key).then(saved => setState(!!saved));
+  } catch {
+    btn.disabled = true;
+  }
+
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const result = await fdtToggleSavedItem(readItem());
+      setState(result.saved);
+    } catch {
+      btn.classList.add('error');
+      clearTimeout(btn._errorTimer);
+      btn._errorTimer = setTimeout(() => btn.classList.remove('error'), 900);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+function createCompanionExportButton() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'companion-icon-button companion-export-button';
+  btn.title = 'Export to IndiHunt';
+  btn.setAttribute('aria-label', 'Export to IndiHunt');
+  const img = document.createElement('img');
+  img.src = chrome.runtime.getURL('assets/indivore/icon128.png');
+  img.alt = '';
+  img.width = 18;
+  img.height = 18;
+  btn.appendChild(img);
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    exportCompanionToIndiHunt();
+  });
+  return btn;
+}
+
+function registerExportItem(item) {
+  const normalized = fdtNormalizeSavedItem(item);
+  if (!normalized.ab && !normalized.zh && normalized.examples.length === 0) return normalized;
+  if (!currentExportItems.some(existing => existing.key === normalized.key)) {
+    currentExportItems.push(normalized);
+  }
+  return normalized;
+}
+
+function getCompanionSaveContext() {
+  return {
+    language: currentContext?.language || '',
+    headword: currentContext?.rawText || '',
+    pageUrl: currentContext?.page?.url || '',
+    pageTitle: currentContext?.page?.title || '',
+  };
+}
+
+function cleanExportText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function getIndiHuntLanguageCode(language) {
+  return INDIHUNT_LANG_CODE[language] || '';
+}
+
+function cleanIndiHuntItem(item) {
+  return Object.fromEntries(
+    Object.entries(item).filter(([, value]) => {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== '';
+    })
+  );
+}
+
+function formatIndiHuntTags(item) {
+  return [item.sourceId].map(cleanExportText).filter(Boolean);
+}
+
+function formatIndiHuntNotes(item, example = null) {
+  const notes = [];
+  if (item.root) notes.push(`Root: ${item.root}`);
+  if (item.affixes?.length) notes.push(`Affixes: ${item.affixes.join(' + ')}`);
+  if (item.sourceMeta || item.dialect) notes.push(`Source: ${item.sourceMeta || item.dialect}`);
+  if (example?.source) notes.push(`Example source: ${example.source}`);
+  if (item.pageTitle) notes.push(`Page: ${item.pageTitle}`);
+  if (item.pageUrl) notes.push(item.pageUrl);
+  return notes.join(' · ');
+}
+
+function formatIndiHuntMainItem(item) {
+  const ab = cleanExportText(item.ab || item.matchedWord || item.headword);
+  const language = getIndiHuntLanguageCode(item.language);
+  if (!ab || !language) return null;
+
+  return cleanIndiHuntItem({
+    ab,
+    zh: cleanExportText(item.zh),
+    type: item.type === 'example' ? 'sentence' : 'word',
+    language,
+    dialect: cleanExportText(item.dialect),
+    audio: cleanExportText(item.audioUrl),
+    notes: formatIndiHuntNotes(item),
+    tags: formatIndiHuntTags(item),
+  });
+}
+
+function formatIndiHuntSentenceItem(example, parent) {
+  const ab = cleanExportText(example.ab);
+  const language = getIndiHuntLanguageCode(parent.language);
+  if (!ab || !language) return null;
+
+  return cleanIndiHuntItem({
+    ab,
+    zh: cleanExportText(example.zh),
+    type: 'sentence',
+    language,
+    dialect: cleanExportText(parent.dialect),
+    audio: cleanExportText(example.audioUrl || example.audio_url),
+    notes: formatIndiHuntNotes(parent, example),
+    tags: formatIndiHuntTags(parent),
+  });
+}
+
+function formatIndiHuntItems(item) {
+  const items = [];
+  const main = formatIndiHuntMainItem(item);
+  if (main) items.push(main);
+  (item.examples || []).forEach(example => {
+    const sentence = formatIndiHuntSentenceItem(example, item);
+    if (sentence) items.push(sentence);
+  });
+  return items;
+}
+
+function encodeIndiHuntPayload(payload) {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function exportCompanionToIndiHunt() {
+  const items = currentExportItems.flatMap(formatIndiHuntItems).slice(0, INDIHUNT_MAX_ITEMS);
+  if (items.length === 0) return;
+  const b64 = encodeIndiHuntPayload({
+    version: 1,
+    source: 'ycm-popupdict',
+    exportedAt: new Date().toISOString(),
+    items,
+  });
+  chrome.runtime.sendMessage({ type: 'openSavedPage', url: `${INDIHUNT_IMPORT_URL}#v1:${b64}` });
 }
 
 async function lookupAnalysisToken(token, settings) {
@@ -588,7 +802,8 @@ function makeSectionTitle(titleText, source) {
   return head;
 }
 
-function makeExample(example) {
+function makeExample(example, parentItem = null) {
+  const savedItem = fdtNormalizeSavedItem(buildSavedExample(example, parentItem));
   const row = document.createElement('div');
   row.className = 'example-row';
   const top = document.createElement('div');
@@ -597,13 +812,78 @@ function makeExample(example) {
   ab.className = 'example-ab';
   appendDrillableAbText(ab, example.ab || '');
   const tts = createCompanionTtsButton(example.ab || '', currentContext);
+  const actions = document.createElement('div');
+  actions.className = 'row-actions';
+  if (example.audioUrl) actions.appendChild(createDirectAudioButton(example.audioUrl));
+  if (tts) actions.appendChild(tts);
+  actions.appendChild(createCompanionSaveButton(() => savedItem));
   top.appendChild(ab);
-  if (tts) top.appendChild(tts);
+  top.appendChild(actions);
   const zh = document.createElement('div');
   zh.className = 'example-zh';
   zh.textContent = example.zh || '';
   row.append(top, zh);
   return row;
+}
+
+function buildSavedExample(example, parentItem = null) {
+  return {
+    ...getCompanionSaveContext(),
+    type: 'example',
+    ab: example.ab,
+    zh: example.zh,
+    sourceId: example.sourceId || parentItem?.sourceId || '',
+    sourceMeta: example.source || parentItem?.sourceMeta || '',
+    dialect: parentItem?.dialect || '',
+    root: parentItem?.root || '',
+    audioUrl: example.audioUrl || '',
+  };
+}
+
+function buildSavedMoeSense(sense) {
+  const row = sense?.row || {};
+  return {
+    ...getCompanionSaveContext(),
+    type: 'sense',
+    matchedWord: FDT_LOOKUP_CORE.cleanMoeText(row.word_ab || currentContext?.rawText || ''),
+    ab: FDT_LOOKUP_CORE.cleanMoeText(row.word_ab || currentContext?.rawText || ''),
+    zh: FDT_LOOKUP_CORE.cleanMoeDefinition(sense?.definition || row.definition || ''),
+    sourceId: 'KILANG',
+    sourceMeta: FDT_LOOKUP_CORE.getMoeSourceMeta(row),
+    root: FDT_LOOKUP_CORE.cleanMoeText(row.ultimate_root || row.stem || ''),
+    examples: sense?.examples || [],
+    audioUrl: sense?.audioUrl || FDT_LOOKUP_CORE.getAudioUrl(row),
+  };
+}
+
+function buildSavedDictRow(row) {
+  return {
+    ...getCompanionSaveContext(),
+    type: 'word',
+    matchedWord: row.ab || currentContext?.rawText || '',
+    ab: row.ab || currentContext?.rawText || '',
+    zh: row.displayText || row.zh || '',
+    sourceId: row.sourceId || 'EPARK',
+    sourceMeta: row.metaLabel || '',
+    dialect: row.dialect || '',
+    audioUrl: row.audioUrl || '',
+  };
+}
+
+function buildSavedZhRow(row) {
+  return {
+    ...getCompanionSaveContext(),
+    type: 'word',
+    matchedWord: row.displayText || row.ab || '',
+    ab: row.displayText || row.ab || '',
+    zh: row.secondaryText || row.zh || '',
+    sourceId: row.sourceId || 'EPARK',
+    sourceMeta: row.metaLabel || '',
+    dialect: row.dialect || '',
+    root: row.root || '',
+    examples: row.examples || [],
+    audioUrl: row.audioUrl || '',
+  };
 }
 
 function appendDrillableAbText(parent, text) {
@@ -641,6 +921,35 @@ function createCompanionTtsButton(text, context = currentContext) {
     e.preventDefault();
     e.stopPropagation();
     await playCompanionTts(clean, btn);
+  });
+  return btn;
+}
+
+function createDirectAudioButton(url) {
+  const clean = typeof url === 'string' && /^https?:\/\//.test(url) ? url : '';
+  if (!clean) return null;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'companion-icon-button companion-audio-button';
+  btn.title = '播放發音';
+  btn.setAttribute('aria-label', '播放發音');
+  btn.textContent = '▶';
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.classList.remove('error');
+    try {
+      const response = await sendRuntimeMessage({ type: 'playOffscreenAudio', url: clean });
+      if (!response?.ok) btn.classList.add('error');
+    } catch {
+      btn.classList.add('error');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
   });
   return btn;
 }

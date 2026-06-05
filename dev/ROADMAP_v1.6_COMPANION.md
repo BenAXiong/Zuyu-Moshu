@@ -167,6 +167,10 @@ Done in current v1.6 Companion branch work:
   - shared ZH lookup row normalization/sorting helpers in `lookup_core.js`;
   - Kilang relation labels for fallback/alt/derived matches;
   - Companion Amis-to-ZH MT button in lookup/analysis headers, backed by background ILRDF MT.
+- Added Companion parity actions:
+  - save/bookmark buttons for Companion senses, dictionary rows, ZH result rows, and examples;
+  - current-view IndiHunt export from Companion;
+  - direct source-audio buttons when rows/examples expose `audioUrl`.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -185,6 +189,8 @@ Remaining v1.6.0 work:
 - Smoke-test Companion ZH-to-AB lookup.
 - Smoke-test Companion fallback/alt/derived relation labels.
 - Smoke-test Companion MT button.
+- Smoke-test Companion save/bookmark and current-view IndiHunt export.
+- Smoke-test Companion direct audio button if a source row exposes `audioUrl`.
 - Final UI pass after that smoke test, if needed.
 
 Passed smoke tests as of 2026-06-06 +08:00:
