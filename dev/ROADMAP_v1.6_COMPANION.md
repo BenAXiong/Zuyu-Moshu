@@ -147,12 +147,17 @@ Done in current v1.6 Companion branch work:
   - analysis token click opens that word in `查詢`;
   - Kilang chain nodes drill to their word;
   - dictionary AB lines drill to their word;
+  - AB words inside examples drill to their word;
   - `返回` restores the previous Companion context;
   - fresh page selections reset local drill history.
 - Added phrase-tooltip TTS offscreen playback:
   - content script still generates and caches ILRDF TTS URLs;
   - background creates an offscreen audio document on demand;
   - offscreen document plays generated TTS audio outside the page content context.
+- Added first Companion TTS implementation:
+  - lookup/analysis headers can play the current selected Amis text;
+  - Companion examples can play their AB sentence line;
+  - background generates/caches ILRDF TTS URLs and reuses offscreen playback.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -160,15 +165,24 @@ Done in current v1.6 Companion branch work:
 1. Add thin native Side Panel shell.
 2. Add popup target routing and `chrome.storage.session` handoff.
 3. Verify selection opens/updates Companion with raw context.
-4. Extract shared text/lookup core utilities. Done for Companion lookup helpers; TTS utilities still pending.
+4. Extract shared text/lookup core utilities. Done for Companion lookup helpers; TTS utilities started through background/offscreen playback.
 5. Build word lookup view. Done.
 6. Build phrase/sentence analysis view. Done at MVP/token-grid level.
 7. Add morphology textual chain. Started with root/parent/matched-word chain; richer derivation drilling remains pending.
 
 Remaining v1.6.0 work:
 
-- Smoke-test Side Panel lookup/analysis/drill in Chrome with tooltip target fallback behavior.
-- Smoke-test phrase tooltip TTS audio in Chrome after the offscreen playback change.
+- Smoke-test Companion header/example TTS in Chrome after the new implementation.
+- Final UI pass after that smoke test, if needed.
+
+Passed smoke tests as of 2026-06-06 +08:00:
+
+- Popup target toggle: `提示框 / Companion`.
+- Double-click opens Companion lookup.
+- Ctrl-select phrase opens Companion analysis.
+- Hover stays tooltip-only/off.
+- Side Panel lookup/analysis/drill behavior.
+- Phrase tooltip TTS audio through offscreen playback.
 
 ## v1.6.x Sequence
 

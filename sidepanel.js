@@ -46,12 +46,10 @@ async function renderContext(context, options = {}) {
   updateBackButton();
   currentContext = context;
   const serial = ++renderSerial;
-  const status = document.getElementById('status');
   const content = document.getElementById('content');
-  if (!content || !status) return;
+  if (!content) return;
 
   if (!context) {
-    status.textContent = '等待選取文字';
     content.className = 'content empty';
     content.replaceChildren(makeEmptyState());
     return;
@@ -59,7 +57,6 @@ async function renderContext(context, options = {}) {
 
   const mode = context.mode === 'word' ? 'lookup' : 'analysis';
   setActiveMode(mode);
-  status.textContent = `${getModeLabel(context.mode)} · ${getTriggerLabel(context.trigger)}`;
   content.className = 'content';
   content.replaceChildren(makeLoadingState(context));
 
@@ -156,7 +153,7 @@ function makeLookupHeader(context, word) {
   top.className = 'lookup-head-main';
   const title = document.createElement('h2');
   title.textContent = context.rawText || word || '查詢';
-  top.appendChild(title);
+  top.append(title, makeHeaderActions(context.rawText, context));
   card.append(top, makeContextDetails(context, [
     ['語言', context.language || ''],
     ['觸發', getTriggerLabel(context.trigger)],
@@ -329,7 +326,7 @@ function makeAnalysisHeader(context, tokens, lookupCount) {
   top.className = 'lookup-head-main';
   const title = document.createElement('h2');
   title.textContent = context.rawText || '分析';
-  top.appendChild(title);
+  top.append(title, makeHeaderActions(context.rawText, context));
   card.append(top, makeContextDetails(context, [
     ['語言', context.language || ''],
     ['統計', `${tokens.length} token / ${lookupCount} lookup`],
@@ -393,6 +390,14 @@ function makeDrillButton(word, className) {
   button.title = `查詢 ${word}`;
   button.addEventListener('click', () => drillLookup(word));
   return button;
+}
+
+function makeHeaderActions(text, context) {
+  const group = document.createElement('div');
+  group.className = 'lookup-head-actions';
+  const tts = createCompanionTtsButton(text, context);
+  if (tts) group.appendChild(tts);
+  return group;
 }
 
 async function lookupAnalysisToken(token, settings) {
@@ -465,14 +470,74 @@ function makeSectionTitle(titleText, source) {
 function makeExample(example) {
   const row = document.createElement('div');
   row.className = 'example-row';
+  const top = document.createElement('div');
+  top.className = 'example-ab-line';
   const ab = document.createElement('div');
   ab.className = 'example-ab';
-  ab.textContent = example.ab || '';
+  appendDrillableAbText(ab, example.ab || '');
+  const tts = createCompanionTtsButton(example.ab || '', currentContext);
+  top.appendChild(ab);
+  if (tts) top.appendChild(tts);
   const zh = document.createElement('div');
   zh.className = 'example-zh';
   zh.textContent = example.zh || '';
-  row.append(ab, zh);
+  row.append(top, zh);
   return row;
+}
+
+function appendDrillableAbText(parent, text) {
+  const raw = String(text || '');
+  if (!raw) return;
+
+  const parts = raw.split(/([\p{L}\p{M}\d'^’ʼ:.-]+)/gu);
+  parts.forEach(part => {
+    if (!part) return;
+    const word = FDT_LOOKUP_CORE.cleanWord(part);
+    if (!isDrillableWord(word)) {
+      parent.appendChild(document.createTextNode(part));
+      return;
+    }
+
+    parent.appendChild(makeDrillButton(part, 'inline-drill'));
+  });
+}
+
+function isDrillableWord(word) {
+  return !!word && word.length > 2 && !FDT_LOOKUP_CORE.hasCjk(word);
+}
+
+function createCompanionTtsButton(text, context = currentContext) {
+  const clean = FDT_LOOKUP_CORE.cleanPhraseText(text);
+  if (!clean || FDT_LOOKUP_CORE.hasCjk(clean) || context?.language !== 'Amis') return null;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'companion-tts-button';
+  btn.title = 'TTS';
+  btn.setAttribute('aria-label', 'TTS');
+  btn.textContent = '🔊';
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await playCompanionTts(clean, btn);
+  });
+  return btn;
+}
+
+async function playCompanionTts(text, btn) {
+  if (!text || btn.disabled) return;
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.classList.remove('error');
+  try {
+    const response = await sendRuntimeMessage({ type: 'playIlrdfTts', text });
+    if (!response?.ok) btn.classList.add('error');
+  } catch {
+    btn.classList.add('error');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+  }
 }
 
 function makeNotice(text) {

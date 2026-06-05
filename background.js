@@ -1,5 +1,8 @@
 const API_BASE = 'https://ycm-citadel.vercel.app/api/search';
 const MOE_SHADOW_BASE = 'https://ycm-citadel.vercel.app/api/moe_shadow';
+const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
+const ILRDF_TIMEOUT = 20000;
+const AMIS_MALAN_SPEAKER = '阿美_馬蘭_女聲';
 const MOE_COMMON_PREFIXES = ['sapi', 'paka', 'pina', 'maka', 'mala', 'mipa', 'misa', 'ma', 'mi', 'pa', 'pi', 'ka', 'sa', 'si', 'ni'];
 const MOE_COMMON_SUFFIXES = ['ayay', 'anay', 'enay', 'ay', 'en', 'an', 'aw', 'to'];
 const MOE_ALT_SWAPS = { u: 'o', o: 'u', l: 'r', r: 'l', f: 'v', v: 'f' };
@@ -8,6 +11,8 @@ const MAX_MOE_ALT_POSITIONS = 4;
 const MAX_MOE_PREFIX_STRIPS = 2;
 const MAX_MOE_SUFFIX_STRIPS = 1;
 const MIN_MOE_RECOVERY_BASE_LEN = 4;
+const MAX_TTS_CACHE = 200;
+const ttsFetched = new Map();
 
 async function updateIcon(enabled) {
   const size = 16;
@@ -284,6 +289,71 @@ async function fetchMoeZhInsights(keyword) {
   return { query: keyword, rows };
 }
 
+async function gradioCall(base, fn, data) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const submitRes = await fetch(`${base}/gradio_api/call/${fn}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+      signal: controller.signal,
+    });
+    if (!submitRes.ok) return null;
+    const { event_id } = await submitRes.json();
+    if (!event_id) return null;
+
+    const streamRes = await fetch(`${base}/gradio_api/call/${fn}/${event_id}`, { signal: controller.signal });
+    if (!streamRes.ok || !streamRes.body) return null;
+
+    const reader = streamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const match = /event:\s*complete[\r\n]+data:\s*(\[[\s\S]+?\])\s*$/.exec(buf);
+        if (match) return JSON.parse(match[1])[0];
+      }
+    } finally {
+      reader.cancel().catch(() => {});
+    }
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function getTtsCacheKey(speaker, text) {
+  return `${speaker}\n${text}`;
+}
+
+async function getTtsAudioUrl(speaker, text) {
+  const key = getTtsCacheKey(speaker, text);
+  if (ttsFetched.has(key)) return await ttsFetched.get(key);
+
+  const request = gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text])
+    .then(result => {
+      const url = result?.url ?? (typeof result === 'string' ? result : '');
+      if (!url) {
+        ttsFetched.delete(key);
+        return '';
+      }
+      if (ttsFetched.size >= MAX_TTS_CACHE) ttsFetched.delete(ttsFetched.keys().next().value);
+      ttsFetched.set(key, url);
+      return url;
+    })
+    .catch(error => {
+      ttsFetched.delete(key);
+      throw error;
+    });
+
+  ttsFetched.set(key, request);
+  return await request;
+}
+
 function notifyCompanionContextUpdated() {
   try {
     chrome.runtime.sendMessage({ type: 'companionContextUpdated' }, () => {
@@ -321,6 +391,14 @@ async function playOffscreenAudio(url) {
   if (!url) return { ok: false, reason: 'missingUrl' };
   await ensureOffscreenAudioDocument();
   return await chrome.runtime.sendMessage({ type: 'offscreenPlayAudio', url });
+}
+
+async function playIlrdfTts(text, speaker = AMIS_MALAN_SPEAKER) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return { ok: false, reason: 'missingText' };
+  const url = await getTtsAudioUrl(speaker, clean);
+  if (!url) return { ok: false, reason: 'ttsUnavailable' };
+  return await playOffscreenAudio(url);
 }
 
 async function openCompanion(sender, context = null) {
@@ -377,6 +455,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     playOffscreenAudio(msg.url)
       .then(response => sendResponse(response || { ok: false }))
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'playFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'playIlrdfTts') {
+    playIlrdfTts(msg.text, msg.speaker)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'ttsFailed' }));
 
     return true;
   }
