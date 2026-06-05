@@ -1,6 +1,6 @@
 # v1.6 Companion Roadmap
 
-Status: planned
+Status: implementation started; first coding slice in progress
 Started: 2026-06-06 +08:00
 
 This document is the source-of-truth roadmap for the v1.6 Companion work. Companion is a native Chrome Side Panel surface for workflows that are too large for tooltips and too immediate for the saved page.
@@ -216,4 +216,3 @@ v1.7.0 is reserved for dictionary/source expansion work, not Companion UI expans
 ## Open Questions
 
 None currently blocking implementation.
-

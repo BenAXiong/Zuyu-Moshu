@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-06 01:56 +08:00
+Global timestamp: 2026-06-06 02:07 +08:00
 
 Current extension version: 1.6.0
 
@@ -85,6 +85,12 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Saved-items page | Universal plus Amis AI | Dedicated extension page titled `族語魔書` with centered workspace tabs: `咒語庫`, `短章分析`, `短章分析*`, `AI MT & TTS`, `Kilang`, `族語考試`, and `?`. `咒語庫` is functional. `短章分析` tokenizes pasted text, runs bounded-concurrency lookup against Kilang or ePark, and renders a full-width sentence-by-sentence AB/root/ZH table with column-hiding toggles and duplicate hiding. `短章分析*` is now a separate annotated reader panel that renders sentence rows as inline AB text with furigana-style ZH glosses below each analyzed word, optional top annotations for fallback/alt display, optional sentence divider hiding, optional Chinese-gloss/top-annotation hiding, full/split/single layouts, single-sentence previous/next arrows, per-sentence Amis TTS, per-sentence Amis-to-ZH MT, and per-sentence IndiHunt export. Single-sentence mode centers the current sentence in a container that can expand to `80vw`. Reader top annotations format derived/recovered forms as `root + affixes` and prefix alternate-spelling recovery with `~`. Reader MT/TTS use Malan as the fallback Amis dialect; IndiHunt export sends the original sentence and the MT line only when present. Short analysis lookup cap is 500 unique tokens. `AI MT & TTS` supports Amis ZH-to-Amis / Amis-to-ZH translation and Amis TTS through ILRDF AI Labs; the language selector lists 16 language codes but non-Amis currently reports Amis-only support. `Kilang`, `族語考試`, and `?` remain empty shells. | `saved.html`, `saved.css`, `saved.js`. |
 | Popup access | Universal | Mini menu includes a link to open the saved-items page. | `popup.html`, `popup.js`. |
 | Future export path | Universal | Saved-page and tooltip IndiHunt export open `https://indilog.vercel.app/import#v1:<base64>` with the agreed v1 payload, 16-language code map, flattened example sentence items, and local IndiHunt logo assets. The source-neutral saved item schema keeps room for future Notion, paragraph-analysis, MT/TTS, and Kilang-tree features. | `saved_store.js`: `fdtFormatSavedItem()`; `saved.js`: `exportItemsToIndiHunt()`, `formatIndiHuntItems()`, `openIndiHuntImport()`; `content.js`: `exportTooltipToIndiHunt()`; `assets/indivore/`. |
+
+## Companion
+
+| Feature | Scope | Current state | Implementation |
+|---|---|---|---|
+| Native Side Panel shell | v1.6 in progress | Companion is wired as a Chrome native Side Panel with a raw-context display only. Popup can choose lookup display target `提示框 / Companion`, and eligible double-click / Ctrl-select selections route to Companion when selected. Hover remains tooltip-only/off. The content script sends raw selected context to background, background stores it in `chrome.storage.session`, opens the Side Panel, and the Side Panel renders selected text, mode, tokens, page URL/title, trigger, and timestamp. Lookup, analysis, and Kilang chain rendering are not implemented in Companion yet. | `manifest.json`: `side_panel`, `sidePanel` permission; `popup.html`, `popup.js`; `content.js`: `sendCompanionContext()`; `background.js`: `openCompanion()`; `sidepanel.html`, `sidepanel.css`, `sidepanel.js`. |
 
 ### Audio Universalization Plan
 

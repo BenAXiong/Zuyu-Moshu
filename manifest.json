@@ -24,6 +24,9 @@
   "background": {
     "service_worker": "background.js"
   },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
@@ -41,5 +44,5 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["storage"]
+  "permissions": ["storage", "sidePanel"]
 }

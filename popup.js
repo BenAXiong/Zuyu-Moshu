@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setAltSpellingToggle(s.altSpelling, s.language);
     setHoverToggle(s.triggerHover);
     setAiToolsToggle(s.aiToolsEnabled);
+    setDisplayTarget(s.lookupDisplayTarget);
   });
 
   // Language: save on change
@@ -43,9 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (group === 'theme') {
         applyTheme(value);
         patch({ theme: value });
-      } else {
+      } else if (group === 'font') {
         applyFontSize(value);
         patch({ fontSize: value });
+      } else if (group === 'displayTarget') {
+        if (value === 'companion' && !canUseSidePanel()) return;
+        patch({ lookupDisplayTarget: value });
+        setDisplayTarget(value);
       }
     });
   });
@@ -94,6 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('saved').addEventListener('click', () => {
     fdtOpenSavedPage();
   });
+
+  document.getElementById('companion').addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'openCompanion' });
+  });
 });
 
 function setToggle(enabled) {
@@ -118,6 +127,26 @@ function setHoverToggle(enabled) {
 
 function setAiToolsToggle(enabled) {
   document.getElementById('aiTools').classList.toggle('off', !enabled);
+}
+
+function setDisplayTarget(target) {
+  const value = canUseSidePanel() ? (target || 'tooltip') : 'tooltip';
+  activatePill('displayTarget', value);
+  const companion = document.querySelector('.pill[data-group="displayTarget"][data-value="companion"]');
+  if (companion) {
+    companion.disabled = !canUseSidePanel();
+    companion.classList.toggle('disabled', !canUseSidePanel());
+    companion.title = canUseSidePanel() ? '在 Companion 顯示查詢' : '此 Chrome 不支援 Side Panel';
+  }
+  const companionButton = document.getElementById('companion');
+  if (companionButton) {
+    companionButton.disabled = !canUseSidePanel();
+    companionButton.title = canUseSidePanel() ? '開啟 Companion' : '此 Chrome 不支援 Side Panel';
+  }
+}
+
+function canUseSidePanel() {
+  return !!chrome.sidePanel;
 }
 
 function activatePill(group, value) {

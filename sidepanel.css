@@ -1,0 +1,154 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg: #101114;
+  --surface: #17181d;
+  --surface-hi: #1f2028;
+  --text: #f4f1ea;
+  --soft: #c9c6bf;
+  --dim: #8a867d;
+  --line: rgba(255,255,255,0.09);
+  --accent: #e8dfc8;
+  --accent-soft: rgba(232,223,200,0.10);
+}
+
+body {
+  min-width: 280px;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+        "Microsoft JhengHei", sans-serif;
+}
+
+.companion-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0;
+}
+
+#status {
+  margin: 2px 0 0;
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+button {
+  font: inherit;
+}
+
+#clear {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-hi);
+  color: var(--soft);
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+#clear:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.mode-tab {
+  flex: 1;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dim);
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.mode-tab.active {
+  background: var(--accent-soft);
+  border-color: var(--line);
+  color: var(--accent);
+}
+
+.content {
+  padding: 14px;
+}
+
+.empty-state {
+  min-height: 180px;
+  display: grid;
+  place-content: center;
+  gap: 6px;
+  color: var(--dim);
+  text-align: center;
+}
+
+.empty-state strong {
+  color: var(--text);
+}
+
+.context-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.context-head,
+.context-row {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.context-row:last-child {
+  border-bottom: 0;
+}
+
+.context-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--dim);
+  font-size: 0.76rem;
+}
+
+.context-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 650;
+}
+
+.token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.token {
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 7px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+a {
+  color: var(--soft);
+  overflow-wrap: anywhere;
+}

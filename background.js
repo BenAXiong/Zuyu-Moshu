@@ -284,11 +284,62 @@ async function fetchMoeZhInsights(keyword) {
   return { query: keyword, rows };
 }
 
+function notifyCompanionContextUpdated() {
+  try {
+    chrome.runtime.sendMessage({ type: 'companionContextUpdated' }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch {}
+}
+
+async function openCompanion(sender, context = null) {
+  const contextWrite = context
+    ? chrome.storage.session.set({ companionContext: context })
+    : Promise.resolve();
+
+  if (!chrome.sidePanel?.open) {
+    return { ok: false, reason: 'sidePanelUnavailable' };
+  }
+
+  const windowId = sender?.tab?.windowId;
+  if (typeof windowId === 'number') {
+    await chrome.sidePanel.open({ windowId });
+    await contextWrite;
+    notifyCompanionContextUpdated();
+    return { ok: true };
+  }
+
+  const window = await chrome.windows.getLastFocused();
+  if (typeof window?.id !== 'number') {
+    return { ok: false, reason: 'windowUnavailable' };
+  }
+  await chrome.sidePanel.open({ windowId: window.id });
+  await contextWrite;
+  notifyCompanionContextUpdated();
+  return { ok: true };
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'openSavedPage') {
     chrome.tabs.create({ url: msg.url || chrome.runtime.getURL('saved.html') });
     sendResponse({ ok: true });
     return false;
+  }
+
+  if (msg.type === 'openCompanion') {
+    openCompanion(_sender)
+      .then(sendResponse)
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'openFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'companionContext') {
+    openCompanion(_sender, msg.context)
+      .then(sendResponse)
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'openFailed' }));
+
+    return true;
   }
 
   if (msg.type === 'lookup') {

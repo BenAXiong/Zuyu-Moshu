@@ -26,7 +26,7 @@
 }
 
 body {
-  width: 296px;
+  width: 318px;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
@@ -240,6 +240,12 @@ option { background: var(--surface); color: var(--text); }
 
 .pill:hover { color: var(--text-soft); }
 
+.pill:disabled,
+.pill.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .pill.active {
   background: var(--surface);
   color: var(--accent-text);
@@ -280,6 +286,17 @@ body.field .pill.active {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-bg);
+}
+
+.footer-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.footer-actions button:disabled:hover {
+  color: var(--dim);
+  border-color: var(--line-strong);
+  background: var(--surface-hi);
 }
 
 .footer-actions svg {

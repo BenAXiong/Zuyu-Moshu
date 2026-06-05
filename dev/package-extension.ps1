@@ -40,6 +40,9 @@ $payloadFiles = @(
   'saved.html',
   'saved.js',
   'saved_store.js',
+  'sidepanel.css',
+  'sidepanel.html',
+  'sidepanel.js',
   'shared.js'
 )
 

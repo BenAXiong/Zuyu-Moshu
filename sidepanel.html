@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Companion</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="companion-top">
+    <div>
+      <h1>Companion</h1>
+      <p id="status">等待選取文字</p>
+    </div>
+    <button id="clear" type="button" title="清除">清除</button>
+  </header>
+
+  <nav class="mode-tabs" aria-label="Companion modes">
+    <button class="mode-tab active" type="button" data-mode="lookup">查詢</button>
+    <button class="mode-tab" type="button" data-mode="analysis">分析</button>
+  </nav>
+
+  <main id="content" class="content empty">
+    <div class="empty-state">
+      <strong>選取文字開始</strong>
+      <span>將查詢顯示切換到 Companion 後，雙擊或 Ctrl+選取文字會在這裡顯示。</span>
+    </div>
+  </main>
+
+  <script src="shared.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

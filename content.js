@@ -141,7 +141,7 @@ document.addEventListener('dblclick', () => {
       if (chrome.runtime.lastError) return;
       if (s.triggerHover) return;
       if (!s.triggerDblclick) return;
-      handleSelection(s);
+      handleSelection(s, 'doubleClick');
     });
   } catch (e) { console.debug(e); }
 });
@@ -173,7 +173,7 @@ document.addEventListener('mouseup', (e) => {
     chrome.storage.sync.get(DEFAULTS, (s) => {
       if (chrome.runtime.lastError) return;
       if (!s.triggerCtrlSelect) return;
-      handleSelection(s);
+      handleSelection(s, 'ctrlSelect');
     });
   } catch (e) { console.debug(e); }
 });
@@ -363,12 +363,12 @@ function getInputSelection(el) {
   return { raw, rect };
 }
 
-function handleSelection(settings) {
+function handleSelection(settings, trigger = 'selection') {
   if (!settings.enabled) return;
 
   const inputSelection = getInputSelection(getDeepActiveElement());
   if (inputSelection) {
-    lookupRawSelection(inputSelection.raw, inputSelection.rect, settings);
+    lookupRawSelection(inputSelection.raw, inputSelection.rect, settings, trigger);
     return;
   }
 
@@ -389,7 +389,7 @@ function handleSelection(settings) {
   if (!rect) return;
   if (!rect.width && !rect.height) return;
 
-  lookupRawSelection(raw, rect, settings);
+  lookupRawSelection(raw, rect, settings, trigger);
 }
 
 function handleHover(clientX, clientY, settings) {
@@ -413,17 +413,52 @@ function handleHover(clientX, clientY, settings) {
   triggerLookup(word, hovered.rect, settings);
 }
 
-function lookupRawSelection(raw, rect, settings) {
+async function lookupRawSelection(raw, rect, settings, trigger = 'selection') {
   const phraseTokens = getPhraseTokens(raw);
+  const word = cleanWord(raw);
+  const hasPhrase = phraseTokens.length >= 2;
+  const hasWord = hasLookupLength(word) && word.length <= MAX_WORD_LEN;
+
+  if (settings.lookupDisplayTarget === 'companion' && (hasPhrase || hasWord)) {
+    const sent = await sendCompanionContext(raw, phraseTokens, settings, trigger);
+    if (sent) {
+      dismissTooltip();
+      return;
+    }
+  }
+
   if (phraseTokens.length >= 2) {
     triggerPhraseLookup(cleanPhraseText(raw), phraseTokens, rect, settings);
     return;
   }
 
-  const word = cleanWord(raw);
   if (!hasLookupLength(word) || word.length > MAX_WORD_LEN) return;
   lastHoverKey = '';
   triggerLookup(word, rect, settings);
+}
+
+async function sendCompanionContext(raw, phraseTokens, settings, trigger) {
+  const text = cleanPhraseText(raw);
+  const word = cleanWord(raw);
+  const isPhrase = phraseTokens.length >= 2;
+  const mode = isPhrase
+    ? (/[.!?。！？\r\n]/.test(raw) ? 'sentences' : 'phrase')
+    : 'word';
+  const context = {
+    mode,
+    rawText: text || raw,
+    tokens: isPhrase ? phraseTokens : (word ? [word] : []),
+    page: {
+      title: document.title || '',
+      url: location.href,
+    },
+    trigger,
+    language: settings.language || '',
+    sources: Array.isArray(settings.sources) ? settings.sources : DEFAULTS.sources,
+    timestamp: new Date().toISOString(),
+  };
+  const response = await sendRuntimeMessage({ type: 'companionContext', context });
+  return !!response?.ok;
 }
 
 function cleanPhraseText(text) {
