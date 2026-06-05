@@ -470,6 +470,7 @@ async function buildAnalysisView(context, settings) {
     root: '',
     sourceId: '',
   });
+  wrap.appendChild(makeReaderView(context.rawText || '', rows));
   wrap.appendChild(makeAnalysisGrid(rows));
   return wrap;
 }
@@ -535,6 +536,95 @@ function makeAnalysisGrid(rows) {
     grid.appendChild(item);
   });
   return grid;
+}
+
+function makeReaderView(rawText, rows) {
+  const section = document.createElement('section');
+  section.className = 'companion-reader companion-card';
+  const resultMap = new Map();
+  rows.forEach(row => {
+    if (!resultMap.has(row.token)) resultMap.set(row.token, row);
+  });
+
+  const segments = getReaderSegments(rawText);
+  if (segments.length === 0) {
+    section.appendChild(makeNotice('沒有可閱讀的句子'));
+    return section;
+  }
+
+  segments.forEach(segment => section.appendChild(makeReaderSentence(segment, resultMap)));
+  return section;
+}
+
+function getReaderSegments(rawText) {
+  const text = String(rawText || '').trim();
+  if (!text) return [];
+  return text
+    .split(/(?<=[.!?。！？])\s+|[\r\n]+/)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map((text, index) => ({ text, index, parts: getReaderParts(text) }));
+}
+
+function getReaderParts(text) {
+  const tokenPattern = /[\p{L}\p{M}\d'^’ʼ:.-]+/gu;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = tokenPattern.exec(text))) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', text: text.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: 'token', text: match[0], token: FDT_LOOKUP_CORE.cleanWord(match[0]) });
+    lastIndex = tokenPattern.lastIndex;
+  }
+  if (lastIndex < text.length) parts.push({ type: 'text', text: text.slice(lastIndex) });
+  return parts;
+}
+
+function makeReaderSentence(segment, resultMap) {
+  const block = document.createElement('article');
+  block.className = 'reader-sentence';
+  const line = document.createElement('div');
+  line.className = 'reader-line';
+  segment.parts.forEach(part => {
+    if (part.type === 'token') line.appendChild(makeReaderToken(part, resultMap.get(part.token)));
+    else line.appendChild(document.createTextNode(part.text));
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'reader-actions';
+  const mt = createCompanionMtButton(segment.text, currentContext);
+  const tts = createCompanionTtsButton(segment.text, currentContext);
+  if (mt) actions.appendChild(mt);
+  if (tts) actions.appendChild(tts);
+
+  block.appendChild(line);
+  if (actions.childNodes.length > 0) block.appendChild(actions);
+  return block;
+}
+
+function makeReaderToken(part, result) {
+  const item = document.createElement('span');
+  item.className = result?.sourceId ? 'reader-token found' : 'reader-token missing';
+  const top = document.createElement('span');
+  top.className = 'reader-token-top';
+  top.textContent = getReaderTopAnnotation(part, result);
+
+  const ab = makeDrillButton(part.text, 'reader-token-ab inline-drill');
+  const zh = document.createElement('span');
+  zh.className = 'reader-token-zh';
+  zh.textContent = result?.glosses?.length ? result.glosses.join(' / ') : 'x';
+  item.append(top, ab, zh);
+  return item;
+}
+
+function getReaderTopAnnotation(part, result) {
+  if (!result) return '';
+  const display = FDT_LOOKUP_CORE.cleanWord(result.displayToken || '');
+  if (display && display !== part.token) return `~ ${result.displayToken}`;
+  if (result.root && result.root !== part.token) return result.root;
+  return '';
 }
 
 function makeDrillButton(word, className) {
@@ -990,34 +1080,34 @@ async function playCompanionTts(text, btn) {
 
 async function translateCompanionText(text, btn) {
   if (!text || btn.disabled) return;
-  const header = btn.closest('.lookup-head');
+  const target = btn.closest('.lookup-head') || btn.closest('.reader-sentence');
   btn.disabled = true;
   btn.classList.add('loading');
   btn.classList.remove('error');
-  renderCompanionMt(header, 'AI 翻譯中...');
+  renderCompanionMt(target, 'AI 翻譯中...');
   try {
     const response = await sendRuntimeMessage({ type: 'translateIlrdfText', text });
-    if (response?.ok) renderCompanionMt(header, response.text);
+    if (response?.ok) renderCompanionMt(target, response.text);
     else {
       btn.classList.add('error');
-      renderCompanionMt(header, 'AI 翻譯失敗');
+      renderCompanionMt(target, 'AI 翻譯失敗');
     }
   } catch {
     btn.classList.add('error');
-    renderCompanionMt(header, 'AI 翻譯服務暫時無法使用');
+    renderCompanionMt(target, 'AI 翻譯服務暫時無法使用');
   } finally {
     btn.disabled = false;
     btn.classList.remove('loading');
   }
 }
 
-function renderCompanionMt(header, text) {
-  if (!header) return;
-  let row = header.querySelector('.companion-mt-row');
+function renderCompanionMt(target, text) {
+  if (!target) return;
+  let row = target.querySelector('.companion-mt-row');
   if (!row) {
     row = document.createElement('div');
     row.className = 'companion-mt-row';
-    header.appendChild(row);
+    target.appendChild(row);
   }
   row.textContent = FDT_LOOKUP_CORE.cleanDisplayText(text) || '—';
 }

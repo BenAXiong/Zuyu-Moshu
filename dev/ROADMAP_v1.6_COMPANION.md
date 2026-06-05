@@ -171,6 +171,11 @@ Done in current v1.6 Companion branch work:
   - save/bookmark buttons for Companion senses, dictionary rows, ZH result rows, and examples;
   - current-view IndiHunt export from Companion;
   - direct source-audio buttons when rows/examples expose `audioUrl`.
+- Added first v1.6.2 reader clone:
+  - analysis view now includes an annotated reader section above the token grid;
+  - AB tokens render inline with compact ZH glosses below;
+  - top annotations show alternate/fallback/root hints where available;
+  - Amis sentence blocks expose MT/TTS actions.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -191,6 +196,7 @@ Remaining v1.6.0 work:
 - Smoke-test Companion MT button.
 - Smoke-test Companion save/bookmark and current-view IndiHunt export.
 - Smoke-test Companion direct audio button if a source row exposes `audioUrl`.
+- Smoke-test Companion annotated reader layout and per-sentence MT/TTS.
 - Final UI pass after that smoke test, if needed.
 
 Passed smoke tests as of 2026-06-06 +08:00:
