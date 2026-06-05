@@ -1,4 +1,5 @@
 let savedItems = [];
+const ttsUrlCache = new Map();
 
 // ── ILRDF AI — direct Gradio 5 calls (no proxy) ──────────────────────────────
 const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
@@ -580,8 +581,7 @@ async function playReaderSentenceTts(segment, btn) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
   try {
-    const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text], controller.signal);
-    const url = result?.url ?? (typeof result === 'string' ? result : null);
+    const url = await getCachedTtsAudioUrl(speaker, text, controller.signal);
     if (!url) return;
 
     const audio = new Audio(url);
@@ -1195,6 +1195,23 @@ async function gradioCall(base, fn, data, signal) {
   return result;
 }
 
+function getTtsCacheKey(speaker, text) {
+  return `${speaker}\n${text}`;
+}
+
+async function getCachedTtsAudioUrl(speaker, text, signal) {
+  const key = getTtsCacheKey(speaker, text);
+  if (ttsUrlCache.has(key)) return ttsUrlCache.get(key);
+
+  const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text], signal);
+  const url = result?.url ?? (typeof result === 'string' ? result : null);
+  if (!url) return null;
+
+  if (ttsUrlCache.size >= 200) ttsUrlCache.delete(ttsUrlCache.keys().next().value);
+  ttsUrlCache.set(key, url);
+  return url;
+}
+
 function getActiveDirection() {
   return document.querySelector('.direction-option.is-active')?.dataset.direction ?? 'zh-to-x';
 }
@@ -1263,8 +1280,7 @@ async function aiListen() {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
   try {
-    const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, ttsText], controller.signal);
-    const url = result?.url ?? (typeof result === 'string' ? result : null);
+    const url = await getCachedTtsAudioUrl(speaker, ttsText, controller.signal);
     if (url) {
       const audio = new Audio(url);
       currentTtsAudio = audio;

@@ -49,6 +49,7 @@ let currentTooltipNav = null;
 let savedOpenButton = null;
 const fetched = new Map();
 const moeFetched = new Map();
+const ttsFetched = new Map();
 
 // ' (apostrophe) intentionally excluded — it's a glottal stop character in these orthographies
 function cleanWord(w) {
@@ -1137,6 +1138,34 @@ async function gradioCall(base, fn, data) {
   }
 }
 
+function getTtsCacheKey(speaker, text) {
+  return `${speaker}\n${text}`;
+}
+
+async function getTtsAudioUrl(speaker, text) {
+  const key = getTtsCacheKey(speaker, text);
+  if (ttsFetched.has(key)) return await ttsFetched.get(key);
+
+  const request = gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text])
+    .then(result => {
+      const url = result?.url ?? (typeof result === 'string' ? result : '');
+      if (!url) {
+        ttsFetched.delete(key);
+        return '';
+      }
+      if (ttsFetched.size >= MAX_CACHE) ttsFetched.delete(ttsFetched.keys().next().value);
+      ttsFetched.set(key, url);
+      return url;
+    })
+    .catch(err => {
+      ttsFetched.delete(key);
+      throw err;
+    });
+
+  ttsFetched.set(key, request);
+  return await request;
+}
+
 function playAudio(url, btn) {
   if (!url) return;
   if (activeAudio) {
@@ -2105,9 +2134,12 @@ async function speakPhrase(phrase, btn) {
   if (!text) return;
   setPhraseAiBusy(btn, true);
   try {
-    const result = await gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [AMIS_MALAN_SPEAKER, text]);
-    const url = result?.url ?? (typeof result === 'string' ? result : '');
-    if (url) playAudio(url, btn);
+    const url = await getTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
+    if (url) {
+      playAudio(url, btn);
+    } else {
+      btn?.classList.add('error');
+    }
   } catch {
     btn?.classList.add('error');
   } finally {
