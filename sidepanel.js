@@ -156,11 +156,9 @@ function makeLookupHeader(context, word) {
   top.className = 'lookup-head-main';
   const title = document.createElement('h2');
   title.textContent = context.rawText || word || '查詢';
-  const lang = document.createElement('span');
-  lang.className = 'pill';
-  lang.textContent = context.language || '族語';
-  top.append(title, lang);
+  top.appendChild(title);
   card.append(top, makeContextDetails(context, [
+    ['語言', context.language || ''],
     ['觸發', getTriggerLabel(context.trigger)],
     ['頁面', context.page?.title || ''],
     ['網址', context.page?.url || ''],
@@ -198,10 +196,6 @@ async function fetchKilangSection(word) {
 
   const section = document.createElement('section');
   section.className = 'companion-card';
-  section.appendChild(makeSectionTitle(
-    insights.match && insights.match !== word ? `${insights.match} ← ${word}` : 'Kilang',
-    'Kilang'
-  ));
 
   const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
   const chain = getMoeChain(primary, insights);
@@ -335,25 +329,23 @@ function makeAnalysisHeader(context, tokens, lookupCount) {
   top.className = 'lookup-head-main';
   const title = document.createElement('h2');
   title.textContent = context.rawText || '分析';
-  const count = document.createElement('span');
-  count.className = 'pill';
-  count.textContent = `${tokens.length} token / ${lookupCount} lookup`;
-  top.append(title, count);
+  top.appendChild(title);
   card.append(top, makeContextDetails(context, [
     ['語言', context.language || ''],
+    ['統計', `${tokens.length} token / ${lookupCount} lookup`],
     ['觸發', getTriggerLabel(context.trigger)],
     ['頁面', context.page?.title || ''],
     ['網址', context.page?.url || ''],
     ['時間', formatTimestamp(context.timestamp)],
-  ]));
+  ], `${tokens.length} token / ${lookupCount} lookup`));
   return card;
 }
 
-function makeContextDetails(_context, rows) {
+function makeContextDetails(_context, rows, summarySuffix = '') {
   const details = document.createElement('details');
   details.className = 'context-details';
   const summary = document.createElement('summary');
-  summary.textContent = '詳細資訊';
+  summary.textContent = summarySuffix ? `詳細資訊 · ${summarySuffix}` : '詳細資訊';
   details.appendChild(summary);
 
   const list = document.createElement('dl');
