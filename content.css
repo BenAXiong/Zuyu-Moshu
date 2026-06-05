@@ -453,11 +453,7 @@
   overflow-wrap: anywhere;
 }
 
-.fdt-phrase-item {
-  display: inline;
-}
-
-.fdt-phrase-token {
+.fdt-phrase-gloss {
   display: inline;
   border: 0;
   background: transparent;
@@ -472,12 +468,8 @@
   cursor: pointer;
 }
 
-.fdt-phrase-token:hover {
+.fdt-phrase-gloss:hover {
   color: var(--fdt-text);
-}
-
-.fdt-phrase-gloss {
-  color: inherit;
 }
 
 .fdt-phrase-note,

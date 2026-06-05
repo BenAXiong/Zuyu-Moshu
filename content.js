@@ -2108,15 +2108,7 @@ function renderPhraseResults(phrase, results, settings) {
 
   const sequence = document.createElement('div');
   sequence.className = 'fdt-phrase-sequence';
-  results.forEach((result, index) => {
-    if (index > 0) {
-      const sep = document.createElement('span');
-      sep.className = 'fdt-phrase-separator';
-      sep.textContent = ' | ';
-      sequence.appendChild(sep);
-    }
-    appendPhraseResultToken(sequence, result);
-  });
+  appendPhraseSequence(sequence, phrase, results);
   section.appendChild(sequence);
 
   if (results.every(result => !result.zh)) {
@@ -2131,6 +2123,56 @@ function renderPhraseResults(phrase, results, settings) {
   refreshTooltipLayout();
 }
 
+function appendPhraseSequence(parent, phrase, results) {
+  const text = String(phrase || '');
+  const tokenPattern = /[\p{L}\p{M}\d'^’ʼ:-]+/gu;
+  let lastIndex = 0;
+  let resultIndex = 0;
+  let rendered = 0;
+  let match;
+
+  while ((match = tokenPattern.exec(text)) && resultIndex < results.length) {
+    const clean = cleanWord(match[0]);
+    if (!clean || hasCjk(clean)) continue;
+    const result = results[resultIndex];
+    if (result?.token && clean !== result.token) continue;
+
+    const separator = text.slice(lastIndex, match.index);
+    if (rendered > 0) appendPhraseSeparator(parent, separator, true);
+    appendPhraseResultToken(parent, result);
+    rendered++;
+    resultIndex++;
+    lastIndex = tokenPattern.lastIndex;
+  }
+
+  if (rendered === 0) {
+    results.forEach((result, index) => {
+      if (index > 0) appendPhraseSeparator(parent, '', true);
+      appendPhraseResultToken(parent, result);
+    });
+    return;
+  }
+
+  appendPhraseSeparator(parent, text.slice(lastIndex), false);
+}
+
+function appendPhraseSeparator(parent, separator, betweenTokens) {
+  const punctuation = getPhraseSeparatorPunctuation(separator);
+  if (punctuation) {
+    parent.appendChild(document.createTextNode(betweenTokens ? ` ${punctuation} ` : ` ${punctuation}`));
+    return;
+  }
+  if (betweenTokens) parent.appendChild(document.createTextNode(' | '));
+}
+
+function getPhraseSeparatorPunctuation(separator) {
+  const compact = String(separator || '').replace(/\s+/g, '');
+  if (!compact) return '';
+  return compact
+    .replace(/([,，;；:：!?！？])([“「『])/g, '$1 $2')
+    .replace(/^\|+|\|+$/g, '');
+}
+
 function appendPhraseResultToken(parent, result) {
   const glosses = Array.isArray(result.glosses) && result.glosses.length > 0
     ? result.glosses
@@ -2142,13 +2184,10 @@ function appendPhraseResultToken(parent, result) {
     return;
   }
 
-  const item = document.createElement('span');
-  item.className = 'fdt-phrase-item';
-
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'fdt-phrase-token';
-  btn.textContent = result.displayToken || result.token;
+  btn.className = 'fdt-phrase-gloss';
+  btn.textContent = label;
   btn.title = `查詢 ${result.displayToken || result.token}`;
   btn.setAttribute('aria-label', `查詢 ${result.displayToken || result.token}`);
   btn.addEventListener('click', (e) => {
@@ -2157,12 +2196,7 @@ function appendPhraseResultToken(parent, result) {
     drillLookup(result.displayToken || result.token);
   });
   btn.addEventListener('keydown', (e) => e.stopPropagation());
-
-  const gloss = document.createElement('span');
-  gloss.className = 'fdt-phrase-gloss';
-  gloss.textContent = label;
-  item.append(btn, document.createTextNode(' '), gloss);
-  parent.appendChild(item);
+  parent.appendChild(btn);
 }
 
 function getPhraseGlossesFromTexts(texts, options = {}) {
@@ -2194,8 +2228,10 @@ function getShortPhraseDefinitions(text) {
   if (!clean) return [];
   const withoutParen = clean
     .replace(/[（(][^（）()]*[）)]/g, ' ')
+    .replace(/[〈《<][^〉》>]*[〉》>]/g, ' ')
     .replace(/[（）()]/g, ' ')
-    .replace(/^[\s,.;:，。；、]+|[\s,.;:，。；、]+$/g, '')
+    .replace(/[〈〉《》<>]/g, ' ')
+    .replace(/^[\s,.;:：，。；、]+|[\s,.;:：，。；、]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
   const candidates = withoutParen
