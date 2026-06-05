@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 10:59 +08:00
+Global timestamp: 2026-06-05 14:55 +08:00
 
 Current extension version: 1.5.5
 
@@ -73,7 +73,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | Header audio button | Source-agnostic direct headword audio | Shows only when the current main headword row has direct audio. It does not borrow nested example audio. | `content.js`: `getAudioUrl()`, `setHeaderAudioUrl()`. |
 | Row audio button | Source-agnostic direct row audio | Shows when a result row or Kilang sense row has direct audio. Hidden when absent. | `content.js`: `appendResultRow()`, `renderMoeSenseRows()`, `createAudioButton()`. |
 | Example audio button | Source-agnostic example audio | Shows when an example has `audioUrl` / `audio_url`. Kilang examples are audio-ready if Citadel adds audio fields later. | `content.js`: `getExampleRows()`, `getMoeExampleRows()`, `buildExamplesPanel()`. |
-| ILRDF TTS playback | Amis AI | Phrase-assist TTS, saved-page AI TTS, and `短章分析*` sentence TTS call ILRDF Gradio directly and cache returned audio URLs in memory for the current extension/page session. Tooltip phrase TTS also caches in-flight requests so repeated clicks on the same speaker/text do not fan out duplicate TTS jobs. | `content.js`: `getTtsAudioUrl()`, `speakPhrase()`; `saved.js`: `getCachedTtsAudioUrl()`, `playReaderSentenceTts()`, `aiListen()`. |
+| ILRDF TTS playback | Amis AI | Phrase-assist TTS, saved-page AI TTS, and `短章分析*` sentence TTS call ILRDF Gradio directly and cache returned audio URLs in memory for the current extension/page session. Tooltip phrase TTS also caches in-flight requests so repeated clicks on the same speaker/text do not fan out duplicate TTS jobs. If a normal web page blocks delayed playback after the async TTS generation step, the tooltip TTS button keeps the generated URL and enters a ready state so the next click plays synchronously from cache. | `content.js`: `getTtsAudioUrl()`, `getCachedTtsAudioUrl()`, `speakPhrase()`; `saved.js`: `getCachedTtsAudioUrl()`, `playReaderSentenceTts()`, `aiListen()`. |
 | Example copy button | Universal examples | Copies AB + ZH text. It is stacked below the example save button, and the icon temporarily changes to a check mark after success. | `content.js`: `createCopyButton()`, `setCopyButtonIcon()`. |
 
 ## Saved Items

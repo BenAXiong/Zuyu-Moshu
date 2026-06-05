@@ -271,7 +271,8 @@
 }
 
 .fdt-phrase-ai-btn:hover,
-.fdt-phrase-ai-btn.playing {
+.fdt-phrase-ai-btn.playing,
+.fdt-phrase-ai-btn.ready {
   color: var(--fdt-accent);
   background: var(--fdt-accent-soft);
   border-color: var(--fdt-accent);

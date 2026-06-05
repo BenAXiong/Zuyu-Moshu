@@ -1142,6 +1142,11 @@ function getTtsCacheKey(speaker, text) {
   return `${speaker}\n${text}`;
 }
 
+function getCachedTtsAudioUrl(speaker, text) {
+  const cached = ttsFetched.get(getTtsCacheKey(speaker, text));
+  return typeof cached === 'string' ? cached : '';
+}
+
 async function getTtsAudioUrl(speaker, text) {
   const key = getTtsCacheKey(speaker, text);
   if (ttsFetched.has(key)) return await ttsFetched.get(key);
@@ -1166,8 +1171,9 @@ async function getTtsAudioUrl(speaker, text) {
   return await request;
 }
 
-function playAudio(url, btn) {
-  if (!url) return;
+function playAudio(url, btn, options = {}) {
+  if (!url) return Promise.resolve(false);
+  const markError = options.markError !== false;
   if (activeAudio) {
     activeAudio.pause();
     activeAudio = null;
@@ -1176,7 +1182,7 @@ function playAudio(url, btn) {
   const audio = new Audio(url);
   activeAudio = audio;
   btn.classList.add('playing');
-  btn.classList.remove('error');
+  btn.classList.remove('error', 'ready');
 
   const cleanup = () => {
     if (activeAudio === audio) activeAudio = null;
@@ -1185,11 +1191,12 @@ function playAudio(url, btn) {
   audio.addEventListener('ended', cleanup, { once: true });
   audio.addEventListener('error', () => {
     cleanup();
-    btn.classList.add('error');
+    if (markError) btn.classList.add('error');
   }, { once: true });
-  audio.play().catch(() => {
+  return audio.play().then(() => true).catch(() => {
     cleanup();
-    btn.classList.add('error');
+    if (markError) btn.classList.add('error');
+    return false;
   });
 }
 
@@ -2132,11 +2139,26 @@ async function translatePhrase(phrase) {
 async function speakPhrase(phrase, btn) {
   const text = cleanPhraseText(phrase);
   if (!text) return;
+
+  const cachedUrl = btn?.dataset.audioUrl || getCachedTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
+  if (cachedUrl) {
+    playAudio(cachedUrl, btn);
+    return;
+  }
+
   setPhraseAiBusy(btn, true);
   try {
     const url = await getTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
     if (url) {
-      playAudio(url, btn);
+      if (btn) {
+        btn.dataset.audioUrl = url;
+        btn.title = 'TTS';
+      }
+      const started = await playAudio(url, btn, { markError: false });
+      if (!started && btn) {
+        btn.classList.add('ready');
+        btn.title = 'TTS 已產生，再點一次播放';
+      }
     } else {
       btn?.classList.add('error');
     }
