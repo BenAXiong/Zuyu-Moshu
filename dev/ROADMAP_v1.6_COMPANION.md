@@ -151,13 +151,17 @@ Done in current v1.6 Companion branch work:
   - `返回` restores the previous Companion context;
   - fresh page selections reset local drill history.
 - Added phrase-tooltip TTS offscreen playback:
-  - content script still generates and caches ILRDF TTS URLs;
+  - background now generates and caches ILRDF TTS URLs for tooltip phrase TTS;
   - background creates an offscreen audio document on demand;
   - offscreen document plays generated TTS audio outside the page content context.
 - Added first Companion TTS implementation:
   - lookup/analysis headers can play the current selected Amis text;
   - Companion examples can play their AB sentence line;
   - background generates/caches ILRDF TTS URLs and reuses offscreen playback.
+- Cleaned up generated TTS ownership:
+  - tooltip phrase TTS and Companion TTS both call background `playIlrdfTts`;
+  - content script no longer has its own generated TTS URL cache/polling path;
+  - saved page TTS remains a separate direct Gradio caller for now.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order

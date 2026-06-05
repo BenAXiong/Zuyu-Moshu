@@ -13,10 +13,8 @@ const MAX_EXPANDED_EXAMPLES = 3;
 const MAX_PHRASE_TOKENS = 16;
 const PHRASE_LOOKUP_CONCURRENCY = 4;
 const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
-const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT  = 20000;
 const AMIS_MALAN_DIALECT = 'ami_Mala';
-const AMIS_MALAN_SPEAKER = '阿美_馬蘭_女聲';
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
 const INDIHUNT_MAX_ITEMS = 200;
 const INDIHUNT_LANG_CODE = {
@@ -49,7 +47,6 @@ let currentTooltipNav = null;
 let savedOpenButton = null;
 const fetched = new Map();
 const moeFetched = new Map();
-const ttsFetched = new Map();
 
 // ' (apostrophe) intentionally excluded — it's a glottal stop character in these orthographies
 function cleanWord(w) {
@@ -1271,39 +1268,6 @@ async function gradioCall(base, fn, data) {
   }
 }
 
-function getTtsCacheKey(speaker, text) {
-  return `${speaker}\n${text}`;
-}
-
-function getCachedTtsAudioUrl(speaker, text) {
-  const cached = ttsFetched.get(getTtsCacheKey(speaker, text));
-  return typeof cached === 'string' ? cached : '';
-}
-
-async function getTtsAudioUrl(speaker, text) {
-  const key = getTtsCacheKey(speaker, text);
-  if (ttsFetched.has(key)) return await ttsFetched.get(key);
-
-  const request = gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text])
-    .then(result => {
-      const url = result?.url ?? (typeof result === 'string' ? result : '');
-      if (!url) {
-        ttsFetched.delete(key);
-        return '';
-      }
-      if (ttsFetched.size >= MAX_CACHE) ttsFetched.delete(ttsFetched.keys().next().value);
-      ttsFetched.set(key, url);
-      return url;
-    })
-    .catch(err => {
-      ttsFetched.delete(key);
-      throw err;
-    });
-
-  ttsFetched.set(key, request);
-  return await request;
-}
-
 function playAudio(url, btn, options = {}) {
   if (!url) return Promise.resolve(false);
   const markError = options.markError !== false;
@@ -2368,40 +2332,15 @@ async function speakPhrase(phrase, btn) {
   const text = cleanPhraseText(phrase);
   if (!text) return;
 
-  const cachedUrl = btn?.dataset.audioUrl || getCachedTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
-  if (cachedUrl) {
-    await playGeneratedTtsAudio(cachedUrl, btn);
-    return;
-  }
-
   setPhraseAiBusy(btn, true);
   try {
-    const url = await getTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
-    if (url) {
-      if (btn) {
-        btn.dataset.audioUrl = url;
-        btn.title = 'TTS';
-      }
-      await playGeneratedTtsAudio(url, btn);
-    } else {
-      btn?.classList.add('error');
-    }
+    const response = await sendRuntimeMessage({ type: 'playIlrdfTts', text });
+    if (!response?.ok) btn?.classList.add('error');
   } catch {
     btn?.classList.add('error');
   } finally {
     setPhraseAiBusy(btn, false);
   }
-}
-
-async function playGeneratedTtsAudio(url, btn) {
-  if (!url) return false;
-  btn?.classList.add('playing');
-  btn?.classList.remove('error', 'ready');
-  const response = await sendRuntimeMessage({ type: 'playOffscreenAudio', url });
-  const ok = !!response?.ok;
-  btn?.classList.remove('playing');
-  if (!ok) btn?.classList.add('error');
-  return ok;
 }
 
 function setPhraseAiBusy(btn, on) {
