@@ -189,3 +189,5 @@ The tab currently wires Amis translation both directions (`translate_1` for ZH-t
 **Why:** A selected phrase is often too short and context-light for reliable full translation, but token-level glosses plus optional MT/TTS can help users quickly orient themselves without pretending the dictionary rows are a grammatical translation.
 
 **How to apply:** Keep phrase mode behind Ctrl-select only for now. Do not enable phrase mode for hover. Keep token caps and concurrency limits conservative; if phrase selections become longer, route users to the saved-page analysis tools instead of expanding tooltip fanout indefinitely.
+
+**Known issue:** Phrase-assist TTS is still broken as of 2026-06-05 16:14 +08:00. The ILRDF endpoint returns a WAV URL and the tooltip code caches/reuses it, but playback from the content-script tooltip produces no sound. Saved-page `短章分析*` TTS works with the same Malan speaker, so v1.6 should investigate the content-script playback path separately from the Gradio request itself.
