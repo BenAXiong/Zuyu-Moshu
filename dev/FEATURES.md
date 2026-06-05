@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 14:55 +08:00
+Global timestamp: 2026-06-05 15:34 +08:00
 
 Current extension version: 1.5.5
 
@@ -23,7 +23,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Double-click lookup | Universal | Enabled by default unless hover mode replaces it. | `content.js`: `dblclick` listener, `handleSelection()`, `triggerLookup()`. |
 | Ctrl + select lookup | Universal | Enabled by default and remains active even when hover mode is enabled. | `content.js`: `mouseup` listener with `e.ctrlKey`. |
-| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. Phrase mode displays tokens of 2 characters or less as pass-through AB text but skips API lookup for them. Longer tokens normalize curly glottals before lookup, then render as a compact pipe-separated ZH hint sequence. Missing longer-token lookups render as `x`. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `renderPhraseResults()`, `getShortPhraseDefinition()`. |
+| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. Phrase mode displays tokens of 2 characters or less as pass-through AB text but skips API lookup for them. Longer tokens normalize curly glottals before lookup, then render as a compact pipe-separated ZH hint sequence. Ambiguous tokens can show up to 2 slash-separated glosses, such as `八/花蕾`, instead of collapsing to the first sense. Missing longer-token lookups render as `x`. Clickable glosses drill into the normal tooltip lookup for that token. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `getPhraseGlossesFromTexts()`, `renderPhraseResults()`. |
 | Hover lookup | Universal trigger, source-dependent lookup | Optional. Replaces double-click when enabled, does not replace Ctrl + select. | `content.js`: `mousemove`, `handleHover()`, `triggerCandidateLookup()`. |
 | Text input lookup | Universal | Selection lookup works in useful text inputs and textareas. | `content.js`: `getDeepActiveElement()`, `getInputSelection()`. |
 

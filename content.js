@@ -698,6 +698,7 @@ async function triggerPhraseLookup(phrase, tokens, rect, settings) {
       token,
       displayToken: token,
       zh: token.length <= 2 ? token : '',
+      glosses: token.length <= 2 ? [token] : [],
       sourceId: '',
       root: '',
       passthrough: token.length <= 2,
@@ -736,7 +737,7 @@ async function lookupPhraseToken(token, settings) {
     }
   }
 
-  return { token, displayToken: token, zh: '', root: '', sourceId: '' };
+  return { token, displayToken: token, zh: '', glosses: [], root: '', sourceId: '' };
 }
 
 async function lookupPhraseKilangToken(token) {
@@ -753,6 +754,7 @@ async function lookupPhraseKilangToken(token) {
   if (rows.length === 0) return null;
 
   const senses = getMoeSenseRows(rows);
+  const glosses = getPhraseGlossesFromTexts(senses.map(sense => sense.definition), { maxPerText: 1 });
   const sense = senses[0];
   const row = sense?.row || getMoePrimaryRow(rows) || {};
   const matched = cleanMoeText(insights.match || row.word_ab || token);
@@ -761,6 +763,7 @@ async function lookupPhraseKilangToken(token) {
     token,
     displayToken: matched || token,
     zh: definition,
+    glosses,
     root: cleanMoeText(row.ultimate_root || row.stem || ''),
     sourceId: 'KILANG',
     metaLabel: getMoeSourceMeta(row),
@@ -780,12 +783,19 @@ async function lookupPhraseDictToken(token, settings) {
     fetched.set(cacheKey, results);
   }
 
-  const entry = prepareResults(results, token)[0];
+  const prepared = prepareResults(results, token);
+  const exactEntries = prepared.filter(entry => cleanWord(getPrimaryText(entry)) === token);
+  const candidates = exactEntries.length > 0 ? exactEntries : prepared;
+  const entry = candidates[0];
   if (!entry) return null;
+  const glosses = getPhraseGlossesFromTexts(candidates.map(candidate => (
+    candidate.displayText || candidate.zh || ''
+  )));
   return {
     token,
     displayToken: token,
     zh: cleanDisplayText(entry.displayText || entry.zh || ''),
+    glosses,
     root: '',
     sourceId: 'EPARK',
     metaLabel: entry.metaLabel || getDialectLabel(entry.dialect_name || '', settings),
@@ -2052,9 +2062,15 @@ function renderPhraseResults(phrase, results, settings) {
 
   const sequence = document.createElement('div');
   sequence.className = 'fdt-phrase-sequence';
-  sequence.textContent = results
-    .map(result => getShortPhraseDefinition(result.zh) || 'x')
-    .join(' | ');
+  results.forEach((result, index) => {
+    if (index > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'fdt-phrase-separator';
+      sep.textContent = ' | ';
+      sequence.appendChild(sep);
+    }
+    appendPhraseResultToken(sequence, result);
+  });
   section.appendChild(sequence);
 
   if (results.every(result => !result.zh)) {
@@ -2069,9 +2085,59 @@ function renderPhraseResults(phrase, results, settings) {
   refreshTooltipLayout();
 }
 
+function appendPhraseResultToken(parent, result) {
+  const glosses = Array.isArray(result.glosses) && result.glosses.length > 0
+    ? result.glosses
+    : getPhraseGlossesFromTexts([result.zh]);
+  const label = glosses.length > 0 ? glosses.join('/') : 'x';
+
+  if (result.passthrough || !result.sourceId || label === 'x') {
+    parent.appendChild(document.createTextNode(label));
+    return;
+  }
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'fdt-phrase-gloss';
+  btn.textContent = label;
+  btn.title = `查詢 ${result.displayToken || result.token}`;
+  btn.setAttribute('aria-label', `查詢 ${result.displayToken || result.token}`);
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    drillLookup(result.displayToken || result.token);
+  });
+  btn.addEventListener('keydown', (e) => e.stopPropagation());
+  parent.appendChild(btn);
+}
+
+function getPhraseGlossesFromTexts(texts, options = {}) {
+  const limit = options.limit ?? 2;
+  const maxPerText = options.maxPerText ?? 2;
+  const glosses = [];
+  const seen = new Set();
+  for (const text of texts) {
+    let addedForText = 0;
+    for (const part of getShortPhraseDefinitions(text)) {
+      const key = part.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      glosses.push(part);
+      addedForText++;
+      if (glosses.length >= limit) return glosses;
+      if (addedForText >= maxPerText) break;
+    }
+  }
+  return glosses;
+}
+
 function getShortPhraseDefinition(text) {
-  const clean = cleanDisplayText(text);
-  if (!clean) return '';
+  return getShortPhraseDefinitions(text)[0] || '';
+}
+
+function getShortPhraseDefinitions(text) {
+  const clean = cleanDisplayText(String(text || '').replace(/[|｜]/g, '；'));
+  if (!clean) return [];
   const withoutParen = clean
     .replace(/[（(][^（）()]*[）)]/g, ' ')
     .replace(/[（）()]/g, ' ')
@@ -2082,8 +2148,12 @@ function getShortPhraseDefinition(text) {
     .split(/[；;。，,、/／]|或|及|和|與|表示|指/u)
     .map(part => part.replace(/^[的地得之]|[的地得之]$/g, '').trim())
     .filter(Boolean);
-  const picked = candidates.find(part => countCjk(part) <= 6) || candidates[0] || withoutParen;
-  return truncatePhraseHint(picked);
+  const ordered = [
+    ...candidates.filter(part => countCjk(part) <= 6),
+    ...candidates.filter(part => countCjk(part) > 6),
+  ];
+  const picked = ordered.length > 0 ? ordered : [withoutParen];
+  return picked.map(part => truncatePhraseHint(part)).filter(Boolean);
 }
 
 function truncatePhraseHint(text) {
