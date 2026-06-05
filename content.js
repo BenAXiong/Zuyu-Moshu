@@ -444,6 +444,47 @@ function setHeaderWord(word) {
   if (wordSpan) wordSpan.textContent = word;
 }
 
+function renderPhraseHeader(phrase) {
+  const wordSpan = tooltip?.querySelector('.fdt-word');
+  if (!wordSpan) return;
+  wordSpan.textContent = '';
+  const text = String(phrase || '');
+  const tokenPattern = /[\p{L}\p{M}\d'^’ʼ:-]+/gu;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = tokenPattern.exec(text))) {
+    if (match.index > lastIndex) {
+      wordSpan.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+
+    const raw = match[0];
+    const word = cleanWord(raw);
+    if (isDrillableWord(word)) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'fdt-phrase-head-token';
+      btn.textContent = raw;
+      btn.title = `查詢 ${word}`;
+      btn.setAttribute('aria-label', `查詢 ${word}`);
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        drillLookup(word);
+      });
+      btn.addEventListener('keydown', (e) => e.stopPropagation());
+      wordSpan.appendChild(btn);
+    } else {
+      wordSpan.appendChild(document.createTextNode(raw));
+    }
+    lastIndex = tokenPattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    wordSpan.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+}
+
 function createRootIcon() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 16 16');
@@ -687,6 +728,7 @@ async function triggerPhraseLookup(phrase, tokens, rect, settings, nav = null) {
   if (tooltip) {
     tooltip._phraseText = phrase;
     tooltip._phraseTokens = tokens;
+    renderPhraseHeader(phrase);
   }
   if (settings.aiToolsEnabled) appendPhraseAiButtons(phrase);
   setHeaderAudioUrl('');
@@ -2184,19 +2226,10 @@ function appendPhraseResultToken(parent, result) {
     return;
   }
 
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'fdt-phrase-gloss';
-  btn.textContent = label;
-  btn.title = `查詢 ${result.displayToken || result.token}`;
-  btn.setAttribute('aria-label', `查詢 ${result.displayToken || result.token}`);
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    drillLookup(result.displayToken || result.token);
-  });
-  btn.addEventListener('keydown', (e) => e.stopPropagation());
-  parent.appendChild(btn);
+  const gloss = document.createElement('span');
+  gloss.className = 'fdt-phrase-gloss';
+  gloss.textContent = label;
+  parent.appendChild(gloss);
 }
 
 function getPhraseGlossesFromTexts(texts, options = {}) {
