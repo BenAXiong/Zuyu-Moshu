@@ -2370,7 +2370,7 @@ async function speakPhrase(phrase, btn) {
 
   const cachedUrl = btn?.dataset.audioUrl || getCachedTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
   if (cachedUrl) {
-    playAudio(cachedUrl, btn);
+    await playGeneratedTtsAudio(cachedUrl, btn);
     return;
   }
 
@@ -2382,11 +2382,7 @@ async function speakPhrase(phrase, btn) {
         btn.dataset.audioUrl = url;
         btn.title = 'TTS';
       }
-      const started = await playAudio(url, btn, { markError: false });
-      if (!started && btn) {
-        btn.classList.add('ready');
-        btn.title = 'TTS 已產生，再點一次播放';
-      }
+      await playGeneratedTtsAudio(url, btn);
     } else {
       btn?.classList.add('error');
     }
@@ -2395,6 +2391,17 @@ async function speakPhrase(phrase, btn) {
   } finally {
     setPhraseAiBusy(btn, false);
   }
+}
+
+async function playGeneratedTtsAudio(url, btn) {
+  if (!url) return false;
+  btn?.classList.add('playing');
+  btn?.classList.remove('error', 'ready');
+  const response = await sendRuntimeMessage({ type: 'playOffscreenAudio', url });
+  const ok = !!response?.ok;
+  btn?.classList.remove('playing');
+  if (!ok) btn?.classList.add('error');
+  return ok;
 }
 
 function setPhraseAiBusy(btn, on) {

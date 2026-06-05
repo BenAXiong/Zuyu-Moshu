@@ -292,6 +292,37 @@ function notifyCompanionContextUpdated() {
   } catch {}
 }
 
+async function ensureOffscreenAudioDocument() {
+  if (!chrome.offscreen?.createDocument) {
+    throw new Error('offscreenUnavailable');
+  }
+
+  const offscreenUrl = chrome.runtime.getURL('offscreen.html');
+  if (chrome.runtime.getContexts) {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'],
+      documentUrls: [offscreenUrl],
+    });
+    if (contexts.length > 0) return;
+  }
+
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['AUDIO_PLAYBACK'],
+      justification: 'Play generated TTS audio from extension UI.',
+    });
+  } catch (error) {
+    if (!String(error?.message || '').includes('Only a single offscreen document')) throw error;
+  }
+}
+
+async function playOffscreenAudio(url) {
+  if (!url) return { ok: false, reason: 'missingUrl' };
+  await ensureOffscreenAudioDocument();
+  return await chrome.runtime.sendMessage({ type: 'offscreenPlayAudio', url });
+}
+
 async function openCompanion(sender, context = null) {
   const contextWrite = context
     ? chrome.storage.session.set({ companionContext: context })
@@ -338,6 +369,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     openCompanion(_sender, msg.context)
       .then(sendResponse)
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'openFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'playOffscreenAudio') {
+    playOffscreenAudio(msg.url)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'playFailed' }));
 
     return true;
   }

@@ -149,6 +149,10 @@ Done in current v1.6 Companion branch work:
   - dictionary AB lines drill to their word;
   - `返回` restores the previous Companion context;
   - fresh page selections reset local drill history.
+- Added phrase-tooltip TTS offscreen playback:
+  - content script still generates and caches ILRDF TTS URLs;
+  - background creates an offscreen audio document on demand;
+  - offscreen document plays generated TTS audio outside the page content context.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -163,8 +167,8 @@ Done in current v1.6 Companion branch work:
 
 Remaining v1.6.0 work:
 
-- Fix or hide/disable phrase tooltip TTS before release.
-- Smoke-test the Side Panel in Chrome with tooltip target fallback behavior.
+- Smoke-test Side Panel lookup/analysis/drill in Chrome with tooltip target fallback behavior.
+- Smoke-test phrase tooltip TTS audio in Chrome after the offscreen playback change.
 
 ## v1.6.x Sequence
 

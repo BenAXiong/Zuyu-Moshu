@@ -44,5 +44,5 @@
       "matches": ["<all_urls>"]
     }
   ],
-  "permissions": ["storage", "sidePanel"]
+  "permissions": ["storage", "sidePanel", "offscreen"]
 }
