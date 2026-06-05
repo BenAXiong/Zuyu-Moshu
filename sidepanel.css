@@ -47,7 +47,14 @@ button {
   font: inherit;
 }
 
-#clear {
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#clear,
+#back {
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--surface-hi);
@@ -56,9 +63,14 @@ button {
   cursor: pointer;
 }
 
-#clear:hover {
+#clear:hover,
+#back:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+#back[hidden] {
+  display: none;
 }
 
 .mode-tabs {
@@ -241,6 +253,24 @@ a {
   border-bottom: 1px solid var(--line);
 }
 
+.chain-button,
+.analysis-token-button,
+.dict-drill {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.chain-button:hover,
+.analysis-token-button:hover,
+.dict-drill:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .chain-arrow {
   color: var(--dim);
 }
@@ -307,6 +337,12 @@ a {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
+.analysis-token-button {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 700;
+}
+
+.analysis-token:not(.found) .analysis-token-button,
 .analysis-token:not(.found) strong {
   color: var(--dim);
 }

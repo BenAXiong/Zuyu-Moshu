@@ -143,6 +143,12 @@ Done in current v1.6 Companion branch work:
   - bounded-concurrency lookup for longer unique tokens;
   - source-ordered Kilang/dictionary lookup;
   - short ZH glosses and root labels when available.
+- Added local Companion drill/back navigation:
+  - analysis token click opens that word in `查詢`;
+  - Kilang chain nodes drill to their word;
+  - dictionary AB lines drill to their word;
+  - `返回` restores the previous Companion context;
+  - fresh page selections reset local drill history.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -158,8 +164,6 @@ Done in current v1.6 Companion branch work:
 Remaining v1.6.0 work:
 
 - Fix or hide/disable phrase tooltip TTS before release.
-- Add token drill inside Companion.
-- Add minimal Companion navigation/back behavior if drilling lands in v1.6.0.
 - Smoke-test the Side Panel in Chrome with tooltip target fallback behavior.
 
 ## v1.6.x Sequence

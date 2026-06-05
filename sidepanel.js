@@ -4,9 +4,11 @@ const MAX_ANALYSIS_TOKENS = 80;
 
 let renderSerial = 0;
 let currentContext = null;
+let companionHistory = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
+  document.getElementById('back')?.addEventListener('click', goBack);
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
   });
@@ -14,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadContext();
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'session' || !changes[CONTEXT_KEY]) return;
-    renderContext(changes[CONTEXT_KEY].newValue || null);
+    renderContext(changes[CONTEXT_KEY].newValue || null, { resetHistory: true });
   });
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === 'companionContextUpdated') loadContext();
@@ -23,11 +25,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function loadContext() {
   chrome.storage.session.get({ [CONTEXT_KEY]: null }, data => {
-    renderContext(data[CONTEXT_KEY]);
+    renderContext(data[CONTEXT_KEY], { resetHistory: true });
   });
 }
 
 function clearContext() {
+  companionHistory = [];
+  updateBackButton();
   chrome.storage.session.remove(CONTEXT_KEY, () => renderContext(null));
 }
 
@@ -37,7 +41,9 @@ function setActiveMode(mode) {
   });
 }
 
-async function renderContext(context) {
+async function renderContext(context, options = {}) {
+  if (options.resetHistory) companionHistory = [];
+  updateBackButton();
   currentContext = context;
   const serial = ++renderSerial;
   const status = document.getElementById('status');
@@ -63,6 +69,32 @@ async function renderContext(context) {
     : await buildAnalysisView(context, settings);
   if (serial !== renderSerial || currentContext !== context) return;
   content.replaceChildren(view);
+}
+
+function drillLookup(word) {
+  const clean = FDT_LOOKUP_CORE.cleanWord(word);
+  if (!clean || FDT_LOOKUP_CORE.hasCjk(clean)) return;
+  if (currentContext) companionHistory.push(currentContext);
+  renderContext({
+    ...(currentContext || {}),
+    mode: 'word',
+    rawText: clean,
+    tokens: [clean],
+    trigger: 'drill',
+    timestamp: new Date().toISOString(),
+  }, { resetHistory: false });
+}
+
+function goBack() {
+  const previous = companionHistory.pop();
+  updateBackButton();
+  if (previous) renderContext(previous, { resetHistory: false });
+}
+
+function updateBackButton() {
+  const back = document.getElementById('back');
+  if (!back) return;
+  back.hidden = companionHistory.length === 0;
 }
 
 function makeEmptyState() {
@@ -206,10 +238,7 @@ function makeChain(chain) {
       arrow.textContent = '>';
       row.appendChild(arrow);
     }
-    const chip = document.createElement('span');
-    chip.className = 'chain-chip';
-    chip.textContent = item;
-    row.appendChild(chip);
+    row.appendChild(makeDrillButton(item, 'chain-chip chain-button'));
   });
   return row;
 }
@@ -262,9 +291,12 @@ function makeDictRow(row) {
   main.append(zh, dialect);
   item.appendChild(main);
   if (row.ab) {
-    const ab = document.createElement('div');
-    ab.className = 'dict-ab';
+    const ab = document.createElement('button');
+    ab.type = 'button';
+    ab.className = 'dict-ab dict-drill';
     ab.textContent = row.ab;
+    ab.title = `查詢 ${row.ab}`;
+    ab.addEventListener('click', () => drillLookup(row.ab));
     item.appendChild(ab);
   }
   return item;
@@ -327,8 +359,7 @@ function makeAnalysisGrid(rows) {
   rows.forEach(row => {
     const item = document.createElement('article');
     item.className = row.sourceId ? 'analysis-token found' : 'analysis-token';
-    const token = document.createElement('strong');
-    token.textContent = row.displayToken || row.token;
+    const token = makeDrillButton(row.displayToken || row.token, 'analysis-token-button');
     const gloss = document.createElement('div');
     gloss.className = 'analysis-gloss';
     gloss.textContent = row.glosses?.length ? row.glosses.join(' / ') : 'x';
@@ -342,6 +373,16 @@ function makeAnalysisGrid(rows) {
     grid.appendChild(item);
   });
   return grid;
+}
+
+function makeDrillButton(word, className) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.textContent = word;
+  button.title = `查詢 ${word}`;
+  button.addEventListener('click', () => drillLookup(word));
+  return button;
 }
 
 async function lookupAnalysisToken(token, settings) {
