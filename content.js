@@ -269,6 +269,24 @@ function getCaretFromPoint(x, y) {
   return range ? { node: range.startContainer, offset: range.startOffset } : null;
 }
 
+function getRangeLookupRect(range) {
+  try {
+    const rects = [...range.getClientRects()]
+      .filter(rect => rect.width > 0 && rect.height > 0);
+    const visible = rects.find(rect => (
+      rect.bottom >= 0
+      && rect.top <= window.innerHeight
+      && rect.right >= 0
+      && rect.left <= window.innerWidth
+    ));
+    if (visible) return visible;
+    if (rects.length > 0) return rects[0];
+    return range.getBoundingClientRect();
+  } catch {
+    return null;
+  }
+}
+
 function getHoverSelection(x, y) {
   const caret = getCaretFromPoint(x, y);
   if (!caret || caret.node.nodeType !== Node.TEXT_NODE) return null;
@@ -284,7 +302,8 @@ function getHoverSelection(x, y) {
     const range = document.createRange();
     range.setStart(caret.node, candidates[0].start);
     range.setEnd(caret.node, candidates[0].end);
-    const rect = range.getBoundingClientRect();
+    const rect = getRangeLookupRect(range);
+    if (!rect) return null;
     if (!rect.width && !rect.height) return null;
     return { raw: candidates[0].raw, rect, candidates: candidates.map(c => c.raw) };
   }
@@ -300,7 +319,8 @@ function getHoverSelection(x, y) {
   const range = document.createRange();
   range.setStart(caret.node, start);
   range.setEnd(caret.node, end);
-  const rect = range.getBoundingClientRect();
+  const rect = getRangeLookupRect(range);
+  if (!rect) return null;
   if (!rect.width && !rect.height) return null;
   return { raw, rect };
 }
@@ -364,8 +384,8 @@ function handleSelection(settings) {
   const ca = charAfter(range);
   if (!GLOTTAL.has(raw.at(-1)) && ca && GLOTTAL.has(ca)) raw = raw + ca;
 
-  let rect;
-  try { rect = range.getBoundingClientRect(); } catch { return; }
+  const rect = getRangeLookupRect(range);
+  if (!rect) return;
   if (!rect.width && !rect.height) return;
 
   lookupRawSelection(raw, rect, settings);
@@ -1997,7 +2017,7 @@ function renderPhraseResults(phrase, results, settings) {
   const sequence = document.createElement('div');
   sequence.className = 'fdt-phrase-sequence';
   sequence.textContent = results
-    .map(result => getShortPhraseDefinition(result.zh) || '—')
+    .map(result => getShortPhraseDefinition(result.zh) || 'x')
     .join(' | ');
   section.appendChild(sequence);
 
