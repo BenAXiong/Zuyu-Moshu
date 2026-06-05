@@ -138,6 +138,11 @@
 
 #formosan-dict-tooltip.fdt-phrase-tooltip .fdt-word {
   max-width: 62vw;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
 }
 
 .fdt-word-wrap {
