@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-05 15:34 +08:00
+Global timestamp: 2026-06-05 15:39 +08:00
 
 Current extension version: 1.5.5
 
@@ -23,7 +23,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 |---|---|---|---|
 | Double-click lookup | Universal | Enabled by default unless hover mode replaces it. | `content.js`: `dblclick` listener, `handleSelection()`, `triggerLookup()`. |
 | Ctrl + select lookup | Universal | Enabled by default and remains active even when hover mode is enabled. | `content.js`: `mouseup` listener with `e.ctrlKey`. |
-| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. Phrase mode displays tokens of 2 characters or less as pass-through AB text but skips API lookup for them. Longer tokens normalize curly glottals before lookup, then render as a compact pipe-separated ZH hint sequence. Ambiguous tokens can show up to 2 slash-separated glosses, such as `八/花蕾`, instead of collapsing to the first sense. Missing longer-token lookups render as `x`. Clickable glosses drill into the normal tooltip lookup for that token. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `getPhraseGlossesFromTexts()`, `renderPhraseResults()`. |
+| Ctrl + select phrase assist | Universal trigger, source-dependent lookup | Ctrl-selecting 2-16 AB tokens opens phrase mode instead of single-word mode. Phrase mode displays tokens of 2 characters or less as pass-through AB text but skips API lookup for them. Longer tokens normalize curly glottals before lookup, then render as a compact pipe-separated hint sequence with drillable AB tokens and plain ZH glosses. Ambiguous tokens can show up to 2 slash-separated glosses, such as `八/花蕾`, instead of collapsing to the first sense. Missing longer-token lookups render as `x`. The back button can return from a drilled word tooltip to the original phrase-assist tooltip. Phrase hints strip parentheticals, split wordy definitions, and truncate long chunks. | `content.js`: `lookupRawSelection()`, `triggerPhraseLookup()`, `lookupPhraseToken()`, `getPhraseGlossesFromTexts()`, `renderPhraseResults()`, `goBackInTooltip()`. |
 | Hover lookup | Universal trigger, source-dependent lookup | Optional. Replaces double-click when enabled, does not replace Ctrl + select. | `content.js`: `mousemove`, `handleHover()`, `triggerCandidateLookup()`. |
 | Text input lookup | Universal | Selection lookup works in useful text inputs and textareas. | `content.js`: `getDeepActiveElement()`, `getInputSelection()`. |
 
@@ -48,7 +48,7 @@ Source configuration lives in `shared.js` as `SOURCES`. Defaults are Amis + Kila
 | No-results state | Universal | Shows `查無此詞` only if no enabled source/section produced content. | `content.js`: `showNoResultsIfEmpty()`. |
 | Header language pill | Universal | Shows selected language, or `所有族語` when no language is selected. | `content.js`: `showTooltip()`. |
 | Dialect labels | ePark | Full dialect names when no language is selected; shortened dialect labels when a language is selected. | `content.js`: `getDialectLabel()`. |
-| Tooltip drilling | Universal for drillable AB text | AB tokens in examples, ZH-to-AB primary rows, and Kilang derived/recovery relation headers are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. | `content.js`: `appendDrillableText()`, `appendMoeDerivedHeader()`, `drillLookup()`, `normalizeTooltipNav()`. |
+| Tooltip drilling | Universal for drillable AB text | AB tokens in examples, ZH-to-AB primary rows, phrase-assist token hints, and Kilang derived/recovery relation headers are rendered as subtle inline buttons. Clicking drills in the same tooltip panel. Back history supports both word and phrase-assist return states. | `content.js`: `appendDrillableText()`, `appendMoeDerivedHeader()`, `appendPhraseResultToken()`, `drillLookup()`, `normalizeTooltipNav()`, `goBackInTooltip()`. |
 | Floating tooltip actions | Universal | Tooltip shows a visually separate vertical floating action stack aligned with the top border. The top button opens the saved-items page with an external-window icon; the second button exports the current tooltip rows/examples to IndiHunt. | `content.js`: `createOpenSavedButton()`, `createIndiHuntExportButton()`, `exportTooltipToIndiHunt()`, `showFloatingSavedButton()`; `content.css`; `manifest.json`. |
 | Phrase AI tools | Amis AI, popup-gated | When the popup `AI工具` toggle is enabled, phrase-assist tooltips add header buttons for Amis-to-ZH MT and Amis TTS using Malan defaults. MT renders a separate AI line below the ZH hint sequence and shows a loading message while running. | `content.js`: `appendPhraseAiButtons()`, `translatePhrase()`, `speakPhrase()`, `gradioCall()`; `popup.html`, `popup.js`, `shared.js`. |
 

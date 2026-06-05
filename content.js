@@ -680,10 +680,14 @@ function triggerLookup(word, rect, settings, nav = null) {
   });
 }
 
-async function triggerPhraseLookup(phrase, tokens, rect, settings) {
+async function triggerPhraseLookup(phrase, tokens, rect, settings, nav = null) {
   const lookupId = ++lookupSerial;
-  showTooltip(phrase, rect, settings);
+  showTooltip(phrase, rect, settings, nav);
   tooltip?.classList.add('fdt-phrase-tooltip');
+  if (tooltip) {
+    tooltip._phraseText = phrase;
+    tooltip._phraseTokens = tokens;
+  }
   if (settings.aiToolsEnabled) appendPhraseAiButtons(phrase);
   setHeaderAudioUrl('');
   setLoading(true);
@@ -813,11 +817,58 @@ function getCurrentDrillHistory() {
 }
 
 function getNextDrillNav(fromWord = getHeaderWord()) {
-  const cleanFrom = cleanWord(fromWord || '');
   const history = getCurrentDrillHistory();
-  if (!cleanFrom) return { history };
-  if (history.at(-1) === cleanFrom) return { history };
-  return { history: [...history, cleanFrom].slice(-8) };
+  const entry = getCurrentDrillEntry(fromWord);
+  if (!entry) return { history };
+  if (isSameDrillEntry(history.at(-1), entry)) return { history };
+  return { history: [...history, entry].slice(-8) };
+}
+
+function getCurrentDrillEntry(fromWord = getHeaderWord()) {
+  if (tooltip?.classList.contains('fdt-phrase-tooltip') && Array.isArray(tooltip._phraseTokens)) {
+    return {
+      type: 'phrase',
+      phrase: tooltip._phraseText || getHeaderWord(),
+      tokens: tooltip._phraseTokens,
+    };
+  }
+
+  const cleanFrom = cleanWord(fromWord || '');
+  return cleanFrom ? { type: 'word', word: cleanFrom } : null;
+}
+
+function isSameDrillEntry(a, b) {
+  const left = normalizeDrillEntry(a);
+  const right = normalizeDrillEntry(b);
+  if (!left || !right || left.type !== right.type) return false;
+  if (left.type === 'phrase') return left.phrase === right.phrase;
+  return left.word === right.word;
+}
+
+function normalizeDrillEntry(entry) {
+  if (!entry) return null;
+  if (typeof entry === 'string') return { type: 'word', word: entry };
+  if (entry.type === 'phrase' && entry.phrase && Array.isArray(entry.tokens)) {
+    return {
+      type: 'phrase',
+      phrase: entry.phrase,
+      tokens: entry.tokens,
+    };
+  }
+  if (entry.type === 'word' && entry.word) return { type: 'word', word: entry.word };
+  return null;
+}
+
+function goBackInTooltip(rect, settings) {
+  const history = getCurrentDrillHistory();
+  const entry = normalizeDrillEntry(history.at(-1));
+  if (!entry) return;
+  const nav = { history: history.slice(0, -1) };
+  if (entry.type === 'phrase') {
+    triggerPhraseLookup(entry.phrase, entry.tokens, currentTooltipRect || rect, currentTooltipSettings || settings, nav);
+    return;
+  }
+  triggerLookup(entry.word, currentTooltipRect || rect, currentTooltipSettings || settings, nav);
 }
 
 function drillLookup(rawWord) {
@@ -1024,12 +1075,7 @@ function showTooltip(word, rect, settings, nav = null) {
   backBtn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const history = getCurrentDrillHistory();
-    const backWord = history.at(-1);
-    if (!backWord) return;
-    triggerLookup(backWord, currentTooltipRect || rect, currentTooltipSettings || settings, {
-      history: history.slice(0, -1),
-    });
+    goBackInTooltip(rect, settings);
   });
 
   const wordSpan = document.createElement('span');
@@ -2096,10 +2142,13 @@ function appendPhraseResultToken(parent, result) {
     return;
   }
 
+  const item = document.createElement('span');
+  item.className = 'fdt-phrase-item';
+
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.className = 'fdt-phrase-gloss';
-  btn.textContent = label;
+  btn.className = 'fdt-phrase-token';
+  btn.textContent = result.displayToken || result.token;
   btn.title = `查詢 ${result.displayToken || result.token}`;
   btn.setAttribute('aria-label', `查詢 ${result.displayToken || result.token}`);
   btn.addEventListener('click', (e) => {
@@ -2108,7 +2157,12 @@ function appendPhraseResultToken(parent, result) {
     drillLookup(result.displayToken || result.token);
   });
   btn.addEventListener('keydown', (e) => e.stopPropagation());
-  parent.appendChild(btn);
+
+  const gloss = document.createElement('span');
+  gloss.className = 'fdt-phrase-gloss';
+  gloss.textContent = label;
+  item.append(btn, document.createTextNode(' '), gloss);
+  parent.appendChild(item);
 }
 
 function getPhraseGlossesFromTexts(texts, options = {}) {
