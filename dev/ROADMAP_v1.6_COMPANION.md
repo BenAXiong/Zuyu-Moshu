@@ -295,6 +295,11 @@ Passed smoke tests as of 2026-06-06 +08:00:
 
 - Visual Kilang-style tree UI.
 - Rich transcript mining workflow.
+- Real-time saved-state synchronization across tooltip, Companion, and saved page:
+  - listen to `chrome.storage.onChanged` for `savedItemsV1`;
+  - refresh visible bookmark icons when items are saved/deleted elsewhere;
+  - update the saved page list without requiring a manual refresh when TT/CPN save new items;
+  - preserve saved-page filters/search/selection while syncing.
 
 ## v1.7.0 Reserved Scope
 
