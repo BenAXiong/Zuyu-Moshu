@@ -76,15 +76,35 @@ const FDT_LOOKUP_CORE = (() => {
     return zhChars >= 8;
   }
 
+  function repairMoeMixedExample(example) {
+    const ab = cleanMoeText(example?.ab || '');
+    const zh = cleanMoeText(example?.zh || example?.en || '');
+    if (ab || !zh) return { ab, zh };
+
+    const chars = [...zh];
+    const cjkIndex = chars.findIndex(isCjk);
+    if (cjkIndex <= 0) return { ab, zh };
+
+    const abPart = chars.slice(0, cjkIndex).join('').trim();
+    const zhPart = chars.slice(cjkIndex).join('').trim();
+    if (!abPart || !zhPart || hasCjk(abPart)) return { ab, zh };
+    if (!/[A-Za-z'’ʼ:-]/.test(abPart)) return { ab, zh };
+
+    return { ab: abPart, zh: zhPart };
+  }
+
   function getMoeExampleRows(row) {
     return parseMoeExamples(row?.examples_json)
-      .map(ex => ({
-        ab: cleanMoeText(ex.ab),
-        zh: cleanMoeText(ex.zh || ex.en),
-        source: cleanMoeText(ex.source || ''),
-        sourceId: 'KILANG',
-        audioUrl: getAudioUrl(ex),
-      }))
+      .map(ex => {
+        const repaired = repairMoeMixedExample(ex);
+        return {
+          ab: repaired.ab,
+          zh: repaired.zh,
+          source: cleanMoeText(ex.source || ''),
+          sourceId: 'KILANG',
+          audioUrl: getAudioUrl(ex),
+        };
+      })
       .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
   }
 
@@ -441,6 +461,7 @@ const FDT_LOOKUP_CORE = (() => {
     getAudioUrl,
     parseMoeExamples,
     isSentenceLikeExample,
+    repairMoeMixedExample,
     getMoeExampleRows,
     dedupeMoeExamples,
     getMoeSourceRank,
