@@ -243,10 +243,10 @@ async function fetchKilangSection(word) {
   section.className = 'companion-card';
 
   const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
+  const chain = getMoeChain(primary, insights, word);
+  section.appendChild(makeChain(chain));
   const relation = makeKilangRelationRow(word, insights, primary);
   if (relation) section.appendChild(relation);
-  const chain = getMoeChain(primary, insights);
-  if (chain.length > 0) section.appendChild(makeChain(chain));
 
   const senses = FDT_LOOKUP_CORE.getMoeSenseRows(rows);
   senses.forEach((sense, index) => {
@@ -255,23 +255,32 @@ async function fetchKilangSection(word) {
   return section;
 }
 
-function getMoeChain(primary, insights) {
-  if (!FDT_LOOKUP_CORE.cleanMoeText(primary.parent_word || '')) return [];
+function getMoeChain(primary, insights, query) {
+  const fallbackFrom = FDT_LOOKUP_CORE.cleanMoeText(insights?.fallbackFrom || '');
+  const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || query || '');
+  const recoveryAffix = getRecoveryAffixSummary(insights?.recovery);
+  const exactAffix = fallbackFrom ? '' : getInferredAffixSummary(matched, primary);
   const values = [
     primary.ultimate_root,
     primary.parent_word,
-    insights?.match || primary.word_ab,
+    matched,
   ]
     .map(FDT_LOOKUP_CORE.cleanMoeText)
     .filter(Boolean);
-  return [...new Set(values)];
+  const nodes = [...new Set(values)];
+  if (nodes.length === 0 && matched) nodes.push(matched);
+  return {
+    nodes,
+    affix: recoveryAffix || exactAffix,
+    inferred: !!fallbackFrom || getRecoveryOperations(insights?.recovery).length > 0,
+  };
 }
 
 function makeChain(chain) {
   const row = document.createElement('div');
   row.className = 'chain-row';
   row.appendChild(createChainIcon());
-  chain.forEach((item, index) => {
+  chain.nodes.forEach((item, index) => {
     if (index > 0) {
       const arrow = document.createElement('span');
       arrow.className = 'chain-arrow';
@@ -280,6 +289,16 @@ function makeChain(chain) {
     }
     row.appendChild(makeDrillButton(item, 'chain-chip chain-button'));
   });
+  if (chain.affix) {
+    const plus = document.createElement('span');
+    plus.className = 'relation-plus';
+    plus.textContent = '+';
+    const label = document.createElement('span');
+    label.className = 'relation-affix';
+    label.textContent = chain.affix;
+    row.append(plus, label);
+  }
+  if (chain.inferred) row.appendChild(createInferredHelp('chain'));
   return row;
 }
 
@@ -323,7 +342,24 @@ function makeKilangRelationRow(query, insights, primary) {
     label.textContent = affix;
     row.append(plus, label);
   }
+  if (fallbackFrom || getRecoveryOperations(insights?.recovery).length > 0) {
+    row.appendChild(createInferredHelp('fallback'));
+  }
   return row;
+}
+
+function createInferredHelp(kind) {
+  const mark = document.createElement('span');
+  mark.className = 'inferred-help';
+  mark.tabIndex = 0;
+  mark.textContent = '?';
+  const selected = FDT_LOOKUP_CORE.cleanMoeText(currentContext?.rawText || '');
+  const label = kind === 'chain' ? 'chain' : 'fallback';
+  mark.title = selected
+    ? `No exact entry for "${selected}" in our database. The displayed entry is in our database, but this ${label} relation was inferred by the extension from spelling or affix recovery.`
+    : `The displayed entry is in our database, but this ${label} relation was inferred by the extension from spelling or affix recovery.`;
+  mark.setAttribute('aria-label', mark.title);
+  return mark;
 }
 
 function getRecoveryAffixSummary(recovery) {

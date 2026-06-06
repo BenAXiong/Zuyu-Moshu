@@ -189,8 +189,12 @@ Done in current v1.6 Companion branch work:
   - renamed popup target label from `Companion` to `側欄`;
   - moved current-view IndiHunt export to the Side Panel top bar beside clear;
   - replaced the clear text label with a non-cross icon;
-  - hid chain rows unless Kilang provides an explicit parent word;
+  - initially hid singleton chain rows when no explicit parent word was present;
   - removed duplicated per-sentence MT/TTS buttons from the annotated reader.
+- Revised Companion chain/fallback display:
+  - chain row now always appears at the top of Kilang result cards;
+  - inferred recovery/fallback links get a `?` marker;
+  - marker tooltip describes entries as found "in our database" and reserves inference wording for the extension-generated link.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order

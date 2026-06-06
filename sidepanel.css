@@ -274,6 +274,28 @@ a {
   font-size: 0.78rem;
 }
 
+.inferred-help {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(232,223,200,0.28);
+  border-radius: 999px;
+  color: var(--dim);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 0.68rem;
+  line-height: 1;
+  cursor: help;
+}
+
+.inferred-help:hover,
+.inferred-help:focus {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+
 .chain-button,
 .dict-drill,
 .inline-drill {
