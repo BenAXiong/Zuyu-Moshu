@@ -222,37 +222,44 @@ Done in current v1.6 Companion branch work:
 6. Build phrase/sentence analysis view. Done at MVP/token-grid level.
 7. Add morphology textual chain. Started with root/parent/matched-word chain; richer derivation drilling remains pending.
 
-Remaining v1.6.0 work:
+v1.6.0 implementation and smoke testing are complete as of 2026-06-06 +08:00.
 
-- Smoke-test Companion header/example TTS in Chrome after the new implementation.
-- Smoke-test Companion ZH-to-AB lookup.
-- Smoke-test Companion fallback/alt/derived relation labels.
-- Smoke-test Companion MT button.
-- Smoke-test Companion save/bookmark and current-view IndiHunt export.
-- Smoke-test Companion direct audio button if a source row exposes `audioUrl`.
-- Smoke-test Companion annotated reader layout and header MT/TTS.
-- Final UI pass after that smoke test, if needed.
-
-Passed smoke tests as of 2026-06-06 +08:00:
+Passed smoke tests:
 
 - Popup target toggle: `提示框 / 側欄`.
 - Double-click opens Companion lookup.
 - Ctrl-select phrase opens Companion analysis.
 - Hover stays tooltip-only/off.
 - Side Panel lookup/analysis/drill behavior.
+- Companion header/example TTS.
+- Companion ZH-to-AB lookup.
+- Companion fallback/alt/derived relation labels, including expanded Kilang candidate groups without duplicate relation rows.
+- Companion MT button.
+- Companion save/bookmark and current-view IndiHunt export.
+- Companion direct audio button when a source row exposes `audioUrl`.
+- Companion annotated reader layout and header MT/TTS.
 - Phrase tooltip TTS audio through offscreen playback.
 
 ## v1.6.x Sequence
 
 ### v1.6.1 — Companion Polish And Parity
 
-- Improve narrow Side Panel layout.
-- Add save/copy/export actions where they clearly map to existing saved-item and IndiHunt flows.
-- Add mode switching and back/forward navigation inside Companion.
-- Add pinned context behavior if needed after testing.
-- Reduce duplicated code discovered during v1.6.0.
-- Stabilize TTS/MT UI behavior across tooltip, Companion, and saved page.
-- Expand Companion Kilang lookup beyond tooltip conciseness: keep tooltip on first-match `moeInsights`, but let Companion render exact plus multiple successful alt/glottal/fallback candidates from a separate background endpoint.
+Already completed during the v1.6.0 branch work:
+
+- Narrow Side Panel layout polish.
+- Save/export actions for lookup rows, examples, header aggregate items, and current-view IndiHunt export.
+- Local drill history with a back button.
+- Shared `lookup_core.js` resolver/normalization layer for Companion.
+- Companion Kilang lookup beyond tooltip conciseness: tooltip remains on first-match `moeInsights`, while Companion renders exact plus multiple successful alt/glottal/fallback candidates from a separate background endpoint.
+- TTS/MT behavior stabilized enough for current tooltip and Companion flows.
+
+Remaining v1.6.1 work:
+
+- Decide whether to add explicit copy buttons in Companion rows/examples, or keep export/save as the only row actions for now.
+- Add a small forward-history affordance only if back-only drilling feels limiting in use.
+- Do one focused cleanup pass for duplicated pure helpers still living in `content.js` versus `lookup_core.js`, without changing stable tooltip behavior.
+- Tune expanded candidate noise if testing shows too many repeated senses/examples; likely solutions are collapsed secondary groups and cross-group example dedupe.
+- Re-check narrow Side Panel overflow after real-world expanded candidate examples.
 
 ### v1.6.2 — Tab3 Clone / Reading Analysis
 
