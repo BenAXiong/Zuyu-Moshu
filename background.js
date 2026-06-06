@@ -9,6 +9,7 @@ const MOE_COMMON_PREFIXES = ['sapi', 'paka', 'pina', 'maka', 'mala', 'mipa', 'mi
 const MOE_COMMON_SUFFIXES = ['ayay', 'anay', 'enay', 'ay', 'en', 'an', 'aw', 'to'];
 const MOE_ALT_SWAPS = { u: 'o', o: 'u', l: 'r', r: 'l', f: 'v', v: 'f' };
 const MAX_MOE_FALLBACK_CANDIDATES = 20;
+const MAX_MOE_COMPANION_CANDIDATES = 8;
 const MAX_MOE_ALT_POSITIONS = 4;
 const MAX_MOE_PREFIX_STRIPS = 2;
 const MAX_MOE_SUFFIX_STRIPS = 1;
@@ -286,6 +287,46 @@ async function fetchMoeInsights(word) {
   return { query: word, match: '', fallbackFrom: '', rows: [] };
 }
 
+async function fetchMoeCandidateInsights(word) {
+  const normalized = String(word || '').trim().toLowerCase();
+  if (!normalized) return { query: word, candidates: [] };
+
+  const candidates = [];
+  const seenMatches = new Set();
+
+  const exactRows = await enrichMoeRows(await fetchMoeRows(normalized));
+  if (exactRows.length > 0) {
+    candidates.push({
+      query: normalized,
+      match: normalized,
+      fallbackFrom: '',
+      recovery: null,
+      rows: exactRows,
+    });
+    seenMatches.add(normalized);
+  }
+
+  for (const candidate of makeMoeFallbackCandidates(normalized)) {
+    if (candidates.length >= MAX_MOE_COMPANION_CANDIDATES) break;
+    const key = candidate.word.toLowerCase();
+    if (seenMatches.has(key)) continue;
+    seenMatches.add(key);
+
+    const rows = await enrichMoeRows(await fetchMoeRows(candidate.word));
+    if (rows.length === 0) continue;
+
+    candidates.push({
+      query: normalized,
+      match: candidate.word,
+      fallbackFrom: candidate.word.toLowerCase() === normalized ? '' : normalized,
+      recovery: candidate.recovery,
+      rows,
+    });
+  }
+
+  return { query: normalized, candidates };
+}
+
 async function fetchMoeZhInsights(keyword) {
   const rows = await enrichMoeRows(await fetchMoeRows(keyword, false), { maxRoots: 8 });
   return { query: keyword, rows };
@@ -498,6 +539,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     fetchMoeInsights(msg.word)
       .then(insights => sendResponse({ insights }))
       .catch(() => sendResponse({ insights: null }));
+
+    return true; // keep channel open for async sendResponse
+  }
+
+  if (msg.type === 'moeCandidateInsights') {
+    fetchMoeCandidateInsights(msg.word)
+      .then(insights => sendResponse({ insights }))
+      .catch(() => sendResponse({ insights: { query: msg.word, candidates: [] } }));
 
     return true; // keep channel open for async sendResponse
   }

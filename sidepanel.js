@@ -302,29 +302,92 @@ async function fetchZhSections(word, settings) {
 }
 
 async function fetchKilangSection(word) {
-  const response = await sendRuntimeMessage({ type: 'moeInsights', word });
-  const insights = response?.insights;
-  const rows = Array.isArray(insights?.rows) ? insights.rows : [];
-  if (rows.length === 0) return null;
+  const response = await sendRuntimeMessage({ type: 'moeCandidateInsights', word });
+  const candidates = Array.isArray(response?.insights?.candidates)
+    ? response.insights.candidates
+    : [];
+  if (candidates.length === 0) return null;
 
   const section = document.createElement('section');
   section.className = 'companion-card';
 
-  const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
-  currentKilangLookupMeta = {
-    matched: FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || word || ''),
-    recovery: insights?.recovery || null,
-  };
-  const chain = getMoeChain(primary, insights, word);
-  if (chain) section.appendChild(makeChain(chain));
-  const relation = makeKilangRelationRow(word, insights, primary);
-  if (relation) section.appendChild(relation);
-
-  const senses = FDT_LOOKUP_CORE.getMoeSenseRows(rows);
-  senses.forEach((sense, index) => {
-    section.appendChild(makeSenseBlock(sense, index + 1));
+  candidates.forEach((insights, index) => {
+    const rows = Array.isArray(insights?.rows) ? insights.rows : [];
+    const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
+    if (index === 0) {
+      currentKilangLookupMeta = {
+        matched: FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || word || ''),
+        recovery: insights?.recovery || null,
+      };
+    }
+    section.appendChild(makeKilangCandidateGroup(word, insights, primary, index));
   });
   return section;
+}
+
+function makeKilangCandidateGroup(query, insights, primary, index) {
+  const group = document.createElement('div');
+  group.className = 'candidate-group';
+  group.dataset.candidateIndex = String(index);
+
+  if (index > 0 || isRecoveredKilangCandidate(query, insights, primary)) {
+    group.appendChild(makeKilangCandidateHeader(query, insights, primary));
+  }
+
+  const chain = getMoeChain(primary, insights, query);
+  if (chain) group.appendChild(makeChain(chain));
+  const relation = makeKilangRelationRow(query, insights, primary);
+  if (relation) group.appendChild(relation);
+
+  const senses = FDT_LOOKUP_CORE.getMoeSenseRows(insights?.rows);
+  senses.forEach((sense, senseIndex) => {
+    group.appendChild(makeSenseBlock(sense, senseIndex + 1));
+  });
+
+  return group;
+}
+
+function isRecoveredKilangCandidate(query, insights, primary) {
+  const cleanQuery = FDT_LOOKUP_CORE.cleanMoeText(query || '').toLowerCase();
+  const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary?.word_ab || '').toLowerCase();
+  return !!matched && matched !== cleanQuery;
+}
+
+function makeKilangCandidateHeader(query, insights, primary) {
+  const head = document.createElement('div');
+  head.className = 'candidate-header';
+  const icon = document.createElement('span');
+  icon.className = 'candidate-icon';
+  icon.textContent = getKilangCandidateIcon(insights);
+  const label = makeDrillButton(
+    FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary?.word_ab || query),
+    'candidate-title inline-drill'
+  );
+  head.append(icon, label);
+
+  const affix = getRecoveryAffixSummary(insights?.recovery);
+  if (affix) {
+    const plus = document.createElement('span');
+    plus.className = 'relation-plus';
+    plus.textContent = '+';
+    const pill = document.createElement('span');
+    pill.className = 'relation-affix';
+    pill.textContent = affix;
+    head.append(plus, pill);
+  }
+
+  if (insights?.fallbackFrom || getRecoveryOperations(insights?.recovery).length > 0) {
+    head.appendChild(createInferredHelp('fallback'));
+  }
+  return head;
+}
+
+function getKilangCandidateIcon(insights) {
+  const recovery = insights?.recovery || {};
+  const affix = getRecoveryAffixSummary(recovery);
+  const operations = getRecoveryOperations(recovery);
+  if (operations.includes('alt') && !operations.includes('glottal') && !affix) return '~';
+  return '↳';
 }
 
 function getMoeChain(primary, insights, query) {

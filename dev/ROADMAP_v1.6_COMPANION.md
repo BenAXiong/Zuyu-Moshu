@@ -252,6 +252,7 @@ Passed smoke tests as of 2026-06-06 +08:00:
 - Add pinned context behavior if needed after testing.
 - Reduce duplicated code discovered during v1.6.0.
 - Stabilize TTS/MT UI behavior across tooltip, Companion, and saved page.
+- Expand Companion Kilang lookup beyond tooltip conciseness: keep tooltip on first-match `moeInsights`, but let Companion render exact plus multiple successful alt/glottal/fallback candidates from a separate background endpoint.
 
 ### v1.6.2 — Tab3 Clone / Reading Analysis
 
