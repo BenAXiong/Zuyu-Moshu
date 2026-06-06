@@ -489,10 +489,7 @@ function makeSenseBlock(sense, number) {
   head.className = 'sense-head';
   const def = document.createElement('h3');
   def.textContent = sense.definition || FDT_LOOKUP_CORE.cleanMoeText(sense.row?.word_ab) || `義項 ${number}`;
-  const actions = document.createElement('div');
-  actions.className = 'row-actions';
-  actions.appendChild(createCompanionSaveButton(() => savedItem));
-  head.append(def, actions);
+  head.append(def, createBookmarkRail(() => savedItem));
   block.appendChild(head);
 
   if (sense.examples.length > 0) {
@@ -530,8 +527,9 @@ function makeDictRow(row) {
   actions.className = 'row-actions';
   const audio = createDirectAudioButton(row.audioUrl);
   if (audio) actions.appendChild(audio);
-  actions.appendChild(createCompanionSaveButton(() => savedItem));
-  main.append(zh, actions);
+  main.appendChild(zh);
+  if (actions.childNodes.length > 0) main.appendChild(actions);
+  main.appendChild(createBookmarkRail(() => savedItem));
   item.appendChild(main);
   if (row.ab) {
     const ab = document.createElement('button');
@@ -561,8 +559,9 @@ function makeZhRow(row) {
   actions.className = 'row-actions';
   const audio = createDirectAudioButton(row.audioUrl);
   if (audio) actions.appendChild(audio);
-  actions.appendChild(createCompanionSaveButton(() => savedItem));
-  main.append(ab, actions);
+  main.appendChild(ab);
+  if (actions.childNodes.length > 0) main.appendChild(actions);
+  main.appendChild(createBookmarkRail(() => savedItem));
   item.appendChild(main);
 
   if (row.secondaryText) {
@@ -864,6 +863,13 @@ function createCompanionSaveButton(getItem) {
   return btn;
 }
 
+function createBookmarkRail(getItem) {
+  const rail = document.createElement('div');
+  rail.className = 'bookmark-rail';
+  rail.appendChild(createCompanionSaveButton(getItem));
+  return rail;
+}
+
 function createBookmarkIcon(saved = false) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 16 16');
@@ -1072,9 +1078,9 @@ function makeExample(example, parentItem = null) {
   const audio = createDirectAudioButton(example.audioUrl);
   if (audio) actions.appendChild(audio);
   if (tts) actions.appendChild(tts);
-  actions.appendChild(createCompanionSaveButton(() => savedItem));
   top.appendChild(ab);
-  top.appendChild(actions);
+  if (actions.childNodes.length > 0) top.appendChild(actions);
+  top.appendChild(createBookmarkRail(() => savedItem));
   const zh = document.createElement('div');
   zh.className = 'example-zh';
   zh.textContent = example.zh || '';

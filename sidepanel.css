@@ -132,9 +132,7 @@ a {
 .lookup-head-main,
 .lookup-head-actions,
 .lookup-title-group,
-.section-title,
-.sense-head,
-.dict-main {
+.section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -158,6 +156,28 @@ a {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+}
+
+.sense-head,
+.dict-main,
+.example-ab-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 22px;
+  align-items: start;
+  gap: 8px;
+}
+
+.row-actions {
+  grid-column: 2;
+}
+
+.bookmark-rail {
+  grid-column: 3;
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
 }
 
 .lookup-head h2,
@@ -413,6 +433,7 @@ a {
 
 .sense-head h3,
 .dict-main strong {
+  min-width: 0;
   color: var(--accent);
   font-size: 0.98rem;
   font-weight: 700;
@@ -426,15 +447,9 @@ a {
   border-left: 1px solid var(--line);
 }
 
-.example-ab-line {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
 .example-ab,
 .dict-ab {
+  min-width: 0;
   color: var(--text);
 }
 
@@ -471,6 +486,19 @@ a {
   height: 18px;
 }
 
+.companion-save-button {
+  border-color: transparent;
+  background: transparent;
+}
+
+.companion-save-button:hover,
+.companion-save-button:focus,
+.companion-save-button.loading {
+  border-color: transparent;
+  background: transparent;
+  outline: none;
+}
+
 .companion-save-icon {
   width: 15px;
   height: 15px;
@@ -497,9 +525,13 @@ a {
   border-color: var(--accent);
 }
 
-.companion-icon-button.saved {
+.companion-icon-button.saved:not(.companion-save-button) {
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+.companion-save-button.saved {
+  color: var(--accent);
 }
 
 .companion-icon-button.error,

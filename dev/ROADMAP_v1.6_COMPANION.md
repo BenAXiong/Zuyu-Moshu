@@ -203,6 +203,9 @@ Done in current v1.6 Companion branch work:
 - Fixed Companion header bookmark semantics:
   - header bookmark now saves an aggregate word/headword item after lookup rows are registered;
   - individual row bookmarks continue to save their specific sense/result rows.
+- Refined Companion bookmark layout:
+  - row/example bookmarks use a dedicated one-column right rail;
+  - bookmark icons are borderless/backgroundless and visually separate from audio/TTS controls.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
