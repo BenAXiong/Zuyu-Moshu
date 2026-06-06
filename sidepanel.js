@@ -334,8 +334,10 @@ function makeKilangCandidateGroup(candidate) {
   }
 
   if (candidate.chain) group.appendChild(makeChain(candidate.chain));
-  const relation = makeKilangRelationRow(candidate);
-  if (relation) group.appendChild(relation);
+  if (!candidate.showHeader && !candidate.chain) {
+    const relation = makeKilangRelationRow(candidate);
+    if (relation) group.appendChild(relation);
+  }
 
   candidate.senses.forEach((sense, senseIndex) => {
     group.appendChild(makeSenseBlock(sense, senseIndex + 1));
