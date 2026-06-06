@@ -185,6 +185,12 @@ Done in current v1.6 Companion branch work:
   - removed MT from single-word lookup headers, keeping it for phrase/sentence contexts;
   - removed the phrase token grid, leaving the annotated reader as the analysis view;
   - changed tooltip Kilang-logo floater to open the current tooltip in Companion.
+- Added Companion top-bar polish:
+  - renamed popup target label from `Companion` to `側欄`;
+  - moved current-view IndiHunt export to the Side Panel top bar beside clear;
+  - replaced the clear text label with a non-cross icon;
+  - hid chain rows unless Kilang provides an explicit parent word;
+  - removed duplicated per-sentence MT/TTS buttons from the annotated reader.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
@@ -205,12 +211,12 @@ Remaining v1.6.0 work:
 - Smoke-test Companion MT button.
 - Smoke-test Companion save/bookmark and current-view IndiHunt export.
 - Smoke-test Companion direct audio button if a source row exposes `audioUrl`.
-- Smoke-test Companion annotated reader layout and per-sentence MT/TTS.
+- Smoke-test Companion annotated reader layout and header MT/TTS.
 - Final UI pass after that smoke test, if needed.
 
 Passed smoke tests as of 2026-06-06 +08:00:
 
-- Popup target toggle: `提示框 / Companion`.
+- Popup target toggle: `提示框 / 側欄`.
 - Double-click opens Companion lookup.
 - Ctrl-select phrase opens Companion analysis.
 - Hover stays tooltip-only/off.

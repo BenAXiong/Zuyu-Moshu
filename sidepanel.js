@@ -29,6 +29,7 @@ let currentExportItems = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
+  document.getElementById('topExport')?.addEventListener('click', exportCompanionToIndiHunt);
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
   });
@@ -255,6 +256,7 @@ async function fetchKilangSection(word) {
 }
 
 function getMoeChain(primary, insights) {
+  if (!FDT_LOOKUP_CORE.cleanMoeText(primary.parent_word || '')) return [];
   const values = [
     primary.ultimate_root,
     primary.parent_word,
@@ -562,15 +564,7 @@ function makeReaderSentence(segment, resultMap) {
     else appendReaderText(line, part.text);
   });
 
-  const actions = document.createElement('div');
-  actions.className = 'reader-actions';
-  const mt = createCompanionMtButton(segment.text, currentContext);
-  const tts = createCompanionTtsButton(segment.text, currentContext);
-  if (mt) actions.appendChild(mt);
-  if (tts) actions.appendChild(tts);
-
   block.appendChild(line);
-  if (actions.childNodes.length > 0) block.appendChild(actions);
   return block;
 }
 
@@ -621,14 +615,12 @@ function makeHeaderActions(text, context, options = {}) {
   const saveBtn = createCompanionSaveButton(() => getHeaderSavedItem());
   const mt = options.includeMt ? createCompanionMtButton(text, context) : null;
   const tts = createCompanionTtsButton(text, context);
-  const exportBtn = createCompanionExportButton();
   group.appendChild(saveBtn);
   if (mt) group.appendChild(mt);
   if (tts) {
     tts.dataset.companionHeaderTts = 'true';
     group.appendChild(tts);
   }
-  group.appendChild(exportBtn);
   return group;
 }
 
@@ -695,26 +687,6 @@ function createBookmarkIcon(saved = false) {
   if (saved) path.setAttribute('fill', 'currentColor');
   svg.appendChild(path);
   return svg;
-}
-
-function createCompanionExportButton() {
-  const btn = document.createElement('button');
-  btn.type = 'button';
-  btn.className = 'companion-icon-button companion-export-button';
-  btn.title = 'Export to IndiHunt';
-  btn.setAttribute('aria-label', 'Export to IndiHunt');
-  const img = document.createElement('img');
-  img.src = chrome.runtime.getURL('assets/indivore/icon128.png');
-  img.alt = '';
-  img.width = 18;
-  img.height = 18;
-  btn.appendChild(img);
-  btn.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    exportCompanionToIndiHunt();
-  });
-  return btn;
 }
 
 function registerExportItem(item) {

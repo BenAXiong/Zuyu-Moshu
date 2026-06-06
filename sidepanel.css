@@ -47,18 +47,23 @@ button {
   gap: 6px;
 }
 
-#clear {
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface-hi);
-  color: var(--soft);
-  padding: 5px 9px;
-  cursor: pointer;
-}
-
-#clear:hover {
+#clear:hover,
+#topExport:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+#clear svg {
+  width: 16px;
+  height: 16px;
+}
+
+#clear path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .mode-tabs {
@@ -486,14 +491,6 @@ a {
 .reader-token.missing .reader-token-ab,
 .reader-token.missing .reader-token-zh {
   color: var(--dim);
-}
-
-.reader-actions {
-  position: absolute;
-  top: 9px;
-  right: 10px;
-  display: inline-flex;
-  gap: 5px;
 }
 
 .notice,

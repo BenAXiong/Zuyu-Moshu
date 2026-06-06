@@ -133,7 +133,7 @@ function setDisplayTarget(target) {
   if (companion) {
     companion.disabled = !canUseSidePanel();
     companion.classList.toggle('disabled', !canUseSidePanel());
-    companion.title = canUseSidePanel() ? '在 Companion 顯示查詢' : '此 Chrome 不支援 Side Panel';
+    companion.title = canUseSidePanel() ? '在側欄顯示查詢' : '此 Chrome 不支援 Side Panel';
   }
 }
 
