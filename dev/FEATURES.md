@@ -1,6 +1,6 @@
 # Feature Inventory
 
-Global timestamp: 2026-06-06 13:04 +08:00
+Global timestamp: 2026-06-06 13:16 +08:00
 
 Current extension version: 1.6.0
 
@@ -124,7 +124,7 @@ Remaining work under this anchor is Citadel/data-side:
 | Kilang availability | Amis only | Kilang source checkbox is disabled outside Amis. Content-side checks also require Amis. | `options.js`: `updateSourceAvailability()`; `content.js`: `canUseMoeKilang()`, `canUseKilangZhToAb()`. |
 | Appearance settings | Universal | Theme, font size, bold translations, and dialect display are stored in `chrome.storage.sync`. | `options.js`, `popup.js`, `content.css`. |
 | Unsaved options warning | Universal | Options page prompts with the browser's native leave-page warning when form controls differ from the last loaded/saved settings. | `options.js`: `readCurrentOptions()`, `hasUnsavedOptions()`. |
-| Popup quick controls | Universal | Enables/disables extension, theme/font controls, Amis alt-spelling toggle, hover toggle, `AI工具` toggle, and has two icon+label buttons for options and saved items. | `popup.html`, `popup.js`. |
+| Popup quick controls | Universal | Enables/disables extension, language/theme/font controls, a full-width `顯示模式` segmented control (`提示框 / 側欄`) placed below language, a compact three-column row for `AI工具` / Amis alt-spelling / hover toggles, and two icon+label buttons for options and saved items. | `popup.html`, `popup.css`, `popup.js`. |
 
 ## Packaging
 

@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Pills: save on click
-  document.querySelectorAll('.pill').forEach(btn => {
+  document.querySelectorAll('[data-group]').forEach(btn => {
     btn.addEventListener('click', () => {
       const { group, value } = btn.dataset;
       activatePill(group, value);
@@ -115,21 +115,26 @@ function setAltSpellingToggle(enabled, language) {
   btn.disabled = !available;
   btn.classList.toggle('disabled', !available);
   btn.classList.toggle('off', !available || !enabled);
+  btn.querySelector('.sw')?.classList.toggle('off', !available || !enabled);
   btn.title = available ? '相近拼法搜尋' : '相近拼法搜尋僅適用 Amis';
 }
 
 function setHoverToggle(enabled) {
-  document.getElementById('triggerHover').classList.toggle('off', !enabled);
+  const btn = document.getElementById('triggerHover');
+  btn.classList.toggle('off', !enabled);
+  btn.querySelector('.sw')?.classList.toggle('off', !enabled);
 }
 
 function setAiToolsToggle(enabled) {
-  document.getElementById('aiTools').classList.toggle('off', !enabled);
+  const btn = document.getElementById('aiTools');
+  btn.classList.toggle('off', !enabled);
+  btn.querySelector('.sw')?.classList.toggle('off', !enabled);
 }
 
 function setDisplayTarget(target) {
   const value = canUseSidePanel() ? (target || 'tooltip') : 'tooltip';
   activatePill('displayTarget', value);
-  const companion = document.querySelector('.pill[data-group="displayTarget"][data-value="companion"]');
+  const companion = document.querySelector('[data-group="displayTarget"][data-value="companion"]');
   if (companion) {
     companion.disabled = !canUseSidePanel();
     companion.classList.toggle('disabled', !canUseSidePanel());
@@ -142,7 +147,7 @@ function canUseSidePanel() {
 }
 
 function activatePill(group, value) {
-  document.querySelectorAll(`.pill[data-group="${group}"]`).forEach(btn => {
+  document.querySelectorAll(`[data-group="${group}"]`).forEach(btn => {
     btn.classList.toggle('active', btn.dataset.value === value);
   });
 }

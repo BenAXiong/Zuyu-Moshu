@@ -206,6 +206,10 @@ Done in current v1.6 Companion branch work:
 - Refined Companion bookmark layout:
   - row/example bookmarks use a dedicated one-column right rail;
   - bookmark icons are borderless/backgroundless and visually separate from audio/TTS controls.
+- Refined popup target controls:
+  - renamed the target row to `顯示模式` and moved it directly below language;
+  - styled `提示框 / 側欄` like footer buttons;
+  - grouped `AI工具`, alt spelling, and hover toggles into a compact three-column row.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
