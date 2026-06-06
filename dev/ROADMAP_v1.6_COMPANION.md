@@ -195,6 +195,10 @@ Done in current v1.6 Companion branch work:
   - chain row now always appears at the top of Kilang result cards;
   - inferred recovery/fallback links get a `?` marker;
   - marker tooltip describes entries as found "in our database" and reserves inference wording for the extension-generated link.
+- Added Companion root header marker:
+  - mirrors the tooltip root icon/pill behavior for AB lookups;
+  - appears only when the returned database row exposes `ultimate_root` or `stem`;
+  - stays hidden when no root/stem is present instead of inferring a root from the chain.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order

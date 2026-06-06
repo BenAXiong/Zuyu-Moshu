@@ -162,6 +162,7 @@ async function buildLookupView(context, settings) {
   if (hasCurrentDirectAudio()) {
     header.querySelector('[data-companion-header-tts="true"]')?.remove();
   }
+  if (!isZhLookup) updateLookupHeaderRoot(header, word || context.rawText);
   sections.forEach(section => wrap.appendChild(section));
   return wrap;
 }
@@ -177,9 +178,64 @@ function makeLookupHeader(context, word) {
   const title = document.createElement('h2');
   title.textContent = context.rawText || word || '查詢';
   titleGroup.appendChild(title);
+  titleGroup.appendChild(createHeaderRootChip());
   top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: false }));
   card.appendChild(top);
   return card;
+}
+
+function createHeaderRootChip() {
+  const chip = document.createElement('button');
+  chip.type = 'button';
+  chip.className = 'companion-root-chip';
+  chip.hidden = true;
+  chip.disabled = true;
+  chip.title = '詞根';
+  chip.setAttribute('aria-label', '詞根');
+  const text = document.createElement('span');
+  text.className = 'companion-root-text';
+  chip.append(createCompanionRootIcon(), text);
+  chip.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const root = chip.dataset.root || '';
+    if (!root || chip.disabled) return;
+    drillLookup(root);
+  });
+  return chip;
+}
+
+function createCompanionRootIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('companion-root-icon');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M8 13V5.5M8 9.5C5.8 9.5 4.2 8.2 4 6.2c2.1-.2 3.7.7 4 2.4M8 8.4c2.3-.1 4-1.4 4.3-3.6C10 4.6 8.4 5.6 8 7.3');
+  svg.appendChild(path);
+  return svg;
+}
+
+function updateLookupHeaderRoot(header, query) {
+  const chip = header.querySelector('.companion-root-chip');
+  const text = chip?.querySelector('.companion-root-text');
+  if (!chip || !text) return;
+  const root = getCurrentDbRoot();
+  const cleanRoot = FDT_LOOKUP_CORE.cleanMoeText(root);
+  const cleanQuery = FDT_LOOKUP_CORE.cleanMoeText(query || currentContext?.rawText || '');
+  const isCurrentRoot = !!cleanRoot && cleanRoot.toLowerCase() === cleanQuery.toLowerCase();
+  text.textContent = cleanRoot;
+  chip.dataset.root = cleanRoot;
+  chip.hidden = !cleanRoot;
+  chip.disabled = !cleanRoot || isCurrentRoot;
+  chip.classList.toggle('current', isCurrentRoot);
+  chip.title = isCurrentRoot ? '詞根' : '查詢詞根';
+  chip.setAttribute('aria-label', isCurrentRoot ? '詞根' : '查詢詞根');
+}
+
+function getCurrentDbRoot() {
+  const item = currentExportItems.find(entry => entry.sourceId === 'KILANG' && entry.root);
+  return item?.root || '';
 }
 
 async function fetchWordSections(word, settings) {
