@@ -242,6 +242,22 @@ a {
   stroke-linejoin: round;
 }
 
+.chain-tree-logo {
+  flex: none;
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  opacity: 0.78;
+}
+
+.chain-tree-logo img {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
 .relation-row {
   display: flex;
   align-items: center;

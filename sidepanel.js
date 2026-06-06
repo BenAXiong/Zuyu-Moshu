@@ -299,7 +299,22 @@ function makeChain(chain) {
     row.append(plus, label);
   }
   if (chain.inferred) row.appendChild(createInferredHelp('chain'));
+  row.appendChild(createKilangTreeLogo());
   return row;
+}
+
+function createKilangTreeLogo() {
+  const wrap = document.createElement('span');
+  wrap.className = 'chain-tree-logo';
+  wrap.title = 'Tree view';
+  wrap.setAttribute('aria-hidden', 'true');
+  const img = document.createElement('img');
+  img.src = chrome.runtime.getURL('assets/kilang/Kilang_5_nobg_noring2.png');
+  img.alt = '';
+  img.width = 22;
+  img.height = 22;
+  wrap.appendChild(img);
+  return wrap;
 }
 
 function createChainIcon() {
