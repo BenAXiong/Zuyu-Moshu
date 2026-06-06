@@ -50,10 +50,7 @@ const moeFetched = new Map();
 
 // ' (apostrophe) intentionally excluded — it's a glottal stop character in these orthographies
 function cleanWord(w) {
-  return w
-    .replace(/[‘’ʼ´`]/g, "'")
-    .replace(/^[,.";:!?()[\]{}—–，。！？；：「」『』、]+|[,.";:!?()[\]{}—–，。！？；：「」『』、]+$/g, '')
-    .toLowerCase();
+  return FDT_LOOKUP_CORE.cleanWord(w);
 }
 
 function getShortDialect(full) {
@@ -67,11 +64,11 @@ function getDialectLabel(full, settings) {
 }
 
 function normalizeAudioUrl(url) {
-  return typeof url === 'string' && /^https?:\/\//.test(url) ? url : '';
+  return FDT_LOOKUP_CORE.normalizeAudioUrl(url);
 }
 
 function getAudioUrl(entry) {
-  return normalizeAudioUrl(entry?.audioUrl ?? entry?.audio_url ?? entry?.audio);
+  return FDT_LOOKUP_CORE.getAudioUrl(entry);
 }
 
 const SWAP = { u:'o', o:'u', l:'r', r:'l', f:'v', v:'f', '^':"'" };
@@ -222,7 +219,7 @@ function isCjk(ch) {
 }
 
 function hasCjk(text) {
-  return /[\u3400-\u9fff]/.test(text);
+  return FDT_LOOKUP_CORE.hasCjk(text);
 }
 
 function hasLookupLength(word) {
@@ -459,16 +456,11 @@ async function sendCompanionContext(raw, phraseTokens, settings, trigger) {
 }
 
 function cleanPhraseText(text) {
-  return String(text || '').replace(/\s+/g, ' ').trim();
+  return FDT_LOOKUP_CORE.cleanPhraseText(text);
 }
 
 function getPhraseTokens(raw) {
-  if (hasCjk(raw)) return [];
-  return cleanPhraseText(raw)
-    .split(/[\s,;!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
-    .map(cleanWord)
-    .filter(token => token && token.length <= MAX_WORD_LEN && !hasCjk(token))
-    .slice(0, MAX_PHRASE_TOKENS);
+  return FDT_LOOKUP_CORE.getPhraseTokens(raw, MAX_PHRASE_TOKENS);
 }
 
 function setHeaderWord(word) {
@@ -1877,11 +1869,7 @@ function setHeaderAudioUrl(url) {
 }
 
 function cleanDisplayText(text) {
-  return String(text || '')
-    .replace(/`([^`~]+)~/g, '$1')
-    .replace(/[`~|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return FDT_LOOKUP_CORE.cleanDisplayText(text);
 }
 
 function appendDrillableText(parent, text) {
@@ -1914,17 +1902,11 @@ function appendDrillableText(parent, text) {
 }
 
 function countCjk(text) {
-  return [...String(text || '')].filter(ch => isCjk(ch)).length;
+  return FDT_LOOKUP_CORE.countCjk(text);
 }
 
 function isSentenceLikeExample(example) {
-  const ab = example.ab || '';
-  const zh = example.zh || '';
-  const abTokens = ab.split(/\s+/).filter(Boolean).length;
-  const zhChars = countCjk(zh);
-  if (/[.!?。！？；;]/.test(`${ab}${zh}`)) return true;
-  if (abTokens >= 3 && zhChars >= 4) return true;
-  return zhChars >= 8;
+  return FDT_LOOKUP_CORE.isSentenceLikeExample(example);
 }
 
 function getExampleRows(entry) {
@@ -2265,23 +2247,7 @@ function appendPhraseResultToken(parent, result) {
 }
 
 function getPhraseGlossesFromTexts(texts, options = {}) {
-  const limit = options.limit ?? 2;
-  const maxPerText = options.maxPerText ?? 2;
-  const glosses = [];
-  const seen = new Set();
-  for (const text of texts) {
-    let addedForText = 0;
-    for (const part of getShortPhraseDefinitions(text)) {
-      const key = part.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      glosses.push(part);
-      addedForText++;
-      if (glosses.length >= limit) return glosses;
-      if (addedForText >= maxPerText) break;
-    }
-  }
-  return glosses;
+  return FDT_LOOKUP_CORE.getPhraseGlossesFromTexts(texts, options);
 }
 
 function getShortPhraseDefinition(text) {
@@ -2289,32 +2255,11 @@ function getShortPhraseDefinition(text) {
 }
 
 function getShortPhraseDefinitions(text) {
-  const clean = cleanDisplayText(String(text || '').replace(/[|｜]/g, '；'));
-  if (!clean) return [];
-  const withoutParen = clean
-    .replace(/[（(][^（）()]*[）)]/g, ' ')
-    .replace(/[〈《<][^〉》>]*[〉》>]/g, ' ')
-    .replace(/[（）()]/g, ' ')
-    .replace(/[〈〉《》<>]/g, ' ')
-    .replace(/^[\s,.;:：，。；、]+|[\s,.;:：，。；、]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const candidates = withoutParen
-    .split(/[；;。，,、/／]|或|及|和|與|表示|指/u)
-    .map(part => part.replace(/^[的地得之]|[的地得之]$/g, '').trim())
-    .filter(Boolean);
-  const ordered = [
-    ...candidates.filter(part => countCjk(part) <= 6),
-    ...candidates.filter(part => countCjk(part) > 6),
-  ];
-  const picked = ordered.length > 0 ? ordered : [withoutParen];
-  return picked.map(part => truncatePhraseHint(part)).filter(Boolean);
+  return FDT_LOOKUP_CORE.getShortPhraseDefinitions(text);
 }
 
 function truncatePhraseHint(text) {
-  const chars = [...cleanDisplayText(text)];
-  if (chars.length <= 6) return chars.join('');
-  return `${chars.slice(0, 5).join('')}…`;
+  return FDT_LOOKUP_CORE.truncatePhraseHint(text);
 }
 
 function appendPhraseAiButtons(phrase) {
@@ -2398,11 +2343,11 @@ function renderPhraseMt(text) {
 }
 
 function cleanMoeText(text) {
-  return cleanDisplayText(text);
+  return FDT_LOOKUP_CORE.cleanMoeText(text);
 }
 
 function cleanMoeDefinition(text) {
-  return cleanMoeText(text).replace(/[。．.]+$/u, '').trim();
+  return FDT_LOOKUP_CORE.cleanMoeDefinition(text);
 }
 
 function getMoeMatchKey(word) {
@@ -2427,87 +2372,35 @@ function insertMoeSection(body, section) {
 }
 
 function parseMoeExamples(json) {
-  try {
-    const parsed = JSON.parse(json || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return FDT_LOOKUP_CORE.parseMoeExamples(json);
 }
 
 function getMoeExampleRows(row) {
-  return parseMoeExamples(row.examples_json)
-    .map(ex => ({
-      ab: cleanMoeText(ex.ab),
-      zh: cleanMoeText(ex.zh || ex.en),
-      source: cleanMoeText(ex.source || ''),
-      sourceId: 'KILANG',
-      audioUrl: getAudioUrl(ex),
-    }))
-    .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
+  return FDT_LOOKUP_CORE.getMoeExampleRows(row);
 }
 
 function dedupeMoeExamples(examples) {
-  const seen = new Set();
-  return examples.filter(example => {
-    const key = `${example.ab}\n${example.zh}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return FDT_LOOKUP_CORE.dedupeMoeExamples(examples);
 }
 
 function getMoeSourceRank(code) {
-  return ({
-    s: 0,
-    m: 1,
-    a: 2,
-    'old-s': 3,
-    p: 4,
-  })[code] ?? 9;
+  return FDT_LOOKUP_CORE.getMoeSourceRank(code);
 }
 
 function getMoeDisplayRows(rows) {
-  const displayable = rows.filter(row => cleanMoeDefinition(row.definition) || getMoeExampleRows(row).length > 0);
-  if (displayable.length === 0) return rows;
-
-  const bestRank = Math.min(...displayable.map(row => getMoeSourceRank(row.dict_code)));
-  return displayable.filter(row => getMoeSourceRank(row.dict_code) === bestRank);
+  return FDT_LOOKUP_CORE.getMoeDisplayRows(rows);
 }
 
 function getMoeSenseKey(row) {
-  const definition = cleanMoeDefinition(row.definition);
-  return definition || cleanMoeText(row.word_ab) || String(row.id || '');
+  return FDT_LOOKUP_CORE.getMoeSenseKey(row);
 }
 
 function getMoeSenseRows(rows) {
-  const senses = [];
-  const byKey = new Map();
-
-  getMoeDisplayRows(rows).forEach(row => {
-    const key = getMoeSenseKey(row);
-    if (!key) return;
-
-    let sense = byKey.get(key);
-    if (!sense) {
-      sense = {
-        row,
-        definition: cleanMoeDefinition(row.definition),
-        audioUrl: getAudioUrl(row),
-        examples: [],
-      };
-      byKey.set(key, sense);
-      senses.push(sense);
-    }
-    if (!sense.audioUrl) sense.audioUrl = getAudioUrl(row);
-    sense.examples = dedupeMoeExamples([...sense.examples, ...getMoeExampleRows(row)]);
-  });
-
-  return senses;
+  return FDT_LOOKUP_CORE.getMoeSenseRows(rows);
 }
 
 function getMoePrimaryRow(rows) {
-  return getMoeSenseRows(rows)[0]?.row || rows[0];
+  return FDT_LOOKUP_CORE.getMoePrimaryRow(rows);
 }
 
 function getMoeAffixes(word, stem) {

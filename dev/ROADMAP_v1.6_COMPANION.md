@@ -253,13 +253,17 @@ Already completed during the v1.6.0 branch work:
 - Companion Kilang lookup beyond tooltip conciseness: tooltip remains on first-match `moeInsights`, while Companion renders exact plus multiple successful alt/glottal/fallback candidates from a separate background endpoint.
 - TTS/MT behavior stabilized enough for current tooltip and Companion flows.
 
+v1.6.1 decisions and cleanup:
+
+- No explicit copy buttons in Companion for now; save/export are enough.
+- No forward-history affordance for now; back-only drilling is enough.
+- Expanded candidate noise is acceptable for now.
+- Narrow Side Panel overflow passed real-world checks.
+- Completed a focused helper cleanup: `lookup_core.js` is now loaded by content scripts, and content-side duplicated pure helper implementations delegate to it where behavior is shared. Tooltip rendering and lookup flow were not structurally changed.
+
 Remaining v1.6.1 work:
 
-- Decide whether to add explicit copy buttons in Companion rows/examples, or keep export/save as the only row actions for now.
-- Add a small forward-history affordance only if back-only drilling feels limiting in use.
-- Do one focused cleanup pass for duplicated pure helpers still living in `content.js` versus `lookup_core.js`, without changing stable tooltip behavior.
-- Tune expanded candidate noise if testing shows too many repeated senses/examples; likely solutions are collapsed secondary groups and cross-group example dedupe.
-- Re-check narrow Side Panel overflow after real-world expanded candidate examples.
+- None currently known.
 
 ### v1.6.2 — Tab3 Clone / Reading Analysis
 
