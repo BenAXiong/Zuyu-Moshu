@@ -260,6 +260,7 @@ v1.6.1 decisions and cleanup:
 - Expanded candidate noise is acceptable for now.
 - Narrow Side Panel overflow passed real-world checks.
 - Completed a focused helper cleanup: `lookup_core.js` is now loaded by content scripts, and content-side duplicated pure helper implementations delegate to it where behavior is shared. Tooltip rendering and lookup flow were not structurally changed.
+- Added shared repair for rare Kilang examples where the source data puts AB text and ZH translation together in the `zh` field while leaving `ab` empty.
 
 Remaining v1.6.1 work:
 
@@ -267,13 +268,18 @@ Remaining v1.6.1 work:
 
 ### v1.6.2 — Tab3 Clone / Reading Analysis
 
-- Extend v1.6.0 basic token analysis into a richer reader-like mode.
-- In-panel selected-text analysis with inline AB and compact ZH annotations.
-- Sentence segmentation for selected text.
-- Single/split/full reading layouts only if they fit Side Panel width.
-- Token status styling hooks for saved/unknown/duplicate states.
-- Per-sentence actions: copy, save/export where appropriate, TTS/MT if shared TTS is stable.
-- No full-page analyzer.
+Goal: turn the current Companion `分析` mode into a more useful selected-text reader, broadly inspired by saved-page `短章分析*`, while staying compact enough for the Side Panel.
+
+Tasks:
+
+- Review the current Companion analysis reader against saved-page `短章分析*` and decide which controls are worth porting into the Side Panel.
+- Add basic reader display controls if they fit: show/hide Chinese glosses, show/hide top fallback/alt annotations, and possibly hide sentence dividers.
+- Add selected-sentence navigation only if long selections are hard to scan in the Side Panel; avoid the full saved-page layout controls unless needed.
+- Improve token status hooks: unknown token, recovered/fallback token, alternate-spelling token, and saved-token styling hooks. Wiring saved-token status can remain deferred if it needs cross-view saved-state sync.
+- Keep per-sentence MT/TTS in the header or a minimal sentence action area; avoid duplicating noisy controls on every token.
+- Decide whether Companion analysis should export the whole selected passage, the current sentence, or both to IndiHunt.
+- Keep lookup source behavior aligned with current Companion lookup: Kilang first by default, ePark/DICT only when enabled, no full-page analyzer.
+- Smoke-test on short phrases, multi-sentence selections, long paragraph selections, punctuation-heavy examples, and recovered/alt-heavy Amis text.
 
 ### v1.6.3 — AI Convenience / Tab4 Clone
 
