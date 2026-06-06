@@ -192,13 +192,14 @@ Done in current v1.6 Companion branch work:
   - initially hid singleton chain rows when no explicit parent word was present;
   - removed duplicated per-sentence MT/TTS buttons from the annotated reader.
 - Revised Companion chain/fallback display:
-  - chain row now always appears at the top of Kilang result cards;
+  - chain row appears at the top of Kilang result cards only when the returned row has an explicit `parent_word`;
   - inferred recovery/fallback links get a `?` marker;
   - marker tooltip describes entries as found "in our database" and reserves inference wording for the extension-generated link.
 - Added Companion root header marker:
   - mirrors the tooltip root icon/pill behavior for AB lookups;
   - appears only when the returned database row exposes `ultimate_root` or `stem`;
-  - stays hidden when no root/stem is present instead of inferring a root from the chain.
+  - stays hidden when no root/stem is present instead of inferring a root from the chain;
+  - renders icon-only when pure alt recovery makes the root equal the recovered spelling.
 - Fixed Companion header bookmark semantics:
   - header bookmark now saves an aggregate word/headword item after lookup rows are registered;
   - individual row bookmarks continue to save their specific sense/result rows.

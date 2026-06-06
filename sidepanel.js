@@ -27,6 +27,7 @@ let currentContext = null;
 let companionHistory = [];
 let currentExportItems = [];
 let currentHeaderSaveItem = null;
+let currentKilangLookupMeta = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
@@ -81,6 +82,7 @@ async function renderContext(context, options = {}) {
   content.replaceChildren(makeLoadingState(context));
   currentExportItems = [];
   currentHeaderSaveItem = null;
+  currentKilangLookupMeta = null;
 
   const settings = contextToSettings(context);
   const view = context.mode === 'word'
@@ -227,14 +229,20 @@ function updateLookupHeaderRoot(header, query) {
   const root = getCurrentDbRoot();
   const cleanRoot = FDT_LOOKUP_CORE.cleanMoeText(root);
   const cleanQuery = FDT_LOOKUP_CORE.cleanMoeText(query || currentContext?.rawText || '');
+  const cleanMatched = FDT_LOOKUP_CORE.cleanMoeText(currentKilangLookupMeta?.matched || '');
   const isCurrentRoot = !!cleanRoot && cleanRoot.toLowerCase() === cleanQuery.toLowerCase();
+  const isAltRoot = isPureAltRecovery(currentKilangLookupMeta?.recovery)
+    && !!cleanMatched
+    && cleanRoot.toLowerCase() === cleanMatched.toLowerCase()
+    && cleanRoot.toLowerCase() !== cleanQuery.toLowerCase();
+  const iconOnly = isCurrentRoot || isAltRoot;
   text.textContent = cleanRoot;
   chip.dataset.root = cleanRoot;
   chip.hidden = !cleanRoot;
-  chip.disabled = !cleanRoot || isCurrentRoot;
-  chip.classList.toggle('current', isCurrentRoot);
-  chip.title = isCurrentRoot ? '詞根' : '查詢詞根';
-  chip.setAttribute('aria-label', isCurrentRoot ? '詞根' : '查詢詞根');
+  chip.disabled = !cleanRoot || iconOnly;
+  chip.classList.toggle('current', iconOnly);
+  chip.title = iconOnly ? '詞根' : '查詢詞根';
+  chip.setAttribute('aria-label', iconOnly ? '詞根' : '查詢詞根');
 }
 
 function getCurrentDbRoot() {
@@ -303,8 +311,12 @@ async function fetchKilangSection(word) {
   section.className = 'companion-card';
 
   const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
+  currentKilangLookupMeta = {
+    matched: FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || word || ''),
+    recovery: insights?.recovery || null,
+  };
   const chain = getMoeChain(primary, insights, word);
-  section.appendChild(makeChain(chain));
+  if (chain) section.appendChild(makeChain(chain));
   const relation = makeKilangRelationRow(word, insights, primary);
   if (relation) section.appendChild(relation);
 
@@ -316,6 +328,7 @@ async function fetchKilangSection(word) {
 }
 
 function getMoeChain(primary, insights, query) {
+  if (!FDT_LOOKUP_CORE.cleanMoeText(primary.parent_word || '')) return null;
   const fallbackFrom = FDT_LOOKUP_CORE.cleanMoeText(insights?.fallbackFrom || '');
   const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || query || '');
   const recoveryAffix = getRecoveryAffixSummary(insights?.recovery);
