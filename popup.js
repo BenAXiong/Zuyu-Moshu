@@ -100,9 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fdtOpenSavedPage();
   });
 
-  document.getElementById('companion').addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'openCompanion' });
-  });
 });
 
 function setToggle(enabled) {
@@ -137,11 +134,6 @@ function setDisplayTarget(target) {
     companion.disabled = !canUseSidePanel();
     companion.classList.toggle('disabled', !canUseSidePanel());
     companion.title = canUseSidePanel() ? '在 Companion 顯示查詢' : '此 Chrome 不支援 Side Panel';
-  }
-  const companionButton = document.getElementById('companion');
-  if (companionButton) {
-    companionButton.disabled = !canUseSidePanel();
-    companionButton.title = canUseSidePanel() ? '開啟 Companion' : '此 Chrome 不支援 Side Panel';
   }
 }
 

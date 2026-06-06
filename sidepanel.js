@@ -29,7 +29,6 @@ let currentExportItems = [];
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
-  document.getElementById('back')?.addEventListener('click', goBack);
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
   });
@@ -52,7 +51,6 @@ function loadContext() {
 
 function clearContext() {
   companionHistory = [];
-  updateBackButton();
   chrome.storage.session.remove(CONTEXT_KEY, () => renderContext(null));
 }
 
@@ -64,7 +62,6 @@ function setActiveMode(mode) {
 
 async function renderContext(context, options = {}) {
   if (options.resetHistory) companionHistory = [];
-  updateBackButton();
   currentContext = context;
   const serial = ++renderSerial;
   const content = document.getElementById('content');
@@ -106,14 +103,7 @@ function drillLookup(word) {
 
 function goBack() {
   const previous = companionHistory.pop();
-  updateBackButton();
   if (previous) renderContext(previous, { resetHistory: false });
-}
-
-function updateBackButton() {
-  const back = document.getElementById('back');
-  if (!back) return;
-  back.hidden = companionHistory.length === 0;
 }
 
 function makeEmptyState() {
@@ -152,7 +142,8 @@ async function buildLookupView(context, settings) {
   const isZhLookup = FDT_LOOKUP_CORE.hasCjk(context.rawText || word);
   const wrap = document.createElement('div');
   wrap.className = 'companion-stack';
-  wrap.appendChild(makeLookupHeader(context, word));
+  const header = makeLookupHeader(context, word);
+  wrap.appendChild(header);
 
   if (!word) {
     wrap.appendChild(makeNotice('沒有可查詢的文字'));
@@ -167,6 +158,9 @@ async function buildLookupView(context, settings) {
     return wrap;
   }
 
+  if (hasCurrentDirectAudio()) {
+    header.querySelector('[data-companion-header-tts="true"]')?.remove();
+  }
   sections.forEach(section => wrap.appendChild(section));
   return wrap;
 }
@@ -176,16 +170,14 @@ function makeLookupHeader(context, word) {
   card.className = 'lookup-head';
   const top = document.createElement('div');
   top.className = 'lookup-head-main';
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'lookup-title-group';
+  if (companionHistory.length > 0) titleGroup.appendChild(createInlineBackButton());
   const title = document.createElement('h2');
   title.textContent = context.rawText || word || '查詢';
-  top.append(title, makeHeaderActions(context.rawText, context));
-  card.append(top, makeContextDetails(context, [
-    ['語言', context.language || ''],
-    ['觸發', getTriggerLabel(context.trigger)],
-    ['頁面', context.page?.title || ''],
-    ['網址', context.page?.url || ''],
-    ['時間', formatTimestamp(context.timestamp)],
-  ]));
+  titleGroup.appendChild(title);
+  top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: false }));
+  card.appendChild(top);
   return card;
 }
 
@@ -276,6 +268,7 @@ function getMoeChain(primary, insights) {
 function makeChain(chain) {
   const row = document.createElement('div');
   row.className = 'chain-row';
+  row.appendChild(createChainIcon());
   chain.forEach((item, index) => {
     if (index > 0) {
       const arrow = document.createElement('span');
@@ -286,6 +279,21 @@ function makeChain(chain) {
     row.appendChild(makeDrillButton(item, 'chain-chip chain-button'));
   });
   return row;
+}
+
+function createChainIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('chain-icon');
+  const left = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  left.setAttribute('d', 'M6.6 4.3 5.5 3.2a2.6 2.6 0 0 0-3.7 3.7l1.4 1.4a2.6 2.6 0 0 0 3.7 0l.6-.6');
+  const right = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  right.setAttribute('d', 'M9.4 11.7l1.1 1.1a2.6 2.6 0 0 0 3.7-3.7l-1.4-1.4a2.6 2.6 0 0 0-3.7 0l-.6.6');
+  const mid = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  mid.setAttribute('d', 'M5.8 10.2 10.2 5.8');
+  svg.append(left, right, mid);
+  return svg;
 }
 
 function makeKilangRelationRow(query, insights, primary) {
@@ -355,12 +363,9 @@ function makeSenseBlock(sense, number) {
   head.className = 'sense-head';
   const def = document.createElement('h3');
   def.textContent = sense.definition || FDT_LOOKUP_CORE.cleanMoeText(sense.row?.word_ab) || `義項 ${number}`;
-  const meta = document.createElement('span');
-  meta.className = 'pill subtle';
-  meta.textContent = FDT_LOOKUP_CORE.getMoeSourceMeta(sense.row) || `#${number}`;
   const actions = document.createElement('div');
   actions.className = 'row-actions';
-  actions.append(meta, createCompanionSaveButton(() => savedItem));
+  actions.appendChild(createCompanionSaveButton(() => savedItem));
   head.append(def, actions);
   block.appendChild(head);
 
@@ -395,12 +400,11 @@ function makeDictRow(row) {
   main.className = 'dict-main';
   const zh = document.createElement('strong');
   zh.textContent = row.displayText;
-  const dialect = document.createElement('span');
-  dialect.textContent = row.dialect || '';
   const actions = document.createElement('div');
   actions.className = 'row-actions';
-  if (row.audioUrl) actions.appendChild(createDirectAudioButton(row.audioUrl));
-  actions.append(dialect, createCompanionSaveButton(() => savedItem));
+  const audio = createDirectAudioButton(row.audioUrl);
+  if (audio) actions.appendChild(audio);
+  actions.appendChild(createCompanionSaveButton(() => savedItem));
   main.append(zh, actions);
   item.appendChild(main);
   if (row.ab) {
@@ -427,12 +431,11 @@ function makeZhRow(row) {
   ab.textContent = row.displayText || row.ab || '';
   ab.title = `查詢 ${ab.textContent}`;
   ab.addEventListener('click', () => drillLookup(ab.textContent));
-  const meta = document.createElement('span');
-  meta.textContent = row.metaLabel || row.dialect || '';
   const actions = document.createElement('div');
   actions.className = 'row-actions';
-  if (row.audioUrl) actions.appendChild(createDirectAudioButton(row.audioUrl));
-  actions.append(meta, createCompanionSaveButton(() => savedItem));
+  const audio = createDirectAudioButton(row.audioUrl);
+  if (audio) actions.appendChild(audio);
+  actions.appendChild(createCompanionSaveButton(() => savedItem));
   main.append(ab, actions);
   item.appendChild(main);
 
@@ -471,7 +474,6 @@ async function buildAnalysisView(context, settings) {
     sourceId: '',
   });
   wrap.appendChild(makeReaderView(context.rawText || '', rows));
-  wrap.appendChild(makeAnalysisGrid(rows));
   return wrap;
 }
 
@@ -480,62 +482,30 @@ function makeAnalysisHeader(context, tokens, lookupCount) {
   card.className = 'lookup-head';
   const top = document.createElement('div');
   top.className = 'lookup-head-main';
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'lookup-title-group';
+  if (companionHistory.length > 0) titleGroup.appendChild(createInlineBackButton());
   const title = document.createElement('h2');
   title.textContent = context.rawText || '分析';
-  top.append(title, makeHeaderActions(context.rawText, context));
-  card.append(top, makeContextDetails(context, [
-    ['語言', context.language || ''],
-    ['統計', `${tokens.length} token / ${lookupCount} lookup`],
-    ['觸發', getTriggerLabel(context.trigger)],
-    ['頁面', context.page?.title || ''],
-    ['網址', context.page?.url || ''],
-    ['時間', formatTimestamp(context.timestamp)],
-  ], `${tokens.length} token / ${lookupCount} lookup`));
+  titleGroup.appendChild(title);
+  top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: true }));
+  card.appendChild(top);
   return card;
 }
 
-function makeContextDetails(_context, rows, summarySuffix = '') {
-  const details = document.createElement('details');
-  details.className = 'context-details';
-  const summary = document.createElement('summary');
-  summary.textContent = summarySuffix ? `詳細資訊 · ${summarySuffix}` : '詳細資訊';
-  details.appendChild(summary);
-
-  const list = document.createElement('dl');
-  list.className = 'context-detail-list';
-  rows
-    .filter(([, value]) => value)
-    .forEach(([label, value]) => {
-      const term = document.createElement('dt');
-      term.textContent = label;
-      const desc = document.createElement('dd');
-      desc.textContent = value;
-      list.append(term, desc);
-    });
-  details.appendChild(list);
-  return details;
-}
-
-function makeAnalysisGrid(rows) {
-  const grid = document.createElement('section');
-  grid.className = 'analysis-grid companion-card';
-  rows.forEach(row => {
-    const item = document.createElement('article');
-    item.className = row.sourceId ? 'analysis-token found' : 'analysis-token';
-    const token = makeDrillButton(row.displayToken || row.token, 'analysis-token-button');
-    const gloss = document.createElement('div');
-    gloss.className = 'analysis-gloss';
-    gloss.textContent = row.glosses?.length ? row.glosses.join(' / ') : 'x';
-    item.append(token, gloss);
-    if (row.root) {
-      const root = document.createElement('span');
-      root.className = 'analysis-root';
-      root.textContent = row.root;
-      item.appendChild(root);
-    }
-    grid.appendChild(item);
+function createInlineBackButton() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'inline-back-button';
+  btn.title = '返回';
+  btn.setAttribute('aria-label', '返回');
+  btn.textContent = '←';
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    goBack();
   });
-  return grid;
+  return btn;
 }
 
 function makeReaderView(rawText, rows) {
@@ -589,7 +559,7 @@ function makeReaderSentence(segment, resultMap) {
   line.className = 'reader-line';
   segment.parts.forEach(part => {
     if (part.type === 'token') line.appendChild(makeReaderToken(part, resultMap.get(part.token)));
-    else line.appendChild(document.createTextNode(part.text));
+    else appendReaderText(line, part.text);
   });
 
   const actions = document.createElement('div');
@@ -602,6 +572,14 @@ function makeReaderSentence(segment, resultMap) {
   block.appendChild(line);
   if (actions.childNodes.length > 0) block.appendChild(actions);
   return block;
+}
+
+function appendReaderText(parent, text) {
+  String(text || '').split(/([,.;:，。；：])/).forEach(part => {
+    if (!part) return;
+    parent.appendChild(document.createTextNode(part));
+    if (/^[,.;:，。；：]$/.test(part)) parent.appendChild(document.createElement('br'));
+  });
 }
 
 function makeReaderToken(part, result) {
@@ -637,16 +615,35 @@ function makeDrillButton(word, className) {
   return button;
 }
 
-function makeHeaderActions(text, context) {
+function makeHeaderActions(text, context, options = {}) {
   const group = document.createElement('div');
   group.className = 'lookup-head-actions';
-  const mt = createCompanionMtButton(text, context);
+  const saveBtn = createCompanionSaveButton(() => getHeaderSavedItem());
+  const mt = options.includeMt ? createCompanionMtButton(text, context) : null;
   const tts = createCompanionTtsButton(text, context);
   const exportBtn = createCompanionExportButton();
+  group.appendChild(saveBtn);
   if (mt) group.appendChild(mt);
-  if (tts) group.appendChild(tts);
+  if (tts) {
+    tts.dataset.companionHeaderTts = 'true';
+    group.appendChild(tts);
+  }
   group.appendChild(exportBtn);
   return group;
+}
+
+function hasCurrentDirectAudio() {
+  return currentExportItems.some(item => !!item.audioUrl);
+}
+
+function getHeaderSavedItem() {
+  return currentExportItems[0] || fdtNormalizeSavedItem({
+    ...getCompanionSaveContext(),
+    type: 'word',
+    matchedWord: currentContext?.rawText || '',
+    ab: FDT_LOOKUP_CORE.hasCjk(currentContext?.rawText || '') ? '' : currentContext?.rawText || '',
+    zh: FDT_LOOKUP_CORE.hasCjk(currentContext?.rawText || '') ? currentContext?.rawText || '' : '',
+  });
 }
 
 function createCompanionSaveButton(getItem) {
@@ -657,7 +654,7 @@ function createCompanionSaveButton(getItem) {
     btn.classList.toggle('saved', saved);
     btn.title = saved ? '移除儲存' : '儲存';
     btn.setAttribute('aria-label', saved ? '移除儲存' : '儲存');
-    btn.textContent = saved ? '◆' : '◇';
+    btn.replaceChildren(createBookmarkIcon(saved));
   };
   setState(false);
 
@@ -686,6 +683,18 @@ function createCompanionSaveButton(getItem) {
     }
   });
   return btn;
+}
+
+function createBookmarkIcon(saved = false) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 16 16');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('companion-save-icon');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M4.5 2.5h7v11L8 11.2l-3.5 2.3z');
+  if (saved) path.setAttribute('fill', 'currentColor');
+  svg.appendChild(path);
+  return svg;
 }
 
 function createCompanionExportButton() {
@@ -885,10 +894,7 @@ function makeSectionTitle(titleText, source) {
   head.className = 'section-title';
   const title = document.createElement('h2');
   title.textContent = titleText;
-  const pill = document.createElement('span');
-  pill.className = 'pill';
-  pill.textContent = source;
-  head.append(title, pill);
+  head.appendChild(title);
   return head;
 }
 
@@ -901,10 +907,11 @@ function makeExample(example, parentItem = null) {
   const ab = document.createElement('div');
   ab.className = 'example-ab';
   appendDrillableAbText(ab, example.ab || '');
-  const tts = createCompanionTtsButton(example.ab || '', currentContext);
+  const tts = example.audioUrl ? null : createCompanionTtsButton(example.ab || '', currentContext);
   const actions = document.createElement('div');
   actions.className = 'row-actions';
-  if (example.audioUrl) actions.appendChild(createDirectAudioButton(example.audioUrl));
+  const audio = createDirectAudioButton(example.audioUrl);
+  if (audio) actions.appendChild(audio);
   if (tts) actions.appendChild(tts);
   actions.appendChild(createCompanionSaveButton(() => savedItem));
   top.appendChild(ab);

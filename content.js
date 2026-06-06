@@ -1550,15 +1550,47 @@ function createKilangExportButton() {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'fdt-saved-open fdt-kilang-open';
-  btn.title = 'Export tooltip';
-  btn.setAttribute('aria-label', 'Export tooltip');
+  btn.title = 'Open in Companion';
+  btn.setAttribute('aria-label', 'Open in Companion');
   btn.appendChild(createKilangLogo());
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    exportTooltipToIndiHunt();
+    openTooltipInCompanion();
   });
   return btn;
+}
+
+function openTooltipInCompanion() {
+  if (!tooltip || !canUseSidePanelFromContent()) return;
+  const phraseText = tooltip._phraseText || '';
+  const rawText = phraseText || getHeaderWord();
+  const tokens = Array.isArray(tooltip._phraseTokens) && tooltip._phraseTokens.length > 0
+    ? tooltip._phraseTokens
+    : (rawText ? [cleanWord(rawText)] : []);
+  const mode = phraseText
+    ? (/[.!?。！？\r\n]/.test(phraseText) ? 'sentences' : 'phrase')
+    : 'word';
+  chrome.runtime.sendMessage({
+    type: 'companionContext',
+    context: {
+      mode,
+      rawText,
+      tokens,
+      page: {
+        title: document.title || '',
+        url: location.href,
+      },
+      trigger: 'tooltip',
+      language: currentTooltipSettings?.language || '',
+      sources: Array.isArray(currentTooltipSettings?.sources) ? currentTooltipSettings.sources : DEFAULTS.sources,
+      timestamp: new Date().toISOString(),
+    },
+  }, () => void chrome.runtime.lastError);
+}
+
+function canUseSidePanelFromContent() {
+  return !!chrome.runtime?.sendMessage;
 }
 
 function createHeaderSaveButton() {
@@ -2201,6 +2233,7 @@ function appendPhraseSeparator(parent, separator, betweenTokens) {
   const punctuation = getPhraseSeparatorPunctuation(separator);
   if (punctuation) {
     parent.appendChild(document.createTextNode(betweenTokens ? ` ${punctuation} ` : ` ${punctuation}`));
+    if (/[,，.;；;:：。]/.test(punctuation)) parent.appendChild(document.createElement('br'));
     return;
   }
   if (betweenTokens) parent.appendChild(document.createTextNode(' | '));
@@ -2210,7 +2243,7 @@ function getPhraseSeparatorPunctuation(separator) {
   const compact = String(separator || '').replace(/\s+/g, '');
   if (!compact) return '';
   return compact
-    .replace(/([,，;；:：!?！？])([“「『])/g, '$1 $2')
+    .replace(/([,，.;；:：。!?！？])([“「『])/g, '$1 $2')
     .replace(/^\|+|\|+$/g, '');
 }
 

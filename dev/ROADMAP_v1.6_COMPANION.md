@@ -176,6 +176,15 @@ Done in current v1.6 Companion branch work:
   - AB tokens render inline with compact ZH glosses below;
   - top annotations show alternate/fallback/root hints where available;
   - Amis sentence blocks expose MT/TTS actions.
+- Added Companion polish pass:
+  - removed details disclosure and popup footer Companion button;
+  - moved back navigation into the Companion lookup/phrase header as an arrow;
+  - moved current-view IndiHunt export and header save into the Companion header;
+  - switched Companion save controls to bookmark icons;
+  - hid visible source/tier pills while preserving source metadata in saved/export payloads;
+  - removed MT from single-word lookup headers, keeping it for phrase/sentence contexts;
+  - removed the phrase token grid, leaving the annotated reader as the analysis view;
+  - changed tooltip Kilang-logo floater to open the current tooltip in Companion.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
