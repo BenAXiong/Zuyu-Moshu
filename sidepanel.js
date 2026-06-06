@@ -26,6 +26,7 @@ let renderSerial = 0;
 let currentContext = null;
 let companionHistory = [];
 let currentExportItems = [];
+let currentHeaderSaveItem = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
@@ -79,6 +80,7 @@ async function renderContext(context, options = {}) {
   content.className = 'content';
   content.replaceChildren(makeLoadingState(context));
   currentExportItems = [];
+  currentHeaderSaveItem = null;
 
   const settings = contextToSettings(context);
   const view = context.mode === 'word'
@@ -159,6 +161,8 @@ async function buildLookupView(context, settings) {
     return wrap;
   }
 
+  currentHeaderSaveItem = buildHeaderSavedItem(word || context.rawText, isZhLookup);
+  refreshHeaderSaveState(header);
   if (hasCurrentDirectAudio()) {
     header.querySelector('[data-companion-header-tts="true"]')?.remove();
   }
@@ -736,12 +740,70 @@ function hasCurrentDirectAudio() {
 }
 
 function getHeaderSavedItem() {
-  return currentExportItems[0] || fdtNormalizeSavedItem({
+  return currentHeaderSaveItem || fdtNormalizeSavedItem({
     ...getCompanionSaveContext(),
     type: 'word',
     matchedWord: currentContext?.rawText || '',
     ab: FDT_LOOKUP_CORE.hasCjk(currentContext?.rawText || '') ? '' : currentContext?.rawText || '',
     zh: FDT_LOOKUP_CORE.hasCjk(currentContext?.rawText || '') ? currentContext?.rawText || '' : '',
+  });
+}
+
+function refreshHeaderSaveState(header) {
+  header.querySelector('.companion-save-button')?._refreshSavedState?.();
+}
+
+function buildHeaderSavedItem(query, isZhLookup = false) {
+  const items = currentExportItems.filter(item => item.ab || item.matchedWord || item.zh || item.examples?.length);
+  if (items.length === 0) return getHeaderSavedItem();
+
+  const first = items[0] || {};
+  const cleanQuery = FDT_LOOKUP_CORE.cleanMoeText(query || currentContext?.rawText || '');
+  const ab = isZhLookup
+    ? uniqueSavedTexts(items.map(item => item.ab || item.matchedWord))[0] || ''
+    : first.matchedWord || first.ab || cleanQuery;
+  const zh = isZhLookup
+    ? FDT_LOOKUP_CORE.cleanMoeText(currentContext?.rawText || cleanQuery)
+    : uniqueSavedTexts(items.map(item => item.zh)).join('；');
+
+  return fdtNormalizeSavedItem({
+    ...getCompanionSaveContext(),
+    type: 'word',
+    matchedWord: ab || cleanQuery,
+    ab,
+    zh,
+    sourceId: uniqueSavedTexts(items.map(item => item.sourceId)).join('+'),
+    sourceMeta: uniqueSavedTexts(items.map(item => item.sourceMeta)).join(' / '),
+    dialect: uniqueSavedTexts(items.map(item => item.dialect))[0] || '',
+    root: uniqueSavedTexts(items.map(item => item.root))[0] || '',
+    affixes: uniqueSavedTexts(items.flatMap(item => item.affixes || [])),
+    examples: dedupeSavedExamples(items.flatMap(item => item.examples || [])).slice(0, 6),
+    audioUrl: uniqueSavedTexts(items.map(item => item.audioUrl))[0] || '',
+  });
+}
+
+function uniqueSavedTexts(values) {
+  const seen = new Set();
+  const out = [];
+  values.forEach(value => {
+    const clean = FDT_LOOKUP_CORE.cleanMoeText(value || '');
+    const key = clean.toLowerCase();
+    if (!clean || seen.has(key)) return;
+    seen.add(key);
+    out.push(clean);
+  });
+  return out;
+}
+
+function dedupeSavedExamples(examples) {
+  const seen = new Set();
+  return examples.filter(example => {
+    const ab = FDT_LOOKUP_CORE.cleanMoeText(example?.ab || '');
+    const zh = FDT_LOOKUP_CORE.cleanMoeText(example?.zh || '');
+    const key = `${ab}\n${zh}`.toLowerCase();
+    if ((!ab && !zh) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 
@@ -758,12 +820,17 @@ function createCompanionSaveButton(getItem) {
   setState(false);
 
   const readItem = () => fdtNormalizeSavedItem(getItem());
-  try {
-    const item = readItem();
-    fdtFindSavedItemKey(item.key).then(saved => setState(!!saved));
-  } catch {
-    btn.disabled = true;
-  }
+  btn._refreshSavedState = async () => {
+    try {
+      const item = readItem();
+      const saved = await fdtFindSavedItemKey(item.key);
+      if (btn.isConnected) setState(!!saved);
+      btn.disabled = false;
+    } catch {
+      btn.disabled = true;
+    }
+  };
+  btn._refreshSavedState();
 
   btn.addEventListener('click', async (e) => {
     e.preventDefault();

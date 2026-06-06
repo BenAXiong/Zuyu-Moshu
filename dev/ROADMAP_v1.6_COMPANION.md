@@ -199,6 +199,9 @@ Done in current v1.6 Companion branch work:
   - mirrors the tooltip root icon/pill behavior for AB lookups;
   - appears only when the returned database row exposes `ultimate_root` or `stem`;
   - stays hidden when no root/stem is present instead of inferring a root from the chain.
+- Fixed Companion header bookmark semantics:
+  - header bookmark now saves an aggregate word/headword item after lookup rows are registered;
+  - individual row bookmarks continue to save their specific sense/result rows.
 - Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
