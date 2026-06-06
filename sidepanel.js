@@ -306,110 +306,70 @@ async function fetchKilangSection(word) {
   const candidates = Array.isArray(response?.insights?.candidates)
     ? response.insights.candidates
     : [];
-  if (candidates.length === 0) return null;
+  const resolved = FDT_LOOKUP_CORE.normalizeMoeCandidateInsights(word, candidates);
+  if (resolved.length === 0) return null;
 
   const section = document.createElement('section');
   section.className = 'companion-card';
 
-  candidates.forEach((insights, index) => {
-    const rows = Array.isArray(insights?.rows) ? insights.rows : [];
-    const primary = FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
+  resolved.forEach((candidate, index) => {
     if (index === 0) {
       currentKilangLookupMeta = {
-        matched: FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || word || ''),
-        recovery: insights?.recovery || null,
+        matched: candidate.matched,
+        recovery: candidate.recovery,
       };
     }
-    section.appendChild(makeKilangCandidateGroup(word, insights, primary, index));
+    section.appendChild(makeKilangCandidateGroup(candidate));
   });
   return section;
 }
 
-function makeKilangCandidateGroup(query, insights, primary, index) {
+function makeKilangCandidateGroup(candidate) {
   const group = document.createElement('div');
   group.className = 'candidate-group';
-  group.dataset.candidateIndex = String(index);
+  group.dataset.candidateIndex = String(candidate.index);
 
-  if (index > 0 || isRecoveredKilangCandidate(query, insights, primary)) {
-    group.appendChild(makeKilangCandidateHeader(query, insights, primary));
+  if (candidate.showHeader) {
+    group.appendChild(makeKilangCandidateHeader(candidate));
   }
 
-  const chain = getMoeChain(primary, insights, query);
-  if (chain) group.appendChild(makeChain(chain));
-  const relation = makeKilangRelationRow(query, insights, primary);
+  if (candidate.chain) group.appendChild(makeChain(candidate.chain));
+  const relation = makeKilangRelationRow(candidate);
   if (relation) group.appendChild(relation);
 
-  const senses = FDT_LOOKUP_CORE.getMoeSenseRows(insights?.rows);
-  senses.forEach((sense, senseIndex) => {
+  candidate.senses.forEach((sense, senseIndex) => {
     group.appendChild(makeSenseBlock(sense, senseIndex + 1));
   });
 
   return group;
 }
 
-function isRecoveredKilangCandidate(query, insights, primary) {
-  const cleanQuery = FDT_LOOKUP_CORE.cleanMoeText(query || '').toLowerCase();
-  const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary?.word_ab || '').toLowerCase();
-  return !!matched && matched !== cleanQuery;
-}
-
-function makeKilangCandidateHeader(query, insights, primary) {
+function makeKilangCandidateHeader(candidate) {
   const head = document.createElement('div');
   head.className = 'candidate-header';
   const icon = document.createElement('span');
   icon.className = 'candidate-icon';
-  icon.textContent = getKilangCandidateIcon(insights);
+  icon.textContent = candidate.icon;
   const label = makeDrillButton(
-    FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary?.word_ab || query),
+    candidate.matched,
     'candidate-title inline-drill'
   );
   head.append(icon, label);
 
-  const affix = getRecoveryAffixSummary(insights?.recovery);
-  if (affix) {
+  if (candidate.recoveryAffix) {
     const plus = document.createElement('span');
     plus.className = 'relation-plus';
     plus.textContent = '+';
     const pill = document.createElement('span');
     pill.className = 'relation-affix';
-    pill.textContent = affix;
+    pill.textContent = candidate.recoveryAffix;
     head.append(plus, pill);
   }
 
-  if (insights?.fallbackFrom || getRecoveryOperations(insights?.recovery).length > 0) {
+  if (candidate.inferred) {
     head.appendChild(createInferredHelp('fallback'));
   }
   return head;
-}
-
-function getKilangCandidateIcon(insights) {
-  const recovery = insights?.recovery || {};
-  const affix = getRecoveryAffixSummary(recovery);
-  const operations = getRecoveryOperations(recovery);
-  if (operations.includes('alt') && !operations.includes('glottal') && !affix) return '~';
-  return '↳';
-}
-
-function getMoeChain(primary, insights, query) {
-  if (!FDT_LOOKUP_CORE.cleanMoeText(primary.parent_word || '')) return null;
-  const fallbackFrom = FDT_LOOKUP_CORE.cleanMoeText(insights?.fallbackFrom || '');
-  const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || query || '');
-  const recoveryAffix = getRecoveryAffixSummary(insights?.recovery);
-  const exactAffix = fallbackFrom ? '' : getInferredAffixSummary(matched, primary);
-  const values = [
-    primary.ultimate_root,
-    primary.parent_word,
-    matched,
-  ]
-    .map(FDT_LOOKUP_CORE.cleanMoeText)
-    .filter(Boolean);
-  const nodes = [...new Set(values)];
-  if (nodes.length === 0 && matched) nodes.push(matched);
-  return {
-    nodes,
-    affix: recoveryAffix || exactAffix,
-    inferred: !!fallbackFrom || getRecoveryOperations(insights?.recovery).length > 0,
-  };
 }
 
 function makeChain(chain) {
@@ -468,22 +428,21 @@ function createChainIcon() {
   return svg;
 }
 
-function makeKilangRelationRow(query, insights, primary) {
-  const matched = FDT_LOOKUP_CORE.cleanMoeText(insights?.match || primary.word_ab || '');
-  const fallbackFrom = FDT_LOOKUP_CORE.cleanMoeText(insights?.fallbackFrom || '');
-  const relationAffix = getRecoveryAffixSummary(insights?.recovery);
-  const inferred = getInferredAffixSummary(matched, primary);
-  if (!fallbackFrom && !inferred) return null;
+function makeKilangRelationRow(candidate) {
+  const exactAffix = candidate.fallbackFrom
+    ? ''
+    : FDT_LOOKUP_CORE.getMoeInferredAffixSummary(candidate.matched, candidate.primary);
+  if (!candidate.fallbackFrom && !exactAffix) return null;
 
   const row = document.createElement('div');
   row.className = 'relation-row';
   const icon = document.createElement('span');
   icon.className = 'relation-icon';
-  icon.textContent = isPureAltRecovery(insights?.recovery) && !relationAffix ? '~' : '↳';
-  const base = makeDrillButton(matched || query, 'relation-base inline-drill');
+  icon.textContent = candidate.icon;
+  const base = makeDrillButton(candidate.matched, 'relation-base inline-drill');
   row.append(icon, base);
 
-  const affix = relationAffix || inferred;
+  const affix = candidate.recoveryAffix || exactAffix;
   if (affix) {
     const plus = document.createElement('span');
     plus.className = 'relation-plus';
@@ -493,7 +452,7 @@ function makeKilangRelationRow(query, insights, primary) {
     label.textContent = affix;
     row.append(plus, label);
   }
-  if (fallbackFrom || getRecoveryOperations(insights?.recovery).length > 0) {
+  if (candidate.inferred) {
     row.appendChild(createInferredHelp('fallback'));
   }
   return row;
@@ -513,35 +472,8 @@ function createInferredHelp(kind) {
   return mark;
 }
 
-function getRecoveryAffixSummary(recovery) {
-  const affixes = Array.isArray(recovery?.affixes) ? recovery.affixes : [];
-  return affixes.map(FDT_LOOKUP_CORE.cleanMoeText).filter(Boolean).join(' + ');
-}
-
-function getRecoveryOperations(recovery) {
-  return Array.isArray(recovery?.operations) ? recovery.operations : [];
-}
-
 function isPureAltRecovery(recovery) {
-  const operations = getRecoveryOperations(recovery);
-  return operations.includes('alt') && !operations.includes('glottal') && getRecoveryAffixSummary(recovery) === '';
-}
-
-function getInferredAffixSummary(word, row) {
-  const stem = FDT_LOOKUP_CORE.cleanMoeText(row?.stem || row?.ultimate_root || '');
-  const cleanWord = FDT_LOOKUP_CORE.cleanMoeText(word).toLowerCase();
-  const cleanStem = stem.toLowerCase();
-  if (!cleanWord || !cleanStem || cleanWord === cleanStem) return '';
-
-  const start = cleanWord.indexOf(cleanStem);
-  if (start < 0) return '';
-
-  const prefix = cleanWord.slice(0, start);
-  const suffix = cleanWord.slice(start + cleanStem.length);
-  if (prefix && suffix) return `${prefix}-...-${suffix}`;
-  if (prefix) return `${prefix}-`;
-  if (suffix) return `-${suffix}`;
-  return '';
+  return FDT_LOOKUP_CORE.isPureMoeAltRecovery(recovery);
 }
 
 function makeSenseBlock(sense, number) {

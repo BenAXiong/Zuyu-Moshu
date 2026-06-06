@@ -152,6 +152,111 @@ const FDT_LOOKUP_CORE = (() => {
     return getMoeSenseRows(rows)[0]?.row || rows?.[0] || null;
   }
 
+  function getMoeRecoveryAffixSummary(recovery) {
+    const affixes = Array.isArray(recovery?.affixes) ? recovery.affixes : [];
+    return affixes.map(cleanMoeText).filter(Boolean).join(' + ');
+  }
+
+  function getMoeRecoveryOperations(recovery) {
+    return Array.isArray(recovery?.operations) ? recovery.operations : [];
+  }
+
+  function isPureMoeAltRecovery(recovery) {
+    const operations = getMoeRecoveryOperations(recovery);
+    return operations.includes('alt') && !operations.includes('glottal') && getMoeRecoveryAffixSummary(recovery) === '';
+  }
+
+  function getMoeInferredAffixSummary(word, row) {
+    const stem = cleanMoeText(row?.stem || row?.ultimate_root || '');
+    const cleanWord = cleanMoeText(word).toLowerCase();
+    const cleanStem = stem.toLowerCase();
+    if (!cleanWord || !cleanStem || cleanWord === cleanStem) return '';
+
+    const start = cleanWord.indexOf(cleanStem);
+    if (start < 0) return '';
+
+    const prefix = cleanWord.slice(0, start);
+    const suffix = cleanWord.slice(start + cleanStem.length);
+    if (prefix && suffix) return `${prefix}-...-${suffix}`;
+    if (prefix) return `${prefix}-`;
+    if (suffix) return `-${suffix}`;
+    return '';
+  }
+
+  function getMoeCandidateIcon(candidate) {
+    return candidate?.kind === 'alt' ? '~' : '↳';
+  }
+
+  function getMoeCandidateKind(insights, matched) {
+    const operations = getMoeRecoveryOperations(insights?.recovery);
+    const affix = getMoeRecoveryAffixSummary(insights?.recovery);
+    if (operations.includes('alt') && !operations.includes('glottal') && !affix) return 'alt';
+    if (operations.includes('glottal') && !affix) return 'repair';
+    if (insights?.fallbackFrom || affix) return 'fallback';
+    return matched ? 'exact' : 'unknown';
+  }
+
+  function getMoeCandidateChain(primary, insights, query) {
+    if (!cleanMoeText(primary?.parent_word || '')) return null;
+    const fallbackFrom = cleanMoeText(insights?.fallbackFrom || '');
+    const matched = cleanMoeText(insights?.match || primary?.word_ab || query || '');
+    const recoveryAffix = getMoeRecoveryAffixSummary(insights?.recovery);
+    const exactAffix = fallbackFrom ? '' : getMoeInferredAffixSummary(matched, primary);
+    const values = [
+      primary?.ultimate_root,
+      primary?.parent_word,
+      matched,
+    ]
+      .map(cleanMoeText)
+      .filter(Boolean);
+    const nodes = [...new Set(values)];
+    if (nodes.length === 0 && matched) nodes.push(matched);
+    return {
+      nodes,
+      affix: recoveryAffix || exactAffix,
+      inferred: !!fallbackFrom || getMoeRecoveryOperations(insights?.recovery).length > 0,
+    };
+  }
+
+  function normalizeMoeCandidateInsights(query, rawCandidates) {
+    const cleanQuery = cleanMoeText(query || '').toLowerCase();
+    return (Array.isArray(rawCandidates) ? rawCandidates : [])
+      .map((insights, index) => {
+        const rows = Array.isArray(insights?.rows) ? insights.rows : [];
+        const primary = getMoePrimaryRow(rows) || {};
+        const matched = cleanMoeText(insights?.match || primary.word_ab || query || '');
+        const matchedKey = matched.toLowerCase();
+        const recovery = insights?.recovery || null;
+        const affix = getMoeRecoveryAffixSummary(recovery);
+        const operations = getMoeRecoveryOperations(recovery);
+        const fallbackFrom = cleanMoeText(insights?.fallbackFrom || '');
+        const recovered = !!matchedKey && matchedKey !== cleanQuery;
+        const kind = getMoeCandidateKind(insights, matched);
+        const inferred = !!fallbackFrom || operations.length > 0;
+
+        return {
+          sourceId: 'KILANG',
+          index,
+          query: cleanQuery,
+          matched,
+          fallbackFrom,
+          recovery,
+          recoveryAffix: affix,
+          recoveryOperations: operations,
+          recovered,
+          kind,
+          icon: getMoeCandidateIcon({ kind }),
+          inferred,
+          primary,
+          rows,
+          senses: getMoeSenseRows(rows),
+          chain: getMoeCandidateChain(primary, insights, query),
+          showHeader: index > 0 || recovered,
+        };
+      })
+      .filter(candidate => candidate.rows.length > 0);
+  }
+
   function getMoeSourceLabel(code) {
     return ({
       s: 'S',
@@ -336,6 +441,12 @@ const FDT_LOOKUP_CORE = (() => {
     getMoeExampleRows,
     getMoeSenseRows,
     getMoePrimaryRow,
+    getMoeRecoveryAffixSummary,
+    getMoeRecoveryOperations,
+    isPureMoeAltRecovery,
+    getMoeInferredAffixSummary,
+    getMoeCandidateIcon,
+    normalizeMoeCandidateInsights,
     getMoeSourceMeta,
     getPhraseGlossesFromTexts,
     normalizeDictEntries,
