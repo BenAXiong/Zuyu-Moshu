@@ -91,7 +91,7 @@ button {
 }
 
 .content {
-  padding: 14px;
+  padding: 14px 46px 14px 14px;
 }
 
 .companion-stack {
@@ -119,10 +119,11 @@ a {
 
 .companion-card,
 .lookup-head {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .lookup-head {
@@ -161,8 +162,9 @@ a {
 .sense-head,
 .dict-main,
 .example-ab-line {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto 22px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   gap: 8px;
 }
@@ -172,12 +174,27 @@ a {
 }
 
 .bookmark-rail {
-  grid-column: 3;
+  position: absolute;
+  top: -1px;
+  right: -38px;
+  z-index: 2;
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
   align-content: start;
   gap: 5px;
+  width: 28px;
+  min-height: 25px;
+  pointer-events: none;
+}
+
+.lookup-head > .bookmark-rail {
+  top: 10px;
+  right: -38px;
+}
+
+.bookmark-rail .companion-save-button {
+  pointer-events: auto;
 }
 
 .lookup-head h2,

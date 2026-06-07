@@ -186,7 +186,7 @@ function makeLookupHeader(context, word) {
   titleGroup.appendChild(title);
   titleGroup.appendChild(createHeaderRootChip());
   top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: false }));
-  card.appendChild(top);
+  card.append(top, createBookmarkRail(() => getHeaderSavedItem()));
   return card;
 }
 
@@ -611,7 +611,7 @@ function makeAnalysisHeader(context, tokens, lookupCount) {
   title.textContent = context.rawText || '分析';
   titleGroup.appendChild(title);
   top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: true }));
-  card.appendChild(top);
+  card.append(top, createBookmarkRail(() => getHeaderSavedItem()));
   return card;
 }
 
@@ -732,10 +732,8 @@ function makeDrillButton(word, className) {
 function makeHeaderActions(text, context, options = {}) {
   const group = document.createElement('div');
   group.className = 'lookup-head-actions';
-  const saveBtn = createCompanionSaveButton(() => getHeaderSavedItem());
   const mt = options.includeMt ? createCompanionMtButton(text, context) : null;
   const tts = createCompanionTtsButton(text, context);
-  group.appendChild(saveBtn);
   if (mt) group.appendChild(mt);
   if (tts) {
     tts.dataset.companionHeaderTts = 'true';

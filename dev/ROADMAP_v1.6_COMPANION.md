@@ -204,7 +204,7 @@ Done in current v1.6 Companion branch work:
   - header bookmark now saves an aggregate word/headword item after lookup rows are registered;
   - individual row bookmarks continue to save their specific sense/result rows.
 - Refined Companion bookmark layout:
-  - row/example bookmarks use a dedicated one-column right rail;
+  - header/row/example bookmarks use a dedicated one-column right rail outside the bordered lookup/result containers;
   - bookmark icons are borderless/backgroundless and visually separate from audio/TTS controls.
 - Refined popup target controls:
   - renamed the target row to `顯示模式` and moved it directly below language;
