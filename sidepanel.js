@@ -800,8 +800,8 @@ function makeHeaderActions(text, context, options = {}) {
   group.className = 'lookup-head-actions';
   const saveBtn = createCompanionSaveButton(() => getHeaderSavedItem());
   const mt = options.includeMt ? createCompanionMtButton(text, context) : null;
-  group.appendChild(saveBtn);
   if (mt) group.appendChild(mt);
+  group.appendChild(saveBtn);
   return group;
 }
 
