@@ -185,8 +185,13 @@ function makeLookupHeader(context, word) {
   title.textContent = context.rawText || word || '查詢';
   titleGroup.appendChild(title);
   titleGroup.appendChild(createHeaderRootChip());
+  const tts = createCompanionTtsButton(context.rawText, context);
+  if (tts) {
+    tts.dataset.companionHeaderTts = 'true';
+    titleGroup.appendChild(tts);
+  }
   top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: false }));
-  card.append(top, createBookmarkRail(() => getHeaderSavedItem()));
+  card.appendChild(top);
   return card;
 }
 
@@ -518,14 +523,14 @@ function makeDictRow(row) {
   item.className = 'dict-row';
   const main = document.createElement('div');
   main.className = 'dict-main';
+  const primary = document.createElement('div');
+  primary.className = 'inline-audio-line';
   const zh = document.createElement('strong');
   zh.textContent = row.displayText;
-  const actions = document.createElement('div');
-  actions.className = 'row-actions';
   const audio = createDirectAudioButton(row.audioUrl);
-  if (audio) actions.appendChild(audio);
-  main.appendChild(zh);
-  if (actions.childNodes.length > 0) main.appendChild(actions);
+  primary.appendChild(zh);
+  if (audio) primary.appendChild(audio);
+  main.appendChild(primary);
   main.appendChild(createBookmarkRail(() => savedItem));
   item.appendChild(main);
   if (row.ab) {
@@ -552,12 +557,12 @@ function makeZhRow(row) {
   ab.textContent = row.displayText || row.ab || '';
   ab.title = `查詢 ${ab.textContent}`;
   ab.addEventListener('click', () => drillLookup(ab.textContent));
-  const actions = document.createElement('div');
-  actions.className = 'row-actions';
+  const primary = document.createElement('div');
+  primary.className = 'inline-audio-line';
   const audio = createDirectAudioButton(row.audioUrl);
-  if (audio) actions.appendChild(audio);
-  main.appendChild(ab);
-  if (actions.childNodes.length > 0) main.appendChild(actions);
+  primary.appendChild(ab);
+  if (audio) primary.appendChild(audio);
+  main.appendChild(primary);
   main.appendChild(createBookmarkRail(() => savedItem));
   item.appendChild(main);
 
@@ -610,8 +615,13 @@ function makeAnalysisHeader(context, tokens, lookupCount) {
   const title = document.createElement('h2');
   title.textContent = context.rawText || '分析';
   titleGroup.appendChild(title);
+  const tts = createCompanionTtsButton(context.rawText, context);
+  if (tts) {
+    tts.dataset.companionHeaderTts = 'true';
+    titleGroup.appendChild(tts);
+  }
   top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: true }));
-  card.append(top, createBookmarkRail(() => getHeaderSavedItem()));
+  card.appendChild(top);
   return card;
 }
 
@@ -732,13 +742,10 @@ function makeDrillButton(word, className) {
 function makeHeaderActions(text, context, options = {}) {
   const group = document.createElement('div');
   group.className = 'lookup-head-actions';
+  const saveBtn = createCompanionSaveButton(() => getHeaderSavedItem());
   const mt = options.includeMt ? createCompanionMtButton(text, context) : null;
-  const tts = createCompanionTtsButton(text, context);
+  group.appendChild(saveBtn);
   if (mt) group.appendChild(mt);
-  if (tts) {
-    tts.dataset.companionHeaderTts = 'true';
-    group.appendChild(tts);
-  }
   return group;
 }
 
@@ -1065,16 +1072,13 @@ function makeExample(example, parentItem = null) {
   const top = document.createElement('div');
   top.className = 'example-ab-line';
   const ab = document.createElement('div');
-  ab.className = 'example-ab';
+  ab.className = 'example-ab inline-audio-line';
   appendDrillableAbText(ab, example.ab || '');
   const tts = example.audioUrl ? null : createCompanionTtsButton(example.ab || '', currentContext);
-  const actions = document.createElement('div');
-  actions.className = 'row-actions';
   const audio = createDirectAudioButton(example.audioUrl);
-  if (audio) actions.appendChild(audio);
-  if (tts) actions.appendChild(tts);
+  if (audio) ab.appendChild(audio);
+  if (tts) ab.appendChild(tts);
   top.appendChild(ab);
-  if (actions.childNodes.length > 0) top.appendChild(actions);
   top.appendChild(createBookmarkRail(() => savedItem));
   const zh = document.createElement('div');
   zh.className = 'example-zh';
