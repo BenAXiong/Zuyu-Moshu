@@ -277,6 +277,7 @@ Tasks:
 - Review the current Companion analysis reader against saved-page `短章分析*` and decide which controls are worth porting into the Side Panel.
 - Add a global Companion manual input row under the mode tabs. Done for the general lookup/reader modes: one AB/CJK word routes to `查詞`, multi-token AB text routes to `讀句`/analysis, and later specialized tabs such as AI or Kilang can make the same input mode-aware.
 - Split or rename the current general modes so `查詞` handles word/ZH lookup and `讀句`/`分析` handles sentence/phrase reader output. Done at the tab-label/routing level; deeper reader parity remains below.
+- Decouple Companion tab state. Done for lookup and analysis: each tab preserves its last context independently, and legacy selection-triggered `companionContext` updates are migrated into per-tab `companionState`.
 - Add basic reader display controls if they fit: show/hide Chinese glosses, show/hide top fallback/alt annotations, and possibly hide sentence dividers.
 - Add selected-sentence navigation only if long selections are hard to scan in the Side Panel; avoid the full saved-page layout controls unless needed.
 - Improve token status hooks: unknown token, recovered/fallback token, alternate-spelling token, and saved-token styling hooks. Wiring saved-token status can remain deferred if it needs cross-view saved-state sync.

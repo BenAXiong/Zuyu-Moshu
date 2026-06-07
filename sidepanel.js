@@ -1,4 +1,5 @@
 const CONTEXT_KEY = 'companionContext';
+const STATE_KEY = 'companionState';
 const LOOKUP_CONCURRENCY = 4;
 const MAX_ANALYSIS_TOKENS = 80;
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
@@ -23,11 +24,13 @@ const INDIHUNT_LANG_CODE = {
 };
 
 let renderSerial = 0;
+let companionState = makeEmptyCompanionState();
 let currentContext = null;
 let companionHistory = [];
 let currentExportItems = [];
 let currentHeaderSaveItem = null;
 let currentKilangLookupMeta = null;
+let pendingStateWrite = '';
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
@@ -39,28 +42,152 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadContext();
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'session' || !changes[CONTEXT_KEY]) return;
-    renderContext(changes[CONTEXT_KEY].newValue || null, { resetHistory: true });
+    if (area !== 'session') return;
+    if (changes[STATE_KEY]) {
+      const nextStateKey = JSON.stringify(changes[STATE_KEY].newValue || null);
+      if (pendingStateWrite && nextStateKey === pendingStateWrite) {
+        pendingStateWrite = '';
+        return;
+      }
+      applyCompanionState(changes[STATE_KEY].newValue || makeEmptyCompanionState(), { resetHistory: true });
+      return;
+    }
+    if (changes[CONTEXT_KEY]) {
+      applyIncomingContext(changes[CONTEXT_KEY].newValue || null);
+    }
   });
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === 'companionContextUpdated') loadContext();
+    if (msg?.type === 'companionContextUpdated') loadIncomingContext();
   });
 });
 
 function loadContext() {
+  chrome.storage.session.get({ [STATE_KEY]: null, [CONTEXT_KEY]: null }, data => {
+    if (shouldUseIncomingContext(data[CONTEXT_KEY], data[STATE_KEY])) {
+      applyIncomingContext(data[CONTEXT_KEY]);
+      return;
+    }
+    if (data[STATE_KEY]) {
+      applyCompanionState(data[STATE_KEY], { resetHistory: true });
+      return;
+    }
+    applyCompanionState(makeEmptyCompanionState(), { resetHistory: true });
+  });
+}
+
+function loadIncomingContext() {
   chrome.storage.session.get({ [CONTEXT_KEY]: null }, data => {
-    renderContext(data[CONTEXT_KEY], { resetHistory: true });
+    if (data[CONTEXT_KEY]) applyIncomingContext(data[CONTEXT_KEY]);
   });
 }
 
 function clearContext() {
   companionHistory = [];
-  chrome.storage.session.remove(CONTEXT_KEY, () => renderContext(null));
+  const next = {
+    ...normalizeCompanionState(companionState),
+    contexts: {
+      ...normalizeCompanionState(companionState).contexts,
+      [getActiveMode()]: null,
+    },
+  };
+  persistCompanionState(next, { resetHistory: true });
 }
 
 function setActiveMode(mode) {
+  const next = {
+    ...normalizeCompanionState(companionState),
+    activeMode: normalizeMode(mode),
+  };
+  persistCompanionState(next, { resetHistory: false });
+}
+
+function updateActiveTab(mode) {
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.mode === mode);
+  });
+}
+
+function makeEmptyCompanionState() {
+  return {
+    activeMode: 'lookup',
+    contexts: {
+      lookup: null,
+      analysis: null,
+    },
+  };
+}
+
+function normalizeCompanionState(state) {
+  const empty = makeEmptyCompanionState();
+  const activeMode = normalizeMode(state?.activeMode || empty.activeMode);
+  return {
+    activeMode,
+    contexts: {
+      lookup: state?.contexts?.lookup || null,
+      analysis: state?.contexts?.analysis || null,
+    },
+  };
+}
+
+function normalizeMode(mode) {
+  return mode === 'analysis' ? 'analysis' : 'lookup';
+}
+
+function modeForContext(context) {
+  return context?.mode === 'word' ? 'lookup' : 'analysis';
+}
+
+function getActiveMode() {
+  return normalizeCompanionState(companionState).activeMode;
+}
+
+function persistCompanionState(state, options = {}) {
+  const normalized = normalizeCompanionState(state);
+  pendingStateWrite = JSON.stringify(normalized);
+  chrome.storage.session.set({ [STATE_KEY]: normalized }, () => {
+    applyCompanionState(normalized, options);
+  });
+}
+
+function applyIncomingContext(context) {
+  if (!context) return;
+  const mode = modeForContext(context);
+  const state = normalizeCompanionState(companionState);
+  persistCompanionState({
+    activeMode: mode,
+    contexts: {
+      ...state.contexts,
+      [mode]: context,
+    },
+  }, { resetHistory: true });
+  chrome.storage.session.remove(CONTEXT_KEY);
+}
+
+function shouldUseIncomingContext(context, state) {
+  if (!context) return false;
+  if (!state) return true;
+  return getContextTime(context) > getStateTime(state);
+}
+
+function getStateTime(state) {
+  const normalized = normalizeCompanionState(state);
+  return Math.max(
+    getContextTime(normalized.contexts.lookup),
+    getContextTime(normalized.contexts.analysis)
+  );
+}
+
+function getContextTime(context) {
+  const time = new Date(context?.timestamp || 0).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function applyCompanionState(state, options = {}) {
+  companionState = normalizeCompanionState(state);
+  const context = companionState.contexts[companionState.activeMode] || null;
+  renderContext(context, {
+    ...options,
+    activeMode: companionState.activeMode,
   });
 }
 
@@ -70,6 +197,8 @@ async function renderContext(context, options = {}) {
   const serial = ++renderSerial;
   const content = document.getElementById('content');
   if (!content) return;
+  const activeMode = normalizeMode(options.activeMode || getActiveMode());
+  updateActiveTab(activeMode);
 
   if (!context) {
     content.className = 'content empty';
@@ -78,8 +207,6 @@ async function renderContext(context, options = {}) {
     return;
   }
 
-  const mode = context.mode === 'word' ? 'lookup' : 'analysis';
-  setActiveMode(mode);
   content.className = 'content';
   content.replaceChildren(makeLoadingState(context));
   currentExportItems = [];
@@ -103,10 +230,16 @@ async function handleManualSearch(event) {
 
   companionHistory = [];
   const context = await buildManualSearchContext(rawText);
+  const mode = modeForContext(context);
   if (input) input.value = context.rawText || rawText;
-  chrome.storage.session.set({ [CONTEXT_KEY]: context }, () => {
-    renderContext(context, { resetHistory: true });
-  });
+  const state = normalizeCompanionState(companionState);
+  persistCompanionState({
+    activeMode: mode,
+    contexts: {
+      ...state.contexts,
+      [mode]: context,
+    },
+  }, { resetHistory: true });
 }
 
 async function buildManualSearchContext(rawText) {
@@ -152,28 +285,45 @@ function drillLookup(word) {
   const clean = FDT_LOOKUP_CORE.cleanWord(word);
   if (!clean || FDT_LOOKUP_CORE.hasCjk(clean)) return;
   if (currentContext) companionHistory.push(currentContext);
-  renderContext({
+  const context = {
     ...(currentContext || {}),
     mode: 'word',
     rawText: clean,
     tokens: [clean],
     trigger: 'drill',
     timestamp: new Date().toISOString(),
+  };
+  const state = normalizeCompanionState(companionState);
+  persistCompanionState({
+    activeMode: 'lookup',
+    contexts: {
+      ...state.contexts,
+      lookup: context,
+    },
   }, { resetHistory: false });
 }
 
 function goBack() {
   const previous = companionHistory.pop();
-  if (previous) renderContext(previous, { resetHistory: false });
+  if (!previous) return;
+  const mode = modeForContext(previous);
+  const state = normalizeCompanionState(companionState);
+  persistCompanionState({
+    activeMode: mode,
+    contexts: {
+      ...state.contexts,
+      [mode]: previous,
+    },
+  }, { resetHistory: false });
 }
 
 function makeEmptyState() {
   const empty = document.createElement('div');
   empty.className = 'empty-state';
   const title = document.createElement('strong');
-  title.textContent = '選取文字開始';
+  title.textContent = getActiveMode() === 'analysis' ? '尚無讀句內容' : '尚無查詞內容';
   const body = document.createElement('span');
-  body.textContent = '將查詢顯示切換到 Companion 後，雙擊或 Ctrl+選取文字會在這裡顯示。';
+  body.textContent = '可從網頁選取文字，或使用上方輸入列。';
   empty.append(title, body);
   return empty;
 }
