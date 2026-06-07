@@ -194,6 +194,27 @@ a {
   height: 22px;
 }
 
+.content .companion-tts-button,
+.content .companion-ai-button {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, visibility 120ms ease;
+}
+
+.content:hover .companion-tts-button,
+.content:hover .companion-ai-button,
+.content:focus-within .companion-tts-button,
+.content:focus-within .companion-ai-button,
+.content .companion-tts-button.loading,
+.content .companion-ai-button.loading,
+.content .companion-tts-button.error,
+.content .companion-ai-button.error {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .lookup-head h2,
 .section-title h2,
 .sense-head h3 {

@@ -206,7 +206,8 @@ Done in current v1.6 Companion branch work:
 - Refined Companion bookmark layout:
   - row/example bookmarks use a dedicated one-column right rail;
   - bookmark icons are borderless/backgroundless;
-  - header TTS, row audio, and example audio/TTS sit inline next to the related word/example text instead of sharing the bookmark/action column.
+  - header TTS, row audio, and example audio/TTS sit inline next to the related word/example text instead of sharing the bookmark/action column;
+  - generated AI/TTS buttons reveal on Companion content hover/focus, while direct source audio remains visible.
 - Refined popup target controls:
   - renamed the target row to `顯示模式` and moved it directly below language;
   - styled `提示框 / 側欄` like footer buttons;
