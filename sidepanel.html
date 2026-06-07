@@ -25,9 +25,14 @@
   </header>
 
   <nav class="mode-tabs" aria-label="Companion modes">
-    <button class="mode-tab active" type="button" data-mode="lookup">查詢</button>
-    <button class="mode-tab" type="button" data-mode="analysis">分析</button>
+    <button class="mode-tab active" type="button" data-mode="lookup">查詞</button>
+    <button class="mode-tab" type="button" data-mode="analysis">讀句</button>
   </nav>
+
+  <form id="manualSearch" class="manual-search" autocomplete="off">
+    <input id="manualSearchInput" type="search" placeholder="輸入族語、中文、短句" aria-label="手動查詢">
+    <button type="submit" title="查詢" aria-label="查詢">⌕</button>
+  </form>
 
   <main id="content" class="content empty">
     <div class="empty-state">

@@ -32,6 +32,7 @@ let currentKilangLookupMeta = null;
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
   document.getElementById('topExport')?.addEventListener('click', exportCompanionToIndiHunt);
+  document.getElementById('manualSearch')?.addEventListener('submit', handleManualSearch);
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
   });
@@ -73,6 +74,7 @@ async function renderContext(context, options = {}) {
   if (!context) {
     content.className = 'content empty';
     content.replaceChildren(makeEmptyState());
+    syncManualSearchInput(null);
     return;
   }
 
@@ -89,7 +91,61 @@ async function renderContext(context, options = {}) {
     ? await buildLookupView(context, settings)
     : await buildAnalysisView(context, settings);
   if (serial !== renderSerial || currentContext !== context) return;
+  syncManualSearchInput(context);
   content.replaceChildren(view);
+}
+
+async function handleManualSearch(event) {
+  event.preventDefault();
+  const input = document.getElementById('manualSearchInput');
+  const rawText = FDT_LOOKUP_CORE.cleanPhraseText(input?.value || '');
+  if (!rawText) return;
+
+  companionHistory = [];
+  const context = await buildManualSearchContext(rawText);
+  if (input) input.value = context.rawText || rawText;
+  chrome.storage.session.set({ [CONTEXT_KEY]: context }, () => {
+    renderContext(context, { resetHistory: true });
+  });
+}
+
+async function buildManualSearchContext(rawText) {
+  const settings = await readCompanionSettings();
+  const hasCjk = FDT_LOOKUP_CORE.hasCjk(rawText);
+  const tokens = FDT_LOOKUP_CORE.getPhraseTokens(rawText, MAX_ANALYSIS_TOKENS);
+  const mode = hasCjk || tokens.length <= 1 ? 'word' : 'sentences';
+  const cleanWord = hasCjk ? rawText : (tokens[0] || FDT_LOOKUP_CORE.cleanWord(rawText));
+  const displayText = mode === 'word' ? cleanWord : rawText;
+  return {
+    mode,
+    rawText: displayText,
+    tokens: mode === 'word'
+      ? (hasCjk ? [] : [cleanWord].filter(Boolean))
+      : tokens,
+    page: { title: '', url: '' },
+    trigger: 'manual',
+    language: settings.language || '',
+    sources: Array.isArray(settings.sources) ? settings.sources : DEFAULTS.sources,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function readCompanionSettings() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get(DEFAULTS, data => {
+      const fallback = currentContext ? contextToSettings(currentContext) : DEFAULTS;
+      resolve({
+        ...fallback,
+        ...data,
+      });
+    });
+  });
+}
+
+function syncManualSearchInput(context) {
+  const input = document.getElementById('manualSearchInput');
+  if (!input || document.activeElement === input) return;
+  input.value = context?.rawText || '';
 }
 
 function drillLookup(word) {
