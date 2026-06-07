@@ -13,10 +13,8 @@ const MAX_EXPANDED_EXAMPLES = 3;
 const MAX_PHRASE_TOKENS = 16;
 const PHRASE_LOOKUP_CONCURRENCY = 4;
 const ILRDF_MT_BASE  = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
-const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
 const ILRDF_TIMEOUT  = 20000;
 const AMIS_MALAN_DIALECT = 'ami_Mala';
-const AMIS_MALAN_SPEAKER = '阿美_馬蘭_女聲';
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
 const INDIHUNT_MAX_ITEMS = 200;
 const INDIHUNT_LANG_CODE = {
@@ -49,14 +47,10 @@ let currentTooltipNav = null;
 let savedOpenButton = null;
 const fetched = new Map();
 const moeFetched = new Map();
-const ttsFetched = new Map();
 
 // ' (apostrophe) intentionally excluded — it's a glottal stop character in these orthographies
 function cleanWord(w) {
-  return w
-    .replace(/[‘’ʼ´`]/g, "'")
-    .replace(/^[,.";:!?()[\]{}—–，。！？；：「」『』、]+|[,.";:!?()[\]{}—–，。！？；：「」『』、]+$/g, '')
-    .toLowerCase();
+  return FDT_LOOKUP_CORE.cleanWord(w);
 }
 
 function getShortDialect(full) {
@@ -70,11 +64,11 @@ function getDialectLabel(full, settings) {
 }
 
 function normalizeAudioUrl(url) {
-  return typeof url === 'string' && /^https?:\/\//.test(url) ? url : '';
+  return FDT_LOOKUP_CORE.normalizeAudioUrl(url);
 }
 
 function getAudioUrl(entry) {
-  return normalizeAudioUrl(entry?.audioUrl ?? entry?.audio_url ?? entry?.audio);
+  return FDT_LOOKUP_CORE.getAudioUrl(entry);
 }
 
 const SWAP = { u:'o', o:'u', l:'r', r:'l', f:'v', v:'f', '^':"'" };
@@ -141,7 +135,7 @@ document.addEventListener('dblclick', () => {
       if (chrome.runtime.lastError) return;
       if (s.triggerHover) return;
       if (!s.triggerDblclick) return;
-      handleSelection(s);
+      handleSelection(s, 'doubleClick');
     });
   } catch (e) { console.debug(e); }
 });
@@ -173,7 +167,7 @@ document.addEventListener('mouseup', (e) => {
     chrome.storage.sync.get(DEFAULTS, (s) => {
       if (chrome.runtime.lastError) return;
       if (!s.triggerCtrlSelect) return;
-      handleSelection(s);
+      handleSelection(s, 'ctrlSelect');
     });
   } catch (e) { console.debug(e); }
 });
@@ -225,7 +219,7 @@ function isCjk(ch) {
 }
 
 function hasCjk(text) {
-  return /[\u3400-\u9fff]/.test(text);
+  return FDT_LOOKUP_CORE.hasCjk(text);
 }
 
 function hasLookupLength(word) {
@@ -363,12 +357,12 @@ function getInputSelection(el) {
   return { raw, rect };
 }
 
-function handleSelection(settings) {
+function handleSelection(settings, trigger = 'selection') {
   if (!settings.enabled) return;
 
   const inputSelection = getInputSelection(getDeepActiveElement());
   if (inputSelection) {
-    lookupRawSelection(inputSelection.raw, inputSelection.rect, settings);
+    lookupRawSelection(inputSelection.raw, inputSelection.rect, settings, trigger);
     return;
   }
 
@@ -389,7 +383,7 @@ function handleSelection(settings) {
   if (!rect) return;
   if (!rect.width && !rect.height) return;
 
-  lookupRawSelection(raw, rect, settings);
+  lookupRawSelection(raw, rect, settings, trigger);
 }
 
 function handleHover(clientX, clientY, settings) {
@@ -413,30 +407,60 @@ function handleHover(clientX, clientY, settings) {
   triggerLookup(word, hovered.rect, settings);
 }
 
-function lookupRawSelection(raw, rect, settings) {
+async function lookupRawSelection(raw, rect, settings, trigger = 'selection') {
   const phraseTokens = getPhraseTokens(raw);
+  const word = cleanWord(raw);
+  const hasPhrase = phraseTokens.length >= 2;
+  const hasWord = hasLookupLength(word) && word.length <= MAX_WORD_LEN;
+
+  if (settings.lookupDisplayTarget === 'companion' && (hasPhrase || hasWord)) {
+    const sent = await sendCompanionContext(raw, phraseTokens, settings, trigger);
+    if (sent) {
+      dismissTooltip();
+      return;
+    }
+  }
+
   if (phraseTokens.length >= 2) {
     triggerPhraseLookup(cleanPhraseText(raw), phraseTokens, rect, settings);
     return;
   }
 
-  const word = cleanWord(raw);
   if (!hasLookupLength(word) || word.length > MAX_WORD_LEN) return;
   lastHoverKey = '';
   triggerLookup(word, rect, settings);
 }
 
+async function sendCompanionContext(raw, phraseTokens, settings, trigger) {
+  const text = cleanPhraseText(raw);
+  const word = cleanWord(raw);
+  const isPhrase = phraseTokens.length >= 2;
+  const mode = isPhrase
+    ? (/[.!?。！？\r\n]/.test(raw) ? 'sentences' : 'phrase')
+    : 'word';
+  const context = {
+    mode,
+    rawText: text || raw,
+    tokens: isPhrase ? phraseTokens : (word ? [word] : []),
+    page: {
+      title: document.title || '',
+      url: location.href,
+    },
+    trigger,
+    language: settings.language || '',
+    sources: Array.isArray(settings.sources) ? settings.sources : DEFAULTS.sources,
+    timestamp: new Date().toISOString(),
+  };
+  const response = await sendRuntimeMessage({ type: 'companionContext', context });
+  return !!response?.ok;
+}
+
 function cleanPhraseText(text) {
-  return String(text || '').replace(/\s+/g, ' ').trim();
+  return FDT_LOOKUP_CORE.cleanPhraseText(text);
 }
 
 function getPhraseTokens(raw) {
-  if (hasCjk(raw)) return [];
-  return cleanPhraseText(raw)
-    .split(/[\s,;!?()[\]{}"“”、，。！？；：「」『』\n\r\t]+/)
-    .map(cleanWord)
-    .filter(token => token && token.length <= MAX_WORD_LEN && !hasCjk(token))
-    .slice(0, MAX_PHRASE_TOKENS);
+  return FDT_LOOKUP_CORE.getPhraseTokens(raw, MAX_PHRASE_TOKENS);
 }
 
 function setHeaderWord(word) {
@@ -1236,39 +1260,6 @@ async function gradioCall(base, fn, data) {
   }
 }
 
-function getTtsCacheKey(speaker, text) {
-  return `${speaker}\n${text}`;
-}
-
-function getCachedTtsAudioUrl(speaker, text) {
-  const cached = ttsFetched.get(getTtsCacheKey(speaker, text));
-  return typeof cached === 'string' ? cached : '';
-}
-
-async function getTtsAudioUrl(speaker, text) {
-  const key = getTtsCacheKey(speaker, text);
-  if (ttsFetched.has(key)) return await ttsFetched.get(key);
-
-  const request = gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text])
-    .then(result => {
-      const url = result?.url ?? (typeof result === 'string' ? result : '');
-      if (!url) {
-        ttsFetched.delete(key);
-        return '';
-      }
-      if (ttsFetched.size >= MAX_CACHE) ttsFetched.delete(ttsFetched.keys().next().value);
-      ttsFetched.set(key, url);
-      return url;
-    })
-    .catch(err => {
-      ttsFetched.delete(key);
-      throw err;
-    });
-
-  ttsFetched.set(key, request);
-  return await request;
-}
-
 function playAudio(url, btn, options = {}) {
   if (!url) return Promise.resolve(false);
   const markError = options.markError !== false;
@@ -1551,15 +1542,47 @@ function createKilangExportButton() {
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'fdt-saved-open fdt-kilang-open';
-  btn.title = 'Export tooltip';
-  btn.setAttribute('aria-label', 'Export tooltip');
+  btn.title = 'Open in Companion';
+  btn.setAttribute('aria-label', 'Open in Companion');
   btn.appendChild(createKilangLogo());
   btn.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    exportTooltipToIndiHunt();
+    openTooltipInCompanion();
   });
   return btn;
+}
+
+function openTooltipInCompanion() {
+  if (!tooltip || !canUseSidePanelFromContent()) return;
+  const phraseText = tooltip._phraseText || '';
+  const rawText = phraseText || getHeaderWord();
+  const tokens = Array.isArray(tooltip._phraseTokens) && tooltip._phraseTokens.length > 0
+    ? tooltip._phraseTokens
+    : (rawText ? [cleanWord(rawText)] : []);
+  const mode = phraseText
+    ? (/[.!?。！？\r\n]/.test(phraseText) ? 'sentences' : 'phrase')
+    : 'word';
+  chrome.runtime.sendMessage({
+    type: 'companionContext',
+    context: {
+      mode,
+      rawText,
+      tokens,
+      page: {
+        title: document.title || '',
+        url: location.href,
+      },
+      trigger: 'tooltip',
+      language: currentTooltipSettings?.language || '',
+      sources: Array.isArray(currentTooltipSettings?.sources) ? currentTooltipSettings.sources : DEFAULTS.sources,
+      timestamp: new Date().toISOString(),
+    },
+  }, () => void chrome.runtime.lastError);
+}
+
+function canUseSidePanelFromContent() {
+  return !!chrome.runtime?.sendMessage;
 }
 
 function createHeaderSaveButton() {
@@ -1846,11 +1869,7 @@ function setHeaderAudioUrl(url) {
 }
 
 function cleanDisplayText(text) {
-  return String(text || '')
-    .replace(/`([^`~]+)~/g, '$1')
-    .replace(/[`~|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return FDT_LOOKUP_CORE.cleanDisplayText(text);
 }
 
 function appendDrillableText(parent, text) {
@@ -1883,17 +1902,11 @@ function appendDrillableText(parent, text) {
 }
 
 function countCjk(text) {
-  return [...String(text || '')].filter(ch => isCjk(ch)).length;
+  return FDT_LOOKUP_CORE.countCjk(text);
 }
 
 function isSentenceLikeExample(example) {
-  const ab = example.ab || '';
-  const zh = example.zh || '';
-  const abTokens = ab.split(/\s+/).filter(Boolean).length;
-  const zhChars = countCjk(zh);
-  if (/[.!?。！？；;]/.test(`${ab}${zh}`)) return true;
-  if (abTokens >= 3 && zhChars >= 4) return true;
-  return zhChars >= 8;
+  return FDT_LOOKUP_CORE.isSentenceLikeExample(example);
 }
 
 function getExampleRows(entry) {
@@ -2202,6 +2215,7 @@ function appendPhraseSeparator(parent, separator, betweenTokens) {
   const punctuation = getPhraseSeparatorPunctuation(separator);
   if (punctuation) {
     parent.appendChild(document.createTextNode(betweenTokens ? ` ${punctuation} ` : ` ${punctuation}`));
+    if (/[,，.;；;:：。]/.test(punctuation)) parent.appendChild(document.createElement('br'));
     return;
   }
   if (betweenTokens) parent.appendChild(document.createTextNode(' | '));
@@ -2211,7 +2225,7 @@ function getPhraseSeparatorPunctuation(separator) {
   const compact = String(separator || '').replace(/\s+/g, '');
   if (!compact) return '';
   return compact
-    .replace(/([,，;；:：!?！？])([“「『])/g, '$1 $2')
+    .replace(/([,，.;；:：。!?！？])([“「『])/g, '$1 $2')
     .replace(/^\|+|\|+$/g, '');
 }
 
@@ -2233,23 +2247,7 @@ function appendPhraseResultToken(parent, result) {
 }
 
 function getPhraseGlossesFromTexts(texts, options = {}) {
-  const limit = options.limit ?? 2;
-  const maxPerText = options.maxPerText ?? 2;
-  const glosses = [];
-  const seen = new Set();
-  for (const text of texts) {
-    let addedForText = 0;
-    for (const part of getShortPhraseDefinitions(text)) {
-      const key = part.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      glosses.push(part);
-      addedForText++;
-      if (glosses.length >= limit) return glosses;
-      if (addedForText >= maxPerText) break;
-    }
-  }
-  return glosses;
+  return FDT_LOOKUP_CORE.getPhraseGlossesFromTexts(texts, options);
 }
 
 function getShortPhraseDefinition(text) {
@@ -2257,32 +2255,11 @@ function getShortPhraseDefinition(text) {
 }
 
 function getShortPhraseDefinitions(text) {
-  const clean = cleanDisplayText(String(text || '').replace(/[|｜]/g, '；'));
-  if (!clean) return [];
-  const withoutParen = clean
-    .replace(/[（(][^（）()]*[）)]/g, ' ')
-    .replace(/[〈《<][^〉》>]*[〉》>]/g, ' ')
-    .replace(/[（）()]/g, ' ')
-    .replace(/[〈〉《》<>]/g, ' ')
-    .replace(/^[\s,.;:：，。；、]+|[\s,.;:：，。；、]+$/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const candidates = withoutParen
-    .split(/[；;。，,、/／]|或|及|和|與|表示|指/u)
-    .map(part => part.replace(/^[的地得之]|[的地得之]$/g, '').trim())
-    .filter(Boolean);
-  const ordered = [
-    ...candidates.filter(part => countCjk(part) <= 6),
-    ...candidates.filter(part => countCjk(part) > 6),
-  ];
-  const picked = ordered.length > 0 ? ordered : [withoutParen];
-  return picked.map(part => truncatePhraseHint(part)).filter(Boolean);
+  return FDT_LOOKUP_CORE.getShortPhraseDefinitions(text);
 }
 
 function truncatePhraseHint(text) {
-  const chars = [...cleanDisplayText(text)];
-  if (chars.length <= 6) return chars.join('');
-  return `${chars.slice(0, 5).join('')}…`;
+  return FDT_LOOKUP_CORE.truncatePhraseHint(text);
 }
 
 function appendPhraseAiButtons(phrase) {
@@ -2333,28 +2310,10 @@ async function speakPhrase(phrase, btn) {
   const text = cleanPhraseText(phrase);
   if (!text) return;
 
-  const cachedUrl = btn?.dataset.audioUrl || getCachedTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
-  if (cachedUrl) {
-    playAudio(cachedUrl, btn);
-    return;
-  }
-
   setPhraseAiBusy(btn, true);
   try {
-    const url = await getTtsAudioUrl(AMIS_MALAN_SPEAKER, text);
-    if (url) {
-      if (btn) {
-        btn.dataset.audioUrl = url;
-        btn.title = 'TTS';
-      }
-      const started = await playAudio(url, btn, { markError: false });
-      if (!started && btn) {
-        btn.classList.add('ready');
-        btn.title = 'TTS 已產生，再點一次播放';
-      }
-    } else {
-      btn?.classList.add('error');
-    }
+    const response = await sendRuntimeMessage({ type: 'playIlrdfTts', text });
+    if (!response?.ok) btn?.classList.add('error');
   } catch {
     btn?.classList.add('error');
   } finally {
@@ -2384,11 +2343,11 @@ function renderPhraseMt(text) {
 }
 
 function cleanMoeText(text) {
-  return cleanDisplayText(text);
+  return FDT_LOOKUP_CORE.cleanMoeText(text);
 }
 
 function cleanMoeDefinition(text) {
-  return cleanMoeText(text).replace(/[。．.]+$/u, '').trim();
+  return FDT_LOOKUP_CORE.cleanMoeDefinition(text);
 }
 
 function getMoeMatchKey(word) {
@@ -2413,87 +2372,35 @@ function insertMoeSection(body, section) {
 }
 
 function parseMoeExamples(json) {
-  try {
-    const parsed = JSON.parse(json || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return FDT_LOOKUP_CORE.parseMoeExamples(json);
 }
 
 function getMoeExampleRows(row) {
-  return parseMoeExamples(row.examples_json)
-    .map(ex => ({
-      ab: cleanMoeText(ex.ab),
-      zh: cleanMoeText(ex.zh || ex.en),
-      source: cleanMoeText(ex.source || ''),
-      sourceId: 'KILANG',
-      audioUrl: getAudioUrl(ex),
-    }))
-    .filter(ex => (ex.ab || ex.zh) && isSentenceLikeExample(ex));
+  return FDT_LOOKUP_CORE.getMoeExampleRows(row);
 }
 
 function dedupeMoeExamples(examples) {
-  const seen = new Set();
-  return examples.filter(example => {
-    const key = `${example.ab}\n${example.zh}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return FDT_LOOKUP_CORE.dedupeMoeExamples(examples);
 }
 
 function getMoeSourceRank(code) {
-  return ({
-    s: 0,
-    m: 1,
-    a: 2,
-    'old-s': 3,
-    p: 4,
-  })[code] ?? 9;
+  return FDT_LOOKUP_CORE.getMoeSourceRank(code);
 }
 
 function getMoeDisplayRows(rows) {
-  const displayable = rows.filter(row => cleanMoeDefinition(row.definition) || getMoeExampleRows(row).length > 0);
-  if (displayable.length === 0) return rows;
-
-  const bestRank = Math.min(...displayable.map(row => getMoeSourceRank(row.dict_code)));
-  return displayable.filter(row => getMoeSourceRank(row.dict_code) === bestRank);
+  return FDT_LOOKUP_CORE.getMoeDisplayRows(rows);
 }
 
 function getMoeSenseKey(row) {
-  const definition = cleanMoeDefinition(row.definition);
-  return definition || cleanMoeText(row.word_ab) || String(row.id || '');
+  return FDT_LOOKUP_CORE.getMoeSenseKey(row);
 }
 
 function getMoeSenseRows(rows) {
-  const senses = [];
-  const byKey = new Map();
-
-  getMoeDisplayRows(rows).forEach(row => {
-    const key = getMoeSenseKey(row);
-    if (!key) return;
-
-    let sense = byKey.get(key);
-    if (!sense) {
-      sense = {
-        row,
-        definition: cleanMoeDefinition(row.definition),
-        audioUrl: getAudioUrl(row),
-        examples: [],
-      };
-      byKey.set(key, sense);
-      senses.push(sense);
-    }
-    if (!sense.audioUrl) sense.audioUrl = getAudioUrl(row);
-    sense.examples = dedupeMoeExamples([...sense.examples, ...getMoeExampleRows(row)]);
-  });
-
-  return senses;
+  return FDT_LOOKUP_CORE.getMoeSenseRows(rows);
 }
 
 function getMoePrimaryRow(rows) {
-  return getMoeSenseRows(rows)[0]?.row || rows[0];
+  return FDT_LOOKUP_CORE.getMoePrimaryRow(rows);
 }
 
 function getMoeAffixes(word, stem) {

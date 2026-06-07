@@ -26,7 +26,7 @@
 }
 
 body {
-  width: 296px;
+  width: 318px;
   background: var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC',
@@ -135,6 +135,7 @@ header .title {
 /* ── Switch ─────────────────────────────────────────────── */
 .sw {
   flex-shrink: 0;
+  display: inline-block;
   width: 30px;
   height: 18px;
   background: var(--switch-on);
@@ -189,6 +190,111 @@ header .title {
   letter-spacing: 0.04em;
 }
 
+.display-actions {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.display-button,
+.footer-actions button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface-hi);
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.86em;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.display-button:hover,
+.footer-actions button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.display-button.active {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.display-button:disabled,
+.display-button.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.display-button:disabled:hover,
+.display-button.disabled:hover {
+  color: var(--dim);
+  border-color: var(--line-strong);
+  background: var(--surface-hi);
+}
+
+.compact-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.compact-toggle {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface-hi);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 0.82em;
+  padding: 7px 7px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.compact-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.compact-toggle.off {
+  color: var(--dim);
+}
+
+.compact-toggle:disabled,
+.compact-toggle.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.compact-toggle:disabled:hover,
+.compact-toggle.disabled:hover {
+  color: var(--dim);
+  border-color: var(--line-strong);
+  background: var(--surface-hi);
+}
+
+.compact-toggle span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Select ─────────────────────────────────────────────── */
 select {
   flex: 1;
@@ -240,6 +346,12 @@ option { background: var(--surface); color: var(--text); }
 
 .pill:hover { color: var(--text-soft); }
 
+.pill:disabled,
+.pill.disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .pill.active {
   background: var(--surface);
   color: var(--accent-text);
@@ -261,25 +373,17 @@ body.field .pill.active {
 
 .footer-actions button {
   flex: 1;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: var(--surface-hi);
-  color: var(--dim);
-  font: inherit;
-  font-size: 0.86em;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 
-.footer-actions button:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-bg);
+.footer-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.footer-actions button:disabled:hover {
+  color: var(--dim);
+  border-color: var(--line-strong);
+  background: var(--surface-hi);
 }
 
 .footer-actions svg {

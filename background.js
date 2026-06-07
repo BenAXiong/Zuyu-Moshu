@@ -1,13 +1,21 @@
 const API_BASE = 'https://ycm-citadel.vercel.app/api/search';
 const MOE_SHADOW_BASE = 'https://ycm-citadel.vercel.app/api/moe_shadow';
+const ILRDF_MT_BASE = 'https://ai-labs.ilrdf.org.tw/kari-seejiq-tnpusu-ai-hmjil';
+const ILRDF_TTS_BASE = 'https://ai-labs.ilrdf.org.tw/hnang-kari-ai-asi-sluhay';
+const ILRDF_TIMEOUT = 20000;
+const AMIS_MALAN_DIALECT = 'ami_Mala';
+const AMIS_MALAN_SPEAKER = '阿美_馬蘭_女聲';
 const MOE_COMMON_PREFIXES = ['sapi', 'paka', 'pina', 'maka', 'mala', 'mipa', 'misa', 'ma', 'mi', 'pa', 'pi', 'ka', 'sa', 'si', 'ni'];
 const MOE_COMMON_SUFFIXES = ['ayay', 'anay', 'enay', 'ay', 'en', 'an', 'aw', 'to'];
 const MOE_ALT_SWAPS = { u: 'o', o: 'u', l: 'r', r: 'l', f: 'v', v: 'f' };
 const MAX_MOE_FALLBACK_CANDIDATES = 20;
+const MAX_MOE_COMPANION_CANDIDATES = 8;
 const MAX_MOE_ALT_POSITIONS = 4;
 const MAX_MOE_PREFIX_STRIPS = 2;
 const MAX_MOE_SUFFIX_STRIPS = 1;
 const MIN_MOE_RECOVERY_BASE_LEN = 4;
+const MAX_TTS_CACHE = 200;
+const ttsFetched = new Map();
 
 async function updateIcon(enabled) {
   const size = 16;
@@ -279,9 +287,197 @@ async function fetchMoeInsights(word) {
   return { query: word, match: '', fallbackFrom: '', rows: [] };
 }
 
+async function fetchMoeCandidateInsights(word) {
+  const normalized = String(word || '').trim().toLowerCase();
+  if (!normalized) return { query: word, candidates: [] };
+
+  const candidates = [];
+  const seenMatches = new Set();
+
+  const exactRows = await enrichMoeRows(await fetchMoeRows(normalized));
+  if (exactRows.length > 0) {
+    candidates.push({
+      query: normalized,
+      match: normalized,
+      fallbackFrom: '',
+      recovery: null,
+      rows: exactRows,
+    });
+    seenMatches.add(normalized);
+  }
+
+  for (const candidate of makeMoeFallbackCandidates(normalized)) {
+    if (candidates.length >= MAX_MOE_COMPANION_CANDIDATES) break;
+    const key = candidate.word.toLowerCase();
+    if (seenMatches.has(key)) continue;
+    seenMatches.add(key);
+
+    const rows = await enrichMoeRows(await fetchMoeRows(candidate.word));
+    if (rows.length === 0) continue;
+
+    candidates.push({
+      query: normalized,
+      match: candidate.word,
+      fallbackFrom: candidate.word.toLowerCase() === normalized ? '' : normalized,
+      recovery: candidate.recovery,
+      rows,
+    });
+  }
+
+  return { query: normalized, candidates };
+}
+
 async function fetchMoeZhInsights(keyword) {
   const rows = await enrichMoeRows(await fetchMoeRows(keyword, false), { maxRoots: 8 });
   return { query: keyword, rows };
+}
+
+async function gradioCall(base, fn, data) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ILRDF_TIMEOUT);
+  try {
+    const submitRes = await fetch(`${base}/gradio_api/call/${fn}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data }),
+      signal: controller.signal,
+    });
+    if (!submitRes.ok) return null;
+    const { event_id } = await submitRes.json();
+    if (!event_id) return null;
+
+    const streamRes = await fetch(`${base}/gradio_api/call/${fn}/${event_id}`, { signal: controller.signal });
+    if (!streamRes.ok || !streamRes.body) return null;
+
+    const reader = streamRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const match = /event:\s*complete[\r\n]+data:\s*(\[[\s\S]+?\])\s*$/.exec(buf);
+        if (match) return JSON.parse(match[1])[0];
+      }
+    } finally {
+      reader.cancel().catch(() => {});
+    }
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function getTtsCacheKey(speaker, text) {
+  return `${speaker}\n${text}`;
+}
+
+async function getTtsAudioUrl(speaker, text) {
+  const key = getTtsCacheKey(speaker, text);
+  if (ttsFetched.has(key)) return await ttsFetched.get(key);
+
+  const request = gradioCall(ILRDF_TTS_BASE, 'default_speaker_tts', [speaker, text])
+    .then(result => {
+      const url = result?.url ?? (typeof result === 'string' ? result : '');
+      if (!url) {
+        ttsFetched.delete(key);
+        return '';
+      }
+      if (ttsFetched.size >= MAX_TTS_CACHE) ttsFetched.delete(ttsFetched.keys().next().value);
+      ttsFetched.set(key, url);
+      return url;
+    })
+    .catch(error => {
+      ttsFetched.delete(key);
+      throw error;
+    });
+
+  ttsFetched.set(key, request);
+  return await request;
+}
+
+function notifyCompanionContextUpdated() {
+  try {
+    chrome.runtime.sendMessage({ type: 'companionContextUpdated' }, () => {
+      void chrome.runtime.lastError;
+    });
+  } catch {}
+}
+
+async function ensureOffscreenAudioDocument() {
+  if (!chrome.offscreen?.createDocument) {
+    throw new Error('offscreenUnavailable');
+  }
+
+  const offscreenUrl = chrome.runtime.getURL('offscreen.html');
+  if (chrome.runtime.getContexts) {
+    const contexts = await chrome.runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'],
+      documentUrls: [offscreenUrl],
+    });
+    if (contexts.length > 0) return;
+  }
+
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: ['AUDIO_PLAYBACK'],
+      justification: 'Play generated TTS audio from extension UI.',
+    });
+  } catch (error) {
+    if (!String(error?.message || '').includes('Only a single offscreen document')) throw error;
+  }
+}
+
+async function playOffscreenAudio(url) {
+  if (!url) return { ok: false, reason: 'missingUrl' };
+  await ensureOffscreenAudioDocument();
+  return await chrome.runtime.sendMessage({ type: 'offscreenPlayAudio', url });
+}
+
+async function playIlrdfTts(text, speaker = AMIS_MALAN_SPEAKER) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return { ok: false, reason: 'missingText' };
+  const url = await getTtsAudioUrl(speaker, clean);
+  if (!url) return { ok: false, reason: 'ttsUnavailable' };
+  return await playOffscreenAudio(url);
+}
+
+async function translateIlrdfText(text, dialect = AMIS_MALAN_DIALECT) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return { ok: false, reason: 'missingText' };
+  const result = await gradioCall(ILRDF_MT_BASE, 'translate', [clean, dialect, 'zho_Hant']);
+  return typeof result === 'string'
+    ? { ok: true, text: result }
+    : { ok: false, reason: 'translateFailed' };
+}
+
+async function openCompanion(sender, context = null) {
+  const contextWrite = context
+    ? chrome.storage.session.set({ companionContext: context })
+    : Promise.resolve();
+
+  if (!chrome.sidePanel?.open) {
+    return { ok: false, reason: 'sidePanelUnavailable' };
+  }
+
+  const windowId = sender?.tab?.windowId;
+  if (typeof windowId === 'number') {
+    await chrome.sidePanel.open({ windowId });
+    await contextWrite;
+    notifyCompanionContextUpdated();
+    return { ok: true };
+  }
+
+  const window = await chrome.windows.getLastFocused();
+  if (typeof window?.id !== 'number') {
+    return { ok: false, reason: 'windowUnavailable' };
+  }
+  await chrome.sidePanel.open({ windowId: window.id });
+  await contextWrite;
+  notifyCompanionContextUpdated();
+  return { ok: true };
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -289,6 +485,46 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     chrome.tabs.create({ url: msg.url || chrome.runtime.getURL('saved.html') });
     sendResponse({ ok: true });
     return false;
+  }
+
+  if (msg.type === 'openCompanion') {
+    openCompanion(_sender)
+      .then(sendResponse)
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'openFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'companionContext') {
+    openCompanion(_sender, msg.context)
+      .then(sendResponse)
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'openFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'playOffscreenAudio') {
+    playOffscreenAudio(msg.url)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'playFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'playIlrdfTts') {
+    playIlrdfTts(msg.text, msg.speaker)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'ttsFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'translateIlrdfText') {
+    translateIlrdfText(msg.text, msg.dialect)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'translateFailed' }));
+
+    return true;
   }
 
   if (msg.type === 'lookup') {
@@ -303,6 +539,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     fetchMoeInsights(msg.word)
       .then(insights => sendResponse({ insights }))
       .catch(() => sendResponse({ insights: null }));
+
+    return true; // keep channel open for async sendResponse
+  }
+
+  if (msg.type === 'moeCandidateInsights') {
+    fetchMoeCandidateInsights(msg.word)
+      .then(insights => sendResponse({ insights }))
+      .catch(() => sendResponse({ insights: { query: msg.word, candidates: [] } }));
 
     return true; // keep channel open for async sendResponse
   }

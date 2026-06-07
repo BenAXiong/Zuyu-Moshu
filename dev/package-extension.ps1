@@ -30,6 +30,9 @@ $payloadFiles = @(
   'background.js',
   'content.css',
   'content.js',
+  'lookup_core.js',
+  'offscreen.html',
+  'offscreen.js',
   'options.css',
   'options.html',
   'options.js',
@@ -40,6 +43,9 @@ $payloadFiles = @(
   'saved.html',
   'saved.js',
   'saved_store.js',
+  'sidepanel.css',
+  'sidepanel.html',
+  'sidepanel.js',
   'shared.js'
 )
 

@@ -1,6 +1,6 @@
 # v1.6 Companion Roadmap
 
-Status: planned
+Status: implementation in progress; Side Panel shell plus first lookup/analysis rendering are implemented
 Started: 2026-06-06 +08:00
 
 This document is the source-of-truth roadmap for the v1.6 Companion work. Companion is a native Chrome Side Panel surface for workflows that are too large for tooltips and too immediate for the saved page.
@@ -113,7 +113,7 @@ Do not expose empty future tabs.
 
 ## First Coding Slice
 
-Side Panel plumbing only:
+Done in commit `b958410`:
 
 - Add manifest side panel permission/config.
 - Add `sidepanel.html`, `sidepanel.js`, and `sidepanel.css`.
@@ -123,38 +123,167 @@ Side Panel plumbing only:
 - Background stores latest context in `chrome.storage.session`.
 - Background opens Side Panel.
 - Side Panel renders raw selected text, detected mode, page title/url, trigger, and timestamp.
-- No lookup in this first slice.
+
+## Second Coding Slice
+
+Done in current v1.6 Companion branch work:
+
+- Added `lookup_core.js` as a namespaced pure helper layer (`FDT_LOOKUP_CORE`) for Companion.
+- Loaded `lookup_core.js` into the Side Panel and included it in the packaging manifest script.
+- Built Companion `查詢` rendering:
+  - enabled-source ordered lookup;
+  - Kilang full sense rows;
+  - Kilang examples;
+  - compact source/tier metadata;
+  - first textual root/parent/matched-word chain;
+  - dictionary rows when ePark/ILRDF-like dictionary sources are enabled.
+- Built Companion `分析` rendering:
+  - selected phrase/sentence token grid;
+  - skip lookup for tokens of 2 characters or less;
+  - bounded-concurrency lookup for longer unique tokens;
+  - source-ordered Kilang/dictionary lookup;
+  - short ZH glosses and root labels when available.
+- Added local Companion drill/back navigation:
+  - analysis token click opens that word in `查詢`;
+  - Kilang chain nodes drill to their word;
+  - dictionary AB lines drill to their word;
+  - AB words inside examples drill to their word;
+  - `返回` restores the previous Companion context;
+  - fresh page selections reset local drill history.
+- Added phrase-tooltip TTS offscreen playback:
+  - background now generates and caches ILRDF TTS URLs for tooltip phrase TTS;
+  - background creates an offscreen audio document on demand;
+  - offscreen document plays generated TTS audio outside the page content context.
+- Added first Companion TTS implementation:
+  - lookup/analysis headers can play the current selected Amis text;
+  - Companion examples can play their AB sentence line;
+  - background generates/caches ILRDF TTS URLs and reuses offscreen playback.
+- Cleaned up generated TTS ownership:
+  - tooltip phrase TTS and Companion TTS both call background `playIlrdfTts`;
+  - content script no longer has its own generated TTS URL cache/polling path;
+  - saved page TTS remains a separate direct Gradio caller for now.
+- Added Companion parity items:
+  - ZH-to-AB lookup across enabled ePark/DICT and Kilang `moeZhLookup` sources;
+  - shared ZH lookup row normalization/sorting helpers in `lookup_core.js`;
+  - Kilang relation labels for fallback/alt/derived matches;
+  - Companion Amis-to-ZH MT button in lookup/analysis headers, backed by background ILRDF MT.
+- Added Companion parity actions:
+  - save/bookmark buttons for Companion senses, dictionary rows, ZH result rows, and examples;
+  - current-view IndiHunt export from Companion;
+  - direct source-audio buttons when rows/examples expose `audioUrl`.
+- Added first v1.6.2 reader clone:
+  - analysis view now includes an annotated reader section above the token grid;
+  - AB tokens render inline with compact ZH glosses below;
+  - top annotations show alternate/fallback/root hints where available;
+  - Amis sentence blocks expose MT/TTS actions.
+- Added Companion polish pass:
+  - removed details disclosure and popup footer Companion button;
+  - moved back navigation into the Companion lookup/phrase header as an arrow;
+  - moved current-view IndiHunt export and header save into the Companion header;
+  - switched Companion save controls to bookmark icons;
+  - hid visible source/tier pills while preserving source metadata in saved/export payloads;
+  - removed MT from single-word lookup headers, keeping it for phrase/sentence contexts;
+  - removed the phrase token grid, leaving the annotated reader as the analysis view;
+  - changed tooltip Kilang-logo floater to open the current tooltip in Companion.
+- Added Companion top-bar polish:
+  - renamed popup target label from `Companion` to `側欄`;
+  - moved current-view IndiHunt export to the Side Panel top bar beside clear;
+  - replaced the clear text label with a non-cross icon;
+  - initially hid singleton chain rows when no explicit parent word was present;
+  - removed duplicated per-sentence MT/TTS buttons from the annotated reader.
+- Revised Companion chain/fallback display:
+  - chain row appears at the top of Kilang result cards only when the returned row has an explicit `parent_word`;
+  - inferred recovery/fallback links get a `?` marker;
+  - marker tooltip describes entries as found "in our database" and reserves inference wording for the extension-generated link.
+- Added Companion root header marker:
+  - mirrors the tooltip root icon/pill behavior for AB lookups;
+  - appears only when the returned database row exposes `ultimate_root` or `stem`;
+  - stays hidden when no root/stem is present instead of inferring a root from the chain;
+  - renders icon-only when pure alt recovery makes the root equal the recovered spelling.
+- Fixed Companion header bookmark semantics:
+  - header bookmark now saves an aggregate word/headword item after lookup rows are registered;
+  - individual row bookmarks continue to save their specific sense/result rows.
+- Refined Companion bookmark layout:
+  - row/example bookmarks use a dedicated one-column right rail;
+  - bookmark icons are borderless/backgroundless;
+  - header TTS, row audio, and example audio/TTS sit inline next to the related word/example text instead of sharing the bookmark/action column;
+  - generated AI/TTS buttons reveal on Companion content hover/focus, while direct source audio remains visible.
+- Refined popup target controls:
+  - renamed the target row to `顯示模式` and moved it directly below language;
+  - styled `提示框 / 側欄` like footer buttons;
+  - grouped `AI工具`, alt spelling, and hover toggles into a compact three-column row.
+- Existing tooltip code is intentionally not migrated to `lookup_core.js` yet.
 
 ## Implementation Order
 
 1. Add thin native Side Panel shell.
 2. Add popup target routing and `chrome.storage.session` handoff.
 3. Verify selection opens/updates Companion with raw context.
-4. Extract shared core/TTS utilities.
-5. Build word lookup view.
-6. Build phrase/sentence analysis view.
-7. Add morphology textual chain.
+4. Extract shared text/lookup core utilities. Done for Companion lookup helpers; TTS utilities started through background/offscreen playback.
+5. Build word lookup view. Done.
+6. Build phrase/sentence analysis view. Done at MVP/token-grid level.
+7. Add morphology textual chain. Started with root/parent/matched-word chain; richer derivation drilling remains pending.
+
+v1.6.0 implementation and smoke testing are complete as of 2026-06-06 +08:00.
+
+Passed smoke tests:
+
+- Popup target toggle: `提示框 / 側欄`.
+- Double-click opens Companion lookup.
+- Ctrl-select phrase opens Companion analysis.
+- Hover stays tooltip-only/off.
+- Side Panel lookup/analysis/drill behavior.
+- Companion header/example TTS.
+- Companion ZH-to-AB lookup.
+- Companion fallback/alt/derived relation labels, including expanded Kilang candidate groups without duplicate relation rows.
+- Companion MT button.
+- Companion save/bookmark and current-view IndiHunt export.
+- Companion direct audio button when a source row exposes `audioUrl`.
+- Companion annotated reader layout and header MT/TTS.
+- Phrase tooltip TTS audio through offscreen playback.
 
 ## v1.6.x Sequence
 
 ### v1.6.1 — Companion Polish And Parity
 
-- Improve narrow Side Panel layout.
-- Add save/copy/export actions where they clearly map to existing saved-item and IndiHunt flows.
-- Add mode switching and back/forward navigation inside Companion.
-- Add pinned context behavior if needed after testing.
-- Reduce duplicated code discovered during v1.6.0.
-- Stabilize TTS/MT UI behavior across tooltip, Companion, and saved page.
+Already completed during the v1.6.0 branch work:
+
+- Narrow Side Panel layout polish.
+- Save/export actions for lookup rows, examples, header aggregate items, and current-view IndiHunt export.
+- Local drill history with a back button.
+- Shared `lookup_core.js` resolver/normalization layer for Companion.
+- Companion Kilang lookup beyond tooltip conciseness: tooltip remains on first-match `moeInsights`, while Companion renders exact plus multiple successful alt/glottal/fallback candidates from a separate background endpoint.
+- TTS/MT behavior stabilized enough for current tooltip and Companion flows.
+
+v1.6.1 decisions and cleanup:
+
+- No explicit copy buttons in Companion for now; save/export are enough.
+- No forward-history affordance for now; back-only drilling is enough.
+- Expanded candidate noise is acceptable for now.
+- Narrow Side Panel overflow passed real-world checks.
+- Completed a focused helper cleanup: `lookup_core.js` is now loaded by content scripts, and content-side duplicated pure helper implementations delegate to it where behavior is shared. Tooltip rendering and lookup flow were not structurally changed.
+- Added shared repair for rare Kilang examples where the source data puts AB text and ZH translation together in the `zh` field while leaving `ab` empty.
+
+Remaining v1.6.1 work:
+
+- None currently known.
 
 ### v1.6.2 — Tab3 Clone / Reading Analysis
 
-- Extend v1.6.0 basic token analysis into a richer reader-like mode.
-- In-panel selected-text analysis with inline AB and compact ZH annotations.
-- Sentence segmentation for selected text.
-- Single/split/full reading layouts only if they fit Side Panel width.
-- Token status styling hooks for saved/unknown/duplicate states.
-- Per-sentence actions: copy, save/export where appropriate, TTS/MT if shared TTS is stable.
-- No full-page analyzer.
+Goal: turn the current Companion `分析` mode into a more useful selected-text reader, broadly inspired by saved-page `短章分析*`, while staying compact enough for the Side Panel.
+
+Tasks:
+
+- Review the current Companion analysis reader against saved-page `短章分析*` and decide which controls are worth porting into the Side Panel.
+- Add a global Companion manual input row under the mode tabs. It should be an input method, not its own tab: one AB/CJK word routes to `查詞`, multi-token AB text routes to `讀句`/analysis, and later specialized tabs such as AI or Kilang can make the same input mode-aware.
+- Split or rename the current general modes so `查詞` handles word/ZH lookup and `讀句`/`分析` handles sentence/phrase reader output. Double-click, Ctrl-select, and manual input should all feed the same context/render pipeline.
+- Add basic reader display controls if they fit: show/hide Chinese glosses, show/hide top fallback/alt annotations, and possibly hide sentence dividers.
+- Add selected-sentence navigation only if long selections are hard to scan in the Side Panel; avoid the full saved-page layout controls unless needed.
+- Improve token status hooks: unknown token, recovered/fallback token, alternate-spelling token, and saved-token styling hooks. Wiring saved-token status can remain deferred if it needs cross-view saved-state sync.
+- Keep per-sentence MT/TTS in the header or a minimal sentence action area; avoid duplicating noisy controls on every token.
+- Decide whether Companion analysis should export the whole selected passage, the current sentence, or both to IndiHunt.
+- Keep lookup source behavior aligned with current Companion lookup: Kilang first by default, ePark/DICT only when enabled, no full-page analyzer.
+- Smoke-test on short phrases, multi-sentence selections, long paragraph selections, punctuation-heavy examples, and recovered/alt-heavy Amis text.
 
 ### v1.6.3 — AI Convenience / Tab4 Clone
 
@@ -195,6 +324,11 @@ Side Panel plumbing only:
 
 - Visual Kilang-style tree UI.
 - Rich transcript mining workflow.
+- Real-time saved-state synchronization across tooltip, Companion, and saved page:
+  - listen to `chrome.storage.onChanged` for `savedItemsV1`;
+  - refresh visible bookmark icons when items are saved/deleted elsewhere;
+  - update the saved page list without requiring a manual refresh when TT/CPN save new items;
+  - preserve saved-page filters/search/selection while syncing.
 
 ## v1.7.0 Reserved Scope
 
@@ -216,4 +350,3 @@ v1.7.0 is reserved for dictionary/source expansion work, not Companion UI expans
 ## Open Questions
 
 None currently blocking implementation.
-

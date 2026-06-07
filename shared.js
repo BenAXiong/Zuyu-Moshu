@@ -15,6 +15,7 @@ const DEFAULTS = {
   triggerDblclick: true,
   triggerCtrlSelect: true,
   triggerHover: false,
+  lookupDisplayTarget: 'tooltip',
   enabled: true,
   altSpelling: true,
   moeKilangInsights: false,

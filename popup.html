@@ -20,6 +20,33 @@
     </select>
   </div>
 
+  <div class="row display-row">
+    <span class="lbl">顯示模式</span>
+    <div class="display-actions">
+      <button class="display-button" data-group="displayTarget" data-value="tooltip" type="button">
+        <span>提示框</span>
+      </button>
+      <button class="display-button" data-group="displayTarget" data-value="companion" type="button">
+        <span>側欄</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="compact-controls" aria-label="快速設定">
+    <button class="compact-toggle" id="aiTools" type="button" title="提示框 AI 翻譯與 TTS">
+      <span>AI工具</span>
+      <span class="sw" aria-hidden="true"></span>
+    </button>
+    <button class="compact-toggle" id="altSpelling" type="button" title="相近拼法搜尋">
+      <span>替拼</span>
+      <span class="sw" aria-hidden="true"></span>
+    </button>
+    <button class="compact-toggle" id="triggerHover" type="button" title="滑鼠懸停查詢">
+      <span>懸停</span>
+      <span class="sw" aria-hidden="true"></span>
+    </button>
+  </div>
+
   <div class="row">
     <span class="lbl">主題</span>
     <div class="pills">
@@ -37,21 +64,6 @@
       <button class="pill" data-group="font" data-value="medium">中</button>
       <button class="pill" data-group="font" data-value="large">大</button>
     </div>
-  </div>
-
-  <div class="row">
-    <span class="lbl">替拼</span>
-    <button id="altSpelling" class="sw" title="相近拼法搜尋"></button>
-  </div>
-
-  <div class="row">
-    <span class="lbl">懸停</span>
-    <button id="triggerHover" class="sw" title="滑鼠懸停查詢"></button>
-  </div>
-
-  <div class="row">
-    <span class="lbl">AI工具</span>
-    <button id="aiTools" class="sw" title="提示框 AI 翻譯與 TTS"></button>
   </div>
 
   <div class="footer-actions">
