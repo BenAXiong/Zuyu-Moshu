@@ -401,7 +401,7 @@ function makeEmptyState() {
   const empty = document.createElement('div');
   empty.className = 'empty-state';
   const title = document.createElement('strong');
-  title.textContent = getActiveMode() === 'analysis' ? '尚無讀句內容' : '尚無查詞內容';
+  title.textContent = getActiveMode() === 'analysis' ? '尚無句子內容' : '尚無單詞內容';
   const body = document.createElement('span');
   body.textContent = '可從網頁選取文字，或使用上方輸入列。';
   empty.append(title, body);

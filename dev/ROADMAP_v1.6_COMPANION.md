@@ -52,9 +52,9 @@ Companion is a peer display target to tooltip, not a tooltip child.
 
 ### Initial View Routing
 
-- Single word / double-click opens `查詞`.
-- Phrase or sentence selection opens `讀句`.
-- Token drill inside `讀句` opens lookup + morphology for that token inside Companion.
+- Single word / double-click opens `單詞`.
+- Phrase or sentence selection opens `句子`.
+- Token drill inside `句子` opens lookup + morphology for that token inside Companion.
 - Multiple selected sentences are allowed as selected-text analysis.
 - No whole-page analyzer.
 
@@ -94,8 +94,8 @@ Goal: make Companion a genuinely useful native Side Panel surface, not just a sh
 - Hover remains tooltip-only or off.
 - `chrome.storage.session` raw-context handoff.
 - Side Panel renders current selected context, page metadata, trigger, and mode.
-- Word selection opens `查詞`.
-- Phrase/sentence selection opens `讀句`.
+- Word selection opens `單詞`.
+- Phrase/sentence selection opens `句子`.
 - Shared text/lookup/TTS utilities begin here.
 - Phrase tooltip TTS is fixed or definitively diagnosed.
 - Full word definitions and examples render in Companion.
@@ -106,8 +106,8 @@ Goal: make Companion a genuinely useful native Side Panel surface, not just a sh
 
 Visible v1.6.0 modes:
 
-- `查詞`
-- `讀句`
+- `單詞`
+- `句子`
 
 Do not expose empty future tabs.
 
@@ -270,19 +270,19 @@ Remaining v1.6.1 work:
 
 ### v1.6.2 — Tab3 Clone / Reading Reader
 
-Goal: turn the current Companion `讀句` mode into a more useful selected-text reader, broadly inspired by saved-page `短章分析*`, while staying compact enough for the Side Panel.
+Goal: turn the current Companion `句子` mode into a more useful selected-text reader, broadly inspired by saved-page `短章分析*`, while staying compact enough for the Side Panel.
 
 Tasks:
 
-- Review the current Companion `讀句` reader against saved-page `短章分析*` and decide which controls are worth porting into the Side Panel.
-- Add a global Companion manual input row under the mode tabs. Done for the general lookup/reader modes: one AB/CJK word routes to `查詞`, multi-token AB text routes to `讀句`/analysis, and later specialized tabs such as AI or Kilang can make the same input mode-aware.
-- Split or rename the current general modes so `查詞` handles word/ZH lookup and `讀句` handles sentence/phrase reader output. Done at the tab-label/routing level; deeper reader parity remains below.
-- Decouple Companion tab state. Done for `查詞` and `讀句`: each tab preserves its last context independently, and legacy selection-triggered `companionContext` updates are migrated into per-tab `companionState`.
+- Review the current Companion `句子` reader against saved-page `短章分析*` and decide which controls are worth porting into the Side Panel.
+- Add a global Companion manual input row under the mode tabs. Done for the general lookup/reader modes: one AB/CJK word routes to `單詞`, multi-token AB text routes to `句子`/analysis, and later specialized tabs such as AI or Kilang can make the same input mode-aware.
+- Split or rename the current general modes so `單詞` handles word/ZH lookup and `句子` handles sentence/phrase reader output. Done at the tab-label/routing level; deeper reader parity remains below.
+- Decouple Companion tab state. Done for `單詞` and `句子`: each tab preserves its last context independently, and legacy selection-triggered `companionContext` updates are migrated into per-tab `companionState`.
 - Add basic reader display controls if they fit: show/hide Chinese glosses, show/hide top fallback/alt annotations, and possibly hide sentence dividers.
 - Add selected-sentence navigation only if long selections are hard to scan in the Side Panel; avoid the full saved-page layout controls unless needed.
 - Improve token status hooks: unknown token, recovered/fallback token, alternate-spelling token, and saved-token styling hooks. Wiring saved-token status can remain deferred if it needs cross-view saved-state sync.
 - Keep per-sentence MT/TTS in the header or a minimal sentence action area; avoid duplicating noisy controls on every token.
-- IndiHunt export scope is full current `讀句` passage split into sentence items; filtering happens in the IndiHunt import page.
+- IndiHunt export scope is full current `句子` passage split into sentence items; filtering happens in the IndiHunt import page.
 - Keep lookup source behavior aligned with current Companion lookup: Kilang first by default, ePark/DICT only when enabled, no full-page analyzer.
 - Smoke-test on short phrases, multi-sentence selections, long paragraph selections, punctuation-heavy examples, and recovered/alt-heavy Amis text.
 
