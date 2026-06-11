@@ -173,6 +173,7 @@ function makeEmptyCompanionState() {
     contexts: {
       lookup: null,
       analysis: null,
+      ai: null,
     },
   };
 }
@@ -258,12 +259,14 @@ function normalizeCompanionState(state) {
     contexts: {
       lookup: state?.contexts?.lookup || null,
       analysis: state?.contexts?.analysis || null,
+      ai: state?.contexts?.ai || null,
     },
   };
 }
 
 function normalizeMode(mode) {
-  return mode === 'analysis' ? 'analysis' : 'lookup';
+  if (mode === 'analysis' || mode === 'ai') return mode;
+  return 'lookup';
 }
 
 function modeForContext(context) {
@@ -306,7 +309,8 @@ function getStateTime(state) {
   const normalized = normalizeCompanionState(state);
   return Math.max(
     getContextTime(normalized.contexts.lookup),
-    getContextTime(normalized.contexts.analysis)
+    getContextTime(normalized.contexts.analysis),
+    getContextTime(normalized.contexts.ai)
   );
 }
 
@@ -332,6 +336,17 @@ async function renderContext(context, options = {}) {
   if (!content) return;
   const activeMode = normalizeMode(options.activeMode || getActiveMode());
   updateActiveTab(activeMode);
+
+  if (activeMode === 'ai') {
+    content.className = 'content';
+    currentExportItems = [];
+    currentHeaderSaveItem = null;
+    currentHeaderSaveItems = null;
+    currentKilangLookupMeta = null;
+    content.replaceChildren(buildAiView(context));
+    syncManualSearchInput(context);
+    return;
+  }
 
   if (!context) {
     content.className = 'content empty';
@@ -460,6 +475,67 @@ function makeEmptyState() {
   body.textContent = '可從網頁選取文字，或使用上方輸入列。';
   empty.append(title, body);
   return empty;
+}
+
+function buildAiView(context = null) {
+  const panel = document.createElement('section');
+  panel.className = 'companion-card ai-panel';
+
+  const direction = document.createElement('div');
+  direction.className = 'ai-direction';
+  const toZh = document.createElement('button');
+  toZh.type = 'button';
+  toZh.className = 'ai-direction-button active';
+  toZh.dataset.direction = 'x-to-zh';
+  toZh.setAttribute('aria-pressed', 'true');
+  toZh.textContent = '族語 → ZH';
+  const toX = document.createElement('button');
+  toX.type = 'button';
+  toX.className = 'ai-direction-button';
+  toX.dataset.direction = 'zh-to-x';
+  toX.setAttribute('aria-pressed', 'false');
+  toX.textContent = 'ZH → 族語';
+  direction.append(toZh, toX);
+  [toZh, toX].forEach(button => {
+    button.addEventListener('click', () => {
+      direction.querySelectorAll('.ai-direction-button').forEach(other => {
+        const isActive = other === button;
+        other.classList.toggle('active', isActive);
+        other.setAttribute('aria-pressed', String(isActive));
+      });
+    });
+  });
+
+  const grid = document.createElement('div');
+  grid.className = 'ai-grid';
+  const input = document.createElement('textarea');
+  input.className = 'ai-textarea';
+  input.placeholder = '輸入文字';
+  input.value = context?.rawText || '';
+  input.rows = 7;
+  const output = document.createElement('textarea');
+  output.className = 'ai-textarea';
+  output.placeholder = '輸出';
+  output.rows = 7;
+  output.readOnly = true;
+  grid.append(input, output);
+
+  const actions = document.createElement('div');
+  actions.className = 'ai-actions';
+  const translate = document.createElement('button');
+  translate.type = 'button';
+  translate.className = 'ai-action-button';
+  translate.disabled = true;
+  translate.textContent = '✦ Translate';
+  const listen = document.createElement('button');
+  listen.type = 'button';
+  listen.className = 'ai-action-button';
+  listen.disabled = true;
+  listen.textContent = '〰 Listen';
+  actions.append(translate, listen);
+
+  panel.append(direction, grid, actions);
+  return panel;
 }
 
 function makeLoadingState(context) {

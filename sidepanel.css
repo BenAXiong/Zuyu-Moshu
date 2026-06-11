@@ -1060,3 +1060,71 @@ a {
 .loading-card p {
   margin: 0;
 }
+
+.ai-panel {
+  padding: 12px;
+}
+
+.ai-direction {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ai-direction-button,
+.ai-action-button {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-hi);
+  color: var(--soft);
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.ai-direction-button.active {
+  border-color: var(--line-strong);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ai-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 9px 10px;
+  font: inherit;
+  line-height: 1.45;
+  outline: none;
+}
+
+.ai-textarea:focus {
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.ai-textarea::placeholder {
+  color: var(--dim);
+}
+
+.ai-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-action-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}

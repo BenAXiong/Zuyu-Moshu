@@ -286,16 +286,30 @@ Tasks:
 - Keep lookup source behavior aligned with current Companion lookup: Kilang first by default, ePark/DICT only when enabled, no full-page analyzer.
 - Smoke-test on short phrases, multi-sentence selections, long paragraph selections, punctuation-heavy examples, and recovered/alt-heavy Amis text.
 
-### v1.6.3 — AI Convenience / Tab4 Clone
+### v1.6.3 — AI Convenience / AI Tab
 
 - Shared appearance refactor first: `appearance.js` now centralizes theme/font-size normalization, legacy theme migration, and class application for popup/tooltips, and is loaded by Companion for the upcoming Side Panel theme pass.
 - Companion theme pass: done. The Side Panel applies the four existing themes (`dark`, `light`, `paper`, `field`) and font-size settings through `FDT_APPEARANCE`, listens to sync setting changes, and keeps Companion-specific CSS tokens local to `sidepanel.css`.
-- Compact `AI MT & TTS` mode in Companion.
-- Direction selector: ZH-to-Amis and Amis-to-ZH.
-- Malan default unless dialect context is known.
-- Reuse shared MT/TTS client.
-- Feed current selected text into AI mode when user switches modes.
-- Keep non-Amis as explicit unsupported/future unless an API exists.
+- Third tab shell: done. `AI` is now a first-class Companion mode with its own persisted `ai` context slot, direction buttons, input/output textareas, and disabled action buttons.
+- Wire direction selector:
+  - `族語 -> ZH` should call the existing background `translateIlrdfText` path.
+  - `ZH -> 族語` needs a background message path equivalent to saved-page `translate_1`, rather than duplicating direct Gradio calls in Side Panel.
+- Wire TTS:
+  - Listen button should use `playIlrdfTts` for Amis text.
+  - For `ZH -> 族語`, play the generated/output Amis text, not the Chinese input.
+  - Hide or disable TTS when the active text is CJK-only or empty.
+- Dialect handling:
+  - Default to Malan.
+  - Keep a compact dialect selector only if needed; otherwise use the same Malan fallback as tooltip/reader TTS.
+- Input handoff:
+  - Switching to `AI` should populate the input from the current `單詞`/`句子` context only when the AI input is empty.
+  - Manual search can remain routed to `單詞`/`句子` for now; later it can become mode-aware for `AI`.
+- Output behavior:
+  - Keep output local to the `AI` tab state.
+  - Do not overwrite `單詞`/`句子` contexts.
+  - Add loading/error states on the action buttons before enabling them.
+- Non-Amis:
+  - Keep explicit unsupported/future behavior unless a real API exists.
 
 ### v1.6.4 — Morphology Explorer Phase 1
 
