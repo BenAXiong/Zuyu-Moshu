@@ -30,6 +30,7 @@ let currentContext = null;
 let companionHistory = [];
 let currentExportItems = [];
 let currentHeaderSaveItem = null;
+let currentHeaderSaveItems = null;
 let currentKilangLookupMeta = null;
 let pendingStateWrite = '';
 let readerControls = makeDefaultReaderControls();
@@ -289,6 +290,7 @@ async function renderContext(context, options = {}) {
   content.replaceChildren(makeLoadingState(context));
   currentExportItems = [];
   currentHeaderSaveItem = null;
+  currentHeaderSaveItems = null;
   currentKilangLookupMeta = null;
 
   const settings = contextToSettings(context);
@@ -431,7 +433,7 @@ async function buildLookupView(context, settings) {
   const isZhLookup = FDT_LOOKUP_CORE.hasCjk(context.rawText || word);
   const wrap = document.createElement('div');
   wrap.className = 'companion-stack';
-  const header = makeLookupHeader(context, word);
+  const header = makeLookupHeader(context, word, { isZhLookup });
   wrap.appendChild(header);
 
   if (!word) {
@@ -447,7 +449,10 @@ async function buildLookupView(context, settings) {
     return wrap;
   }
 
-  currentHeaderSaveItem = buildHeaderSavedItem(word || context.rawText, isZhLookup);
+  currentHeaderSaveItems = isZhLookup ? getCurrentZhResultSaveItems() : null;
+  currentHeaderSaveItem = isZhLookup
+    ? buildHeaderSavedItem(word || context.rawText, true, currentHeaderSaveItems)
+    : buildHeaderSavedItem(word || context.rawText, false);
   refreshHeaderSaveState(header);
   if (hasCurrentDirectAudio()) {
     header.querySelector('[data-companion-header-tts="true"]')?.remove();
@@ -457,7 +462,7 @@ async function buildLookupView(context, settings) {
   return wrap;
 }
 
-function makeLookupHeader(context, word) {
+function makeLookupHeader(context, word, options = {}) {
   const card = document.createElement('section');
   card.className = 'lookup-head';
   const top = document.createElement('div');
@@ -474,7 +479,10 @@ function makeLookupHeader(context, word) {
     tts.dataset.companionHeaderTts = 'true';
     titleGroup.appendChild(tts);
   }
-  top.append(titleGroup, makeHeaderActions(context.rawText, context, { includeMt: false }));
+  top.append(titleGroup, makeHeaderActions(context.rawText, context, {
+    includeMt: false,
+    batchSave: !!options.isZhLookup,
+  }));
   card.appendChild(top);
   return card;
 }
@@ -586,7 +594,12 @@ async function fetchZhSections(word, settings) {
 
   const section = document.createElement('section');
   section.className = 'companion-card';
-  entries.slice(0, 24).forEach(entry => section.appendChild(makeZhRow(entry)));
+  let expandedExampleShown = false;
+  entries.slice(0, 24).forEach(entry => {
+    const shouldExpand = !expandedExampleShown && getZhRowExamples(entry).length > 0;
+    if (shouldExpand) expandedExampleShown = true;
+    section.appendChild(makeZhRow(entry, { expanded: shouldExpand }));
+  });
   return [section];
 }
 
@@ -829,7 +842,7 @@ function makeDictRow(row) {
   return item;
 }
 
-function makeZhRow(row) {
+function makeZhRow(row, options = {}) {
   const savedItem = registerExportItem(buildSavedZhRow(row));
   const item = document.createElement('article');
   item.className = 'dict-row zh-row';
@@ -856,7 +869,58 @@ function makeZhRow(row) {
     zh.textContent = row.secondaryText;
     item.appendChild(zh);
   }
+  const examples = getZhRowExamples(row);
+  if (examples.length > 0) {
+    item.classList.add('has-examples');
+    item.appendChild(createZhRowChevron(item, examples, savedItem));
+    if (options.expanded) expandZhRowExamples(item, examples, savedItem);
+  }
   return item;
+}
+
+function getZhRowExamples(row) {
+  return Array.isArray(row?.examples) ? row.examples.filter(example => example?.ab || example?.zh) : [];
+}
+
+function createZhRowChevron(item, examples, savedItem) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'row-chevron';
+  btn.title = '顯示例句';
+  btn.setAttribute('aria-label', '顯示例句');
+  btn.setAttribute('aria-expanded', 'false');
+  btn.textContent = '⌄';
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (item.classList.contains('expanded')) collapseZhRowExamples(item);
+    else expandZhRowExamples(item, examples, savedItem);
+  });
+  return btn;
+}
+
+function expandZhRowExamples(item, examples, savedItem) {
+  item.classList.add('expanded');
+  const chevron = item.querySelector('.row-chevron');
+  if (chevron) {
+    chevron.setAttribute('aria-expanded', 'true');
+    chevron.textContent = '⌃';
+  }
+  item.querySelector('.zh-row-examples')?.remove();
+  const panel = document.createElement('div');
+  panel.className = 'examples zh-row-examples';
+  examples.forEach(example => panel.appendChild(makeExample(example, savedItem)));
+  item.appendChild(panel);
+}
+
+function collapseZhRowExamples(item) {
+  item.classList.remove('expanded');
+  const chevron = item.querySelector('.row-chevron');
+  if (chevron) {
+    chevron.setAttribute('aria-expanded', 'false');
+    chevron.textContent = '⌄';
+  }
+  item.querySelector('.zh-row-examples')?.remove();
 }
 
 async function buildAnalysisView(context, settings) {
@@ -1079,7 +1143,9 @@ function makeDrillButton(word, className) {
 function makeHeaderActions(text, context, options = {}) {
   const group = document.createElement('div');
   group.className = 'lookup-head-actions';
-  const saveBtn = createCompanionSaveButton(() => getHeaderSavedItem());
+  const saveBtn = options.batchSave
+    ? createCompanionBatchSaveButton(() => getHeaderSavedItems())
+    : createCompanionSaveButton(() => getHeaderSavedItem());
   const mt = options.includeMt ? createCompanionMtButton(text, context) : null;
   if (mt) group.appendChild(mt);
   group.appendChild(saveBtn);
@@ -1100,12 +1166,19 @@ function getHeaderSavedItem() {
   });
 }
 
+function getHeaderSavedItems() {
+  return Array.isArray(currentHeaderSaveItems) && currentHeaderSaveItems.length > 0
+    ? currentHeaderSaveItems
+    : [getHeaderSavedItem()];
+}
+
 function refreshHeaderSaveState(header) {
   header.querySelector('.companion-save-button')?._refreshSavedState?.();
 }
 
-function buildHeaderSavedItem(query, isZhLookup = false) {
-  const items = currentExportItems.filter(item => item.ab || item.matchedWord || item.zh || item.examples?.length);
+function buildHeaderSavedItem(query, isZhLookup = false, sourceItems = null) {
+  const items = (Array.isArray(sourceItems) ? sourceItems : currentExportItems)
+    .filter(item => item.ab || item.matchedWord || item.zh || item.examples?.length);
   if (items.length === 0) return getHeaderSavedItem();
 
   const first = items[0] || {};
@@ -1131,6 +1204,15 @@ function buildHeaderSavedItem(query, isZhLookup = false) {
     examples: dedupeSavedExamples(items.flatMap(item => item.examples || [])).slice(0, 6),
     audioUrl: uniqueSavedTexts(items.map(item => item.audioUrl))[0] || '',
   });
+}
+
+function getCurrentZhResultSaveItems() {
+  return currentExportItems
+    .filter(item => item.type === 'word' && item.ab && item.zh)
+    .map(item => fdtNormalizeSavedItem({
+      ...item,
+      headword: currentContext?.rawText || item.headword || '',
+    }));
 }
 
 function uniqueSavedTexts(values) {
@@ -1200,6 +1282,81 @@ function createCompanionSaveButton(getItem) {
     }
   });
   return btn;
+}
+
+function createCompanionBatchSaveButton(getItems) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'companion-icon-button companion-save-button';
+  const setState = saved => {
+    btn.classList.toggle('saved', saved);
+    btn.title = saved ? '移除儲存' : '儲存全部結果';
+    btn.setAttribute('aria-label', saved ? '移除儲存' : '儲存全部結果');
+    btn.replaceChildren(createBookmarkIcon(saved));
+  };
+  setState(false);
+
+  const readItems = () => uniqueSavedItems((getItems() || []).map(item => fdtNormalizeSavedItem(item)));
+  btn._refreshSavedState = async () => {
+    try {
+      const items = readItems();
+      const savedItems = await fdtGetSavedItems();
+      const savedKeys = new Set(savedItems.map(item => item.key));
+      const allSaved = items.length > 0 && items.every(item => savedKeys.has(item.key));
+      if (btn.isConnected) setState(allSaved);
+      btn.disabled = items.length === 0;
+    } catch {
+      btn.disabled = true;
+    }
+  };
+  btn._refreshSavedState();
+
+  btn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const items = readItems();
+      if (items.length === 0) return;
+      const savedItems = await fdtGetSavedItems();
+      const savedKeys = new Set(savedItems.map(item => item.key));
+      const allSaved = items.every(item => savedKeys.has(item.key));
+      if (allSaved) {
+        const removeKeys = new Set(items.map(item => item.key));
+        await fdtSetSavedItems(savedItems.filter(item => !removeKeys.has(item.key)));
+        setState(false);
+      } else {
+        const missing = items.filter(item => !savedKeys.has(item.key));
+        if (missing.length > 1 && !confirm(`this will save ${missing.length} results`)) return;
+        await fdtSetSavedItems([...missing, ...savedItems]);
+        setState(true);
+      }
+      refreshCompanionSaveButtons();
+    } catch {
+      btn.classList.add('error');
+      clearTimeout(btn._errorTimer);
+      btn._errorTimer = setTimeout(() => btn.classList.remove('error'), 900);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+function uniqueSavedItems(items) {
+  const seen = new Set();
+  return items.filter(item => {
+    if (!item.key || seen.has(item.key)) return false;
+    seen.add(item.key);
+    return true;
+  });
+}
+
+function refreshCompanionSaveButtons() {
+  document.querySelectorAll('.companion-save-button').forEach(btn => {
+    btn._refreshSavedState?.();
+  });
 }
 
 function createBookmarkRail(getItem) {
