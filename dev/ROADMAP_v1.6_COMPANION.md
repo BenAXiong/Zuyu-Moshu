@@ -308,7 +308,16 @@ Tasks:
 - Non-Amis:
   - Keep explicit unsupported/future behavior unless a real API exists.
 
-### v1.6.4 — Morphology Explorer Phase 1
+### v1.6.4 — YouTube Transcript Companion
+
+- YouTube transcript/subtitle mode in Companion.
+- Detect current YouTube video context.
+- Display available transcript/subtitle lines.
+- Click transcript line to analyze that line.
+- Optional current-time following if reliable.
+- Keep the first pass transcript-focused: capture/display/select/analyze, not transcript mining.
+
+### v1.6.5 — Morphology Explorer Phase 1
 
 - Textual Kilang chains with root/parent/child jumping.
 - Show affix labels in-chain.
@@ -317,22 +326,13 @@ Tasks:
 - Add compact filters for tier/source if data is already available.
 - Keep visual Kilang-style tree out unless the textual version is stable.
 
-### v1.6.5 — Morphology Explorer Phase 2
+### v1.6.6 — Morphology Explorer Phase 2
 
 - Affix search/filter.
 - Word filtering by affix, source, tier, and root where supported by data.
 - Common-affix list with minimal expansion.
 - Examples/sentences filtered by selected affix/root/word.
 - Better branch navigation and sibling/descendant browsing.
-
-### v1.6.6 — YouTube Transcript Companion
-
-- YouTube transcript/subtitle mode in Companion.
-- Detect current YouTube video context.
-- Display available transcript/subtitle lines.
-- Click transcript line to analyze that line.
-- Optional current-time following if reliable.
-- Do not block v1.6.0-1.6.5 on YouTube support.
 
 ### v1.6.7+ — Companion Later
 
