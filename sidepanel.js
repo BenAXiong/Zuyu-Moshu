@@ -47,6 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
   loadReaderControls();
   loadContext();
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[FDT_SAVED_KEY]) {
+      refreshCompanionSaveButtons();
+      refreshReaderSavedStatus(changes[FDT_SAVED_KEY].newValue || []);
+      return;
+    }
     if (area !== 'session') return;
     if (changes[STATE_KEY]) {
       const nextStateKey = JSON.stringify(changes[STATE_KEY].newValue || null);
@@ -1022,6 +1027,32 @@ function getReaderStatusKey(value) {
   return FDT_LOOKUP_CORE.cleanWord(value || '').toLowerCase();
 }
 
+function refreshReaderSavedStatus(savedItems) {
+  const savedWords = makeSavedWordSet(savedItems);
+  document.querySelectorAll('.reader-token, .reader-word-table-row').forEach(element => {
+    const row = {
+      token: element.dataset.token || '',
+      displayToken: element.dataset.match || '',
+      root: element.dataset.root || '',
+      sourceId: element.classList.contains('found') ? 'STATUS_REFRESH' : '',
+      fallbackFrom: element.dataset.fallbackFrom || '',
+      recoveryAffix: element.dataset.recoveryAffix || '',
+      recoveryOperations: (element.dataset.recoveryOperations || '').split(' ').filter(Boolean),
+    };
+    const baseClass = element.classList.contains('reader-word-table-row')
+      ? 'reader-word-table-row'
+      : 'reader-token';
+    const status = getReaderTokenStatus(row, savedWords);
+    applyReaderStatusAttributes(element, {
+      ...row,
+      status,
+      statusList: Object.entries(status)
+        .filter(([, value]) => value)
+        .map(([key]) => key),
+    }, baseClass);
+  });
+}
+
 function makeAnalysisHeader(context, tokens, lookupCount) {
   const card = document.createElement('section');
   card.className = 'lookup-head';
@@ -1196,6 +1227,11 @@ function applyReaderStatusAttributes(element, row, baseClass) {
   element.dataset.match = getReaderMatchedWord(row);
   element.dataset.root = row?.root || '';
   element.dataset.status = statusList.join(' ');
+  element.dataset.fallbackFrom = row?.fallbackFrom || '';
+  element.dataset.recoveryAffix = row?.recoveryAffix || '';
+  element.dataset.recoveryOperations = Array.isArray(row?.recoveryOperations)
+    ? row.recoveryOperations.join(' ')
+    : '';
 }
 
 function getReaderWordTableColumnClass(index) {
