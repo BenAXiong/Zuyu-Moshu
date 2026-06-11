@@ -94,62 +94,45 @@ body.field {
   background: var(--surface);
 }
 
-button {
+button,
+select {
   font: inherit;
 }
 
-.theme-switcher {
+.dialect-control {
   flex: none;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
-.theme-pill {
-  min-width: 28px;
-  min-height: 24px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0 8px;
-  font-size: 0.76rem;
+.dialect-control label {
+  color: var(--dim);
+  font-size: 0.72rem;
   font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+  letter-spacing: 0;
 }
 
-.theme-pill-dark {
-  background: #0f0f12;
-  color: #f4f1ea;
-}
-
-.theme-pill-light {
-  background: #ffffff;
-  color: #0c0d11;
-  box-shadow: inset 0 0 0 1px rgba(15,18,28,0.16);
-}
-
-.theme-pill-paper {
-  background: #fbf5e7;
-  color: #a8351f;
-  box-shadow: inset 0 0 0 1px #e6dac0;
-}
-
-.theme-pill-field {
-  background: #fbf5e7;
-  color: #566234;
-  box-shadow: inset 0 0 0 1px #e4e7cc;
-}
-
-.theme-pill:hover,
-.theme-pill:focus {
-  transform: translateY(-1px);
+.dialect-control select {
+  min-height: 26px;
+  max-width: 88px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-hi);
+  color: var(--soft);
+  padding: 0 24px 0 9px;
   outline: none;
 }
 
-.theme-pill.active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--focus-ring), inset 0 0 0 1px currentColor;
+.dialect-control select:focus {
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.dialect-control select:disabled {
+  color: var(--dim);
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .header-actions {

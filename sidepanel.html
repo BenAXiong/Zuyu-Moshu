@@ -8,11 +8,15 @@
 </head>
 <body>
   <header class="companion-top">
-    <div class="theme-switcher" aria-label="主題">
-      <button type="button" class="theme-pill theme-pill-dark" data-theme="dark" title="夜">夜</button>
-      <button type="button" class="theme-pill theme-pill-light" data-theme="light" title="晝">晝</button>
-      <button type="button" class="theme-pill theme-pill-paper" data-theme="paper" title="緋紙">緋紙</button>
-      <button type="button" class="theme-pill theme-pill-field" data-theme="field" title="苔野">苔野</button>
+    <div class="dialect-control">
+      <label for="ttsDialect">TTS</label>
+      <select id="ttsDialect" aria-label="TTS 方言">
+        <option value="ami_Mala">馬蘭</option>
+        <option value="ami_Coas">海岸</option>
+        <option value="ami_Heng">恆春</option>
+        <option value="ami_Sout">南勢</option>
+        <option value="ami_Xiug">秀姑巒</option>
+      </select>
     </div>
     <div class="header-actions">
       <div id="readerControls" class="reader-controls" aria-label="句子顯示控制" hidden>

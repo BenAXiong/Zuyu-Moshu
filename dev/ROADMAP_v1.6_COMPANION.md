@@ -295,8 +295,9 @@ Tasks:
 - MT wiring: done for Amis. `族語 -> 中文` uses background `translateIlrdfText`; `中文 -> 族語` uses new background `translateIlrdfZhToAmis`, which wraps ILRDF `translate_1`.
 - TTS wiring: done for Amis. Listen uses background `playIlrdfTts`; `中文 -> 族語` plays generated output, while `族語 -> 中文` plays input. CJK-only / empty text disables Listen.
 - Dialect handling:
-  - Default to Malan.
-  - Keep a compact dialect selector only if needed; otherwise use the same Malan fallback as tooltip/reader TTS.
+  - Done: the Side Panel top bar has a compact Amis TTS dialect selector, defaulting to Malan and persisting locally.
+  - The selector is disabled unless Amis is the selected language.
+  - All generated Companion TTS calls pass the selected speaker to background `playIlrdfTts`.
 - Input handoff:
   - Done: switching to `AI` populates the input from the current `單詞`/`句子` context only when the AI input is empty.
   - Manual search can remain routed to `單詞`/`句子` for now; later it can become mode-aware for `AI`.

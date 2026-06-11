@@ -1,10 +1,18 @@
 const CONTEXT_KEY = 'companionContext';
 const STATE_KEY = 'companionState';
 const READER_CONTROLS_KEY = 'companionReaderControlsV1';
+const TTS_DIALECT_KEY = 'companionTtsDialect';
 const LOOKUP_CONCURRENCY = 4;
 const MAX_ANALYSIS_TOKENS = 80;
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
 const INDIHUNT_MAX_ITEMS = 200;
+const AMIS_TTS_DIALECTS = [
+  { label: '海岸', code: 'ami_Coas', speaker: '阿美_海岸_男聲' },
+  { label: '恆春', code: 'ami_Heng', speaker: '阿美_恆春_女聲' },
+  { label: '馬蘭', code: 'ami_Mala', speaker: '阿美_馬蘭_女聲' },
+  { label: '南勢', code: 'ami_Sout', speaker: '阿美_南勢_女聲' },
+  { label: '秀姑巒', code: 'ami_Xiug', speaker: '阿美_秀姑巒_女聲1' },
+];
 const INDIHUNT_LANG_CODE = {
   Amis: 'ami',
   Atayal: 'tay',
@@ -34,12 +42,14 @@ let currentHeaderSaveItems = null;
 let currentKilangLookupMeta = null;
 let pendingStateWrite = '';
 let readerControls = makeDefaultReaderControls();
+let ttsDialect = getDefaultTtsDialect();
+let latestSettings = { ...DEFAULTS };
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
   document.getElementById('topExport')?.addEventListener('click', exportCompanionToIndiHunt);
   document.getElementById('manualSearch')?.addEventListener('submit', handleManualSearch);
-  setupThemeButtons();
+  setupTtsDialectSelector();
   setupReaderControlButtons();
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
@@ -59,6 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (changes.language && getActiveMode() === 'ai') {
         renderContext(normalizeCompanionState(companionState).contexts.ai, { activeMode: 'ai' });
       }
+      if (changes.language) {
+        latestSettings = { ...latestSettings, language: changes.language.newValue };
+        updateTtsDialectAvailability(latestSettings);
+      }
+      return;
+    }
+    if (area === 'local' && changes[TTS_DIALECT_KEY]) {
+      setTtsDialect(changes[TTS_DIALECT_KEY].newValue || getDefaultTtsDialect().code);
       return;
     }
     if (area === 'local' && changes[FDT_SAVED_KEY]) {
@@ -86,17 +104,49 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadCompanionAppearance() {
-  chrome.storage.sync.get(DEFAULTS, applyCompanionAppearance);
+  chrome.storage.sync.get(DEFAULTS, settings => {
+    latestSettings = { ...settings };
+    applyCompanionAppearance(settings);
+    updateTtsDialectAvailability(settings);
+  });
 }
 
-function setupThemeButtons() {
-  document.querySelectorAll('[data-theme]').forEach(button => {
-    button.addEventListener('click', () => {
-      const theme = FDT_APPEARANCE.normalizeTheme(button.dataset.theme);
-      chrome.storage.sync.set({ theme });
-      applyCompanionAppearance({ theme });
-    });
+function getDefaultTtsDialect() {
+  return AMIS_TTS_DIALECTS.find(dialect => dialect.code === 'ami_Mala') || AMIS_TTS_DIALECTS[0];
+}
+
+function getTtsDialectByCode(code) {
+  return AMIS_TTS_DIALECTS.find(dialect => dialect.code === code) || getDefaultTtsDialect();
+}
+
+function setupTtsDialectSelector() {
+  const select = document.getElementById('ttsDialect');
+  if (!select) return;
+  select.addEventListener('change', () => {
+    setTtsDialect(select.value);
+    chrome.storage.local.set({ [TTS_DIALECT_KEY]: ttsDialect.code });
   });
+  chrome.storage.local.get({ [TTS_DIALECT_KEY]: getDefaultTtsDialect().code }, data => {
+    setTtsDialect(data[TTS_DIALECT_KEY]);
+  });
+}
+
+function setTtsDialect(code) {
+  ttsDialect = getTtsDialectByCode(code);
+  const select = document.getElementById('ttsDialect');
+  if (select) select.value = ttsDialect.code;
+}
+
+function updateTtsDialectAvailability(settings = latestSettings) {
+  const select = document.getElementById('ttsDialect');
+  if (!select) return;
+  const enabled = settings?.language === 'Amis';
+  select.disabled = !enabled;
+  select.title = enabled ? 'Companion TTS 方言' : 'TTS 方言選擇僅適用 Amis';
+}
+
+function getCompanionTtsSpeaker() {
+  return ttsDialect.speaker || getDefaultTtsDialect().speaker;
 }
 
 function applyCompanionAppearance(settings) {
@@ -110,17 +160,6 @@ function applyCompanionAppearance(settings) {
   FDT_APPEARANCE.applyAppearanceClasses(document.body, next, {
     themePrefix: '',
     fontPrefix: 'font-',
-  });
-  if (Object.prototype.hasOwnProperty.call(next, 'theme')) {
-    syncThemeButtons(FDT_APPEARANCE.normalizeTheme(next.theme));
-  }
-}
-
-function syncThemeButtons(theme) {
-  document.querySelectorAll('[data-theme]').forEach(button => {
-    const isActive = button.dataset.theme === theme;
-    button.classList.toggle('active', isActive);
-    button.setAttribute('aria-pressed', String(isActive));
   });
 }
 
@@ -689,7 +728,11 @@ async function listenAiPanel({ input, output, translate, listen, direction, supp
   listen.classList.add('loading');
   listen.classList.remove('error');
   try {
-    const response = await sendRuntimeMessage({ type: 'playIlrdfTts', text });
+    const response = await sendRuntimeMessage({
+      type: 'playIlrdfTts',
+      text,
+      speaker: getCompanionTtsSpeaker(),
+    });
     if (!response?.ok) listen.classList.add('error');
   } catch {
     listen.classList.add('error');
@@ -2184,7 +2227,11 @@ async function playCompanionTts(text, btn) {
   btn.classList.add('loading');
   btn.classList.remove('error');
   try {
-    const response = await sendRuntimeMessage({ type: 'playIlrdfTts', text });
+    const response = await sendRuntimeMessage({
+      type: 'playIlrdfTts',
+      text,
+      speaker: getCompanionTtsSpeaker(),
+    });
     if (!response?.ok) btn.classList.add('error');
   } catch {
     btn.classList.add('error');
