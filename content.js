@@ -1117,8 +1117,10 @@ function showTooltip(word, rect, settings, nav = null) {
   tooltip = document.createElement('div');
   tooltip.id = 'formosan-dict-tooltip';
   tooltip._exportItems = [];
-  if (settings.theme !== 'dark') tooltip.classList.add(`fdt-${settings.theme}`);
-  if (settings.fontSize !== 'medium') tooltip.classList.add(`fdt-${settings.fontSize}`);
+  FDT_APPEARANCE.applyAppearanceClasses(tooltip, settings, {
+    themePrefix: 'fdt-',
+    fontPrefix: 'fdt-',
+  });
   if (settings.boldText) tooltip.classList.add('fdt-bold');
 
   const spaceBelow = window.innerHeight - rect.bottom;

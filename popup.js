@@ -14,13 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load settings and reflect them in the UI
   chrome.storage.sync.get(DEFAULTS, (s) => {
-    const MIGRATE = { woven: 'paper', forest: 'field' };
-    if (s.theme in MIGRATE) { s.theme = MIGRATE[s.theme]; patch({ theme: s.theme }); }
+    const theme = FDT_APPEARANCE.normalizeTheme(s.theme);
+    const fontSize = FDT_APPEARANCE.normalizeFontSize(s.fontSize);
+    if (theme !== s.theme || fontSize !== s.fontSize) patch({ theme, fontSize });
     langSelect.value = s.language;
-    activatePill('theme', s.theme);
-    activatePill('font', s.fontSize);
-    applyTheme(s.theme);
-    applyFontSize(s.fontSize);
+    activatePill('theme', theme);
+    activatePill('font', fontSize);
+    applyAppearance({ theme, fontSize });
     setToggle(s.enabled);
     setAltSpellingToggle(s.altSpelling, s.language);
     setHoverToggle(s.triggerHover);
@@ -42,11 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const { group, value } = btn.dataset;
       activatePill(group, value);
       if (group === 'theme') {
-        applyTheme(value);
-        patch({ theme: value });
+        const theme = FDT_APPEARANCE.normalizeTheme(value);
+        applyAppearance({ theme });
+        patch({ theme });
       } else if (group === 'font') {
-        applyFontSize(value);
-        patch({ fontSize: value });
+        const fontSize = FDT_APPEARANCE.normalizeFontSize(value);
+        applyAppearance({ fontSize });
+        patch({ fontSize });
       } else if (group === 'displayTarget') {
         if (value === 'companion' && !canUseSidePanel()) return;
         patch({ lookupDisplayTarget: value });
@@ -152,14 +154,11 @@ function activatePill(group, value) {
   });
 }
 
-function applyTheme(theme) {
-  document.body.classList.remove('light', 'paper', 'field');
-  if (theme !== 'dark') document.body.classList.add(theme);
-}
-
-function applyFontSize(size) {
-  document.body.classList.remove('font-small', 'font-large');
-  if (size !== 'medium') document.body.classList.add(`font-${size}`);
+function applyAppearance(settings) {
+  FDT_APPEARANCE.applyAppearanceClasses(document.body, settings, {
+    themePrefix: '',
+    fontPrefix: 'font-',
+  });
 }
 
 function patch(changes) {

@@ -27,6 +27,7 @@ $zipPath = Join-Path $outputRoot "ycm-popupdict-v$version.zip"
 
 $payloadFiles = @(
   'manifest.json',
+  'appearance.js',
   'background.js',
   'content.css',
   'content.js',

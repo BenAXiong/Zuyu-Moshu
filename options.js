@@ -42,10 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('showDialect').checked = s.showDialect;
     document.getElementById('boldText').checked = s.boldText;
     document.getElementById('maxResults').value = String(s.maxResults);
-    const themeVal = { woven: 'paper', forest: 'field' }[s.theme] ?? s.theme;
+    const themeVal = FDT_APPEARANCE.normalizeTheme(s.theme);
     (document.querySelector(`input[name="theme"][value="${themeVal}"]`) ??
      document.querySelector('input[name="theme"][value="dark"]')).checked = true;
-    document.querySelector(`input[name="fontSize"][value="${s.fontSize}"]`).checked = true;
+    const fontSizeVal = FDT_APPEARANCE.normalizeFontSize(s.fontSize);
+    document.querySelector(`input[name="fontSize"][value="${fontSizeVal}"]`).checked = true;
     document.getElementById('enabled').checked = s.enabled;
     document.getElementById('triggerDblclick').checked = s.triggerHover ? false : s.triggerDblclick;
     document.getElementById('triggerHover').checked = s.triggerHover;

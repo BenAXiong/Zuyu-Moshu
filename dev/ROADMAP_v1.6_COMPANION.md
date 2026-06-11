@@ -288,6 +288,8 @@ Tasks:
 
 ### v1.6.3 — AI Convenience / Tab4 Clone
 
+- Shared appearance refactor first: `appearance.js` now centralizes theme/font-size normalization, legacy theme migration, and class application for popup/tooltips, and is loaded by Companion for the upcoming Side Panel theme pass.
+- Companion theme pass: apply the four existing themes (`dark`, `light`, `paper`, `field`) and font-size settings to the Side Panel without creating a separate local appearance path.
 - Compact `AI MT & TTS` mode in Companion.
 - Direction selector: ZH-to-Amis and Amis-to-ZH.
 - Malan default unless dialect context is known.
