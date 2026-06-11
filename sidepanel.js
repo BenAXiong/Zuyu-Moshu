@@ -127,6 +127,7 @@ function makeDefaultReaderControls() {
     topAnnotations: true,
     zhGloss: true,
     dividers: true,
+    wordTable: true,
   };
 }
 
@@ -136,6 +137,7 @@ function normalizeReaderControls(value) {
     topAnnotations: typeof value?.topAnnotations === 'boolean' ? value.topAnnotations : defaults.topAnnotations,
     zhGloss: typeof value?.zhGloss === 'boolean' ? value.zhGloss : defaults.zhGloss,
     dividers: typeof value?.dividers === 'boolean' ? value.dividers : defaults.dividers,
+    wordTable: typeof value?.wordTable === 'boolean' ? value.wordTable : defaults.wordTable,
   };
 }
 
@@ -182,11 +184,14 @@ function updateReaderControlsVisibility(mode = getActiveMode()) {
 function applyReaderControls(root = document) {
   const readers = [];
   if (root.matches?.('.companion-reader')) readers.push(root);
+  if (root.matches?.('.reader-word-table-section')) readers.push(root);
   root.querySelectorAll?.('.companion-reader').forEach(reader => readers.push(reader));
+  root.querySelectorAll?.('.reader-word-table-section').forEach(reader => readers.push(reader));
   readers.forEach(reader => {
     reader.classList.toggle('hide-top-annotations', !readerControls.topAnnotations);
     reader.classList.toggle('hide-zh-gloss', !readerControls.zhGloss);
     reader.classList.toggle('hide-dividers', !readerControls.dividers);
+    reader.classList.toggle('hide-word-table', !readerControls.wordTable);
   });
 }
 
@@ -880,6 +885,7 @@ async function buildAnalysisView(context, settings) {
     sourceId: '',
   });
   wrap.appendChild(makeReaderView(context.rawText || '', rows));
+  wrap.appendChild(makeReaderWordTable(rows));
   return wrap;
 }
 
@@ -996,9 +1002,60 @@ function makeReaderToken(part, result) {
   const ab = makeDrillButton(part.text, 'reader-token-ab inline-drill');
   const zh = document.createElement('span');
   zh.className = 'reader-token-zh';
-  zh.textContent = result?.glosses?.length ? result.glosses.join(' / ') : 'x';
+  zh.textContent = getReaderGloss(result);
   item.append(top, ab, zh);
   return item;
+}
+
+function makeReaderWordTable(rows) {
+  const section = document.createElement('section');
+  section.className = 'reader-word-table-section companion-card';
+  const table = document.createElement('table');
+  table.className = 'reader-word-table';
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  ['ab', 'furigana', 'gloss'].forEach((label, index) => {
+    const th = document.createElement('th');
+    th.textContent = label;
+    th.className = getReaderWordTableColumnClass(index);
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  const tbody = document.createElement('tbody');
+  rows.forEach(row => tbody.appendChild(makeReaderWordTableRow(row)));
+  table.append(thead, tbody);
+  section.appendChild(table);
+  applyReaderControls(section);
+  return section;
+}
+
+function makeReaderWordTableRow(row) {
+  const tr = document.createElement('tr');
+  const abCell = document.createElement('td');
+  abCell.className = 'reader-word-table-ab-col';
+  abCell.appendChild(makeDrillButton(row.token, 'reader-word-table-ab inline-drill'));
+
+  const furiganaCell = document.createElement('td');
+  furiganaCell.className = 'reader-word-table-furigana-col';
+  furiganaCell.textContent = getReaderTopAnnotation({ text: row.token, token: row.token }, row);
+
+  const glossCell = document.createElement('td');
+  glossCell.className = 'reader-word-table-gloss-col';
+  glossCell.textContent = getReaderGloss(row);
+  glossCell.title = glossCell.textContent;
+
+  tr.append(abCell, furiganaCell, glossCell);
+  return tr;
+}
+
+function getReaderWordTableColumnClass(index) {
+  if (index === 0) return 'reader-word-table-ab-col';
+  if (index === 1) return 'reader-word-table-furigana-col';
+  return 'reader-word-table-gloss-col';
+}
+
+function getReaderGloss(result) {
+  return result?.glosses?.length ? result.glosses.join(' / ') : 'x';
 }
 
 function getReaderTopAnnotation(part, result) {

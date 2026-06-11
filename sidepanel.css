@@ -796,6 +796,80 @@ a {
   border-bottom: 0;
 }
 
+.reader-word-table-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.reader-word-table-section.hide-word-table {
+  display: none;
+}
+
+.reader-word-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 1rem;
+}
+
+.reader-word-table th,
+.reader-word-table td {
+  padding: 3px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.reader-word-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.reader-word-table-section.hide-dividers .reader-word-table th,
+.reader-word-table-section.hide-dividers .reader-word-table td {
+  border-bottom: 0;
+}
+
+.reader-word-table th {
+  color: var(--dim);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.reader-word-table-ab-col {
+  width: 34%;
+}
+
+.reader-word-table-furigana-col {
+  width: 30%;
+  color: var(--dim);
+}
+
+.reader-word-table-gloss-col {
+  width: 36%;
+  color: var(--soft);
+}
+
+.reader-word-table-ab {
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.reader-word-table td.reader-word-table-furigana-col,
+.reader-word-table td.reader-word-table-gloss-col {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-word-table-section.hide-top-annotations .reader-word-table-furigana-col,
+.reader-word-table-section.hide-zh-gloss .reader-word-table-gloss-col {
+  display: none;
+}
+
 .notice,
 .loading-card {
   padding: 18px 14px;
