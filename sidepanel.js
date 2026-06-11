@@ -1185,6 +1185,35 @@ function formatIndiHuntItems(item) {
   return items;
 }
 
+function formatIndiHuntAnalysisItems(context) {
+  if (!context || context.mode === 'word') return [];
+  const language = getIndiHuntLanguageCode(context.language);
+  if (!language) return [];
+
+  const segments = getReaderSegments(context.rawText || '');
+  const texts = segments.length > 0
+    ? segments.map(segment => segment.text)
+    : [context.rawText || ''];
+
+  return texts
+    .map(text => cleanExportText(text))
+    .filter(Boolean)
+    .map(ab => cleanIndiHuntItem({
+      ab,
+      type: 'sentence',
+      language,
+      notes: formatIndiHuntContextNotes(context),
+      tags: ['COMPANION'],
+    }));
+}
+
+function formatIndiHuntContextNotes(context) {
+  const notes = [];
+  if (context?.page?.title) notes.push(`Page: ${cleanExportText(context.page.title)}`);
+  if (context?.page?.url) notes.push(cleanExportText(context.page.url));
+  return notes.join(' · ');
+}
+
 function encodeIndiHuntPayload(payload) {
   const bytes = new TextEncoder().encode(JSON.stringify(payload));
   let binary = '';
@@ -1196,7 +1225,10 @@ function encodeIndiHuntPayload(payload) {
 }
 
 function exportCompanionToIndiHunt() {
-  const items = currentExportItems.flatMap(formatIndiHuntItems).slice(0, INDIHUNT_MAX_ITEMS);
+  const items = (currentContext?.mode === 'word'
+    ? currentExportItems.flatMap(formatIndiHuntItems)
+    : formatIndiHuntAnalysisItems(currentContext)
+  ).slice(0, INDIHUNT_MAX_ITEMS);
   if (items.length === 0) return;
   const b64 = encodeIndiHuntPayload({
     version: 1,
