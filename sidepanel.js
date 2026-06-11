@@ -941,16 +941,80 @@ async function buildAnalysisView(context, settings) {
 
   const lookedUp = await mapWithConcurrency(uniqueTokens, LOOKUP_CONCURRENCY, token => lookupAnalysisToken(token, settings));
   const byToken = new Map(lookedUp.map(result => [result.token, result]));
-  const rows = tokens.map(token => byToken.get(token) || {
+  const rawRows = tokens.map(token => byToken.get(token) || {
     token,
     displayToken: token,
     glosses: token.length <= 2 ? [token] : [],
     root: '',
     sourceId: '',
   });
+  const rows = annotateReaderRows(rawRows, await fdtGetSavedItems());
   wrap.appendChild(makeReaderView(context.rawText || '', rows));
   wrap.appendChild(makeReaderWordTable(rows));
   return wrap;
+}
+
+function annotateReaderRows(rows, savedItems) {
+  const savedWords = makeSavedWordSet(savedItems);
+  return rows.map(row => {
+    const status = getReaderTokenStatus(row, savedWords);
+    return {
+      ...row,
+      status,
+      statusList: Object.entries(status)
+        .filter(([, value]) => value)
+        .map(([key]) => key),
+    };
+  });
+}
+
+function makeSavedWordSet(savedItems) {
+  const activeLanguage = currentContext?.language || '';
+  const words = new Set();
+  (Array.isArray(savedItems) ? savedItems : []).forEach(item => {
+    if (activeLanguage && item.language && item.language !== activeLanguage) return;
+    [
+      item.ab,
+      item.matchedWord,
+      item.root,
+    ].forEach(value => {
+      const clean = getReaderStatusKey(value);
+      if (clean) words.add(clean);
+    });
+  });
+  return words;
+}
+
+function getReaderTokenStatus(row, savedWords) {
+  const tokenKey = getReaderStatusKey(row?.token);
+  const matchKey = getReaderStatusKey(getReaderMatchedWord(row));
+  const rootKey = getReaderStatusKey(row?.root);
+  const operations = Array.isArray(row?.recoveryOperations) ? row.recoveryOperations : [];
+  const recovered = !!row?.sourceId && (
+    !!row?.fallbackFrom
+    || !!row?.recoveryAffix
+    || operations.includes('glottal')
+    || (!!matchKey && !!tokenKey && matchKey !== tokenKey)
+  );
+  const alt = !!row?.sourceId && operations.includes('alt') && !row?.recoveryAffix;
+  const saved = [tokenKey, matchKey, rootKey].some(key => key && savedWords.has(key));
+
+  return {
+    found: !!row?.sourceId,
+    unknown: !row?.sourceId,
+    recovered,
+    fallback: recovered && !alt,
+    alt,
+    saved,
+  };
+}
+
+function getReaderMatchedWord(row) {
+  return row?.displayToken || row?.matchedWord || row?.token || '';
+}
+
+function getReaderStatusKey(value) {
+  return FDT_LOOKUP_CORE.cleanWord(value || '').toLowerCase();
 }
 
 function makeAnalysisHeader(context, tokens, lookupCount) {
@@ -1058,7 +1122,7 @@ function appendReaderText(parent, text) {
 
 function makeReaderToken(part, result) {
   const item = document.createElement('span');
-  item.className = result?.sourceId ? 'reader-token found' : 'reader-token missing';
+  applyReaderStatusAttributes(item, result, 'reader-token');
   const top = document.createElement('span');
   top.className = 'reader-token-top';
   top.textContent = getReaderTopAnnotation(part, result);
@@ -1095,6 +1159,7 @@ function makeReaderWordTable(rows) {
 
 function makeReaderWordTableRow(row) {
   const tr = document.createElement('tr');
+  applyReaderStatusAttributes(tr, row, 'reader-word-table-row');
   const abCell = document.createElement('td');
   abCell.className = 'reader-word-table-ab-col';
   abCell.appendChild(makeDrillButton(row.token, 'reader-word-table-ab inline-drill'));
@@ -1110,6 +1175,22 @@ function makeReaderWordTableRow(row) {
 
   tr.append(abCell, furiganaCell, glossCell);
   return tr;
+}
+
+function applyReaderStatusAttributes(element, row, baseClass) {
+  const status = row?.status || getReaderTokenStatus(row, new Set());
+  const statusList = row?.statusList || Object.entries(status)
+    .filter(([, value]) => value)
+    .map(([key]) => key);
+  element.className = [
+    baseClass,
+    status.found ? 'found' : 'missing',
+    ...statusList.map(statusName => `status-${statusName}`),
+  ].join(' ');
+  element.dataset.token = row?.token || '';
+  element.dataset.match = getReaderMatchedWord(row);
+  element.dataset.root = row?.root || '';
+  element.dataset.status = statusList.join(' ');
 }
 
 function getReaderWordTableColumnClass(index) {
@@ -1558,11 +1639,15 @@ async function lookupAnalysisKilangToken(token) {
     { limit: 2, maxPerText: 1 }
   );
   const row = senses[0]?.row || FDT_LOOKUP_CORE.getMoePrimaryRow(rows) || {};
+  const recovery = insights?.recovery || null;
   return {
     token,
     displayToken: FDT_LOOKUP_CORE.cleanMoeText(insights.match || row.word_ab || token),
     glosses,
     root: FDT_LOOKUP_CORE.cleanMoeText(row.ultimate_root || row.stem || ''),
+    fallbackFrom: FDT_LOOKUP_CORE.cleanMoeText(insights?.fallbackFrom || ''),
+    recoveryAffix: FDT_LOOKUP_CORE.getMoeRecoveryAffixSummary(recovery),
+    recoveryOperations: FDT_LOOKUP_CORE.getMoeRecoveryOperations(recovery),
     sourceId: 'KILANG',
   };
 }

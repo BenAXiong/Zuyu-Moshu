@@ -280,7 +280,7 @@ Tasks:
 - Decouple Companion tab state. Done for `單詞` and `句子`: each tab preserves its last context independently, and legacy selection-triggered `companionContext` updates are migrated into per-tab `companionState`.
 - Add basic reader display controls if they fit: show/hide Chinese glosses, show/hide top fallback/alt annotations, and possibly hide sentence dividers.
 - Add selected-sentence navigation only if long selections are hard to scan in the Side Panel; avoid the full saved-page layout controls unless needed.
-- Improve token status hooks: unknown token, recovered/fallback token, alternate-spelling token, and saved-token styling hooks. Wiring saved-token status can remain deferred if it needs cross-view saved-state sync.
+- Improve token status hooks: unknown token, recovered/fallback token, alternate-spelling token, and saved-token styling hooks. Done for the current `句子` reader and word table through stable classes/data attributes plus local saved-word matching; cross-view live refresh remains deferred.
 - Keep per-sentence MT/TTS in the header or a minimal sentence action area; avoid duplicating noisy controls on every token.
 - IndiHunt export scope is full current `句子` passage split into sentence items; filtering happens in the IndiHunt import page.
 - Keep lookup source behavior aligned with current Companion lookup: Kilang first by default, ePark/DICT only when enabled, no full-page analyzer.
