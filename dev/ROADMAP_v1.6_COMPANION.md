@@ -290,24 +290,20 @@ Tasks:
 
 - Shared appearance refactor first: `appearance.js` now centralizes theme/font-size normalization, legacy theme migration, and class application for popup/tooltips, and is loaded by Companion for the upcoming Side Panel theme pass.
 - Companion theme pass: done. The Side Panel applies the four existing themes (`dark`, `light`, `paper`, `field`) and font-size settings through `FDT_APPEARANCE`, listens to sync setting changes, and keeps Companion-specific CSS tokens local to `sidepanel.css`.
-- Third tab shell: done. `AI` is now a first-class Companion mode with its own persisted `ai` context slot, direction buttons, input/output textareas, and disabled action buttons.
-- Wire direction selector:
-  - `族語 -> ZH` should call the existing background `translateIlrdfText` path.
-  - `ZH -> 族語` needs a background message path equivalent to saved-page `translate_1`, rather than duplicating direct Gradio calls in Side Panel.
-- Wire TTS:
-  - Listen button should use `playIlrdfTts` for Amis text.
-  - For `ZH -> 族語`, play the generated/output Amis text, not the Chinese input.
-  - Hide or disable TTS when the active text is CJK-only or empty.
+- Third tab shell: done. `AI` is now a first-class Companion mode with its own persisted `ai` context slot, direction buttons, input/output textareas, and action buttons.
+- Direction selector: done. Labels use `中文` and the selected language name, falling back to `族語` when all languages are selected.
+- MT wiring: done for Amis. `族語 -> 中文` uses background `translateIlrdfText`; `中文 -> 族語` uses new background `translateIlrdfZhToAmis`, which wraps ILRDF `translate_1`.
+- TTS wiring: done for Amis. Listen uses background `playIlrdfTts`; `中文 -> 族語` plays generated output, while `族語 -> 中文` plays input. CJK-only / empty text disables Listen.
 - Dialect handling:
   - Default to Malan.
   - Keep a compact dialect selector only if needed; otherwise use the same Malan fallback as tooltip/reader TTS.
 - Input handoff:
-  - Switching to `AI` should populate the input from the current `單詞`/`句子` context only when the AI input is empty.
+  - Done: switching to `AI` populates the input from the current `單詞`/`句子` context only when the AI input is empty.
   - Manual search can remain routed to `單詞`/`句子` for now; later it can become mode-aware for `AI`.
 - Output behavior:
   - Keep output local to the `AI` tab state.
   - Do not overwrite `單詞`/`句子` contexts.
-  - Add loading/error states on the action buttons before enabling them.
+  - Loading/error states are shown on the action buttons.
 - Non-Amis:
   - Keep explicit unsupported/future behavior unless a real API exists.
 

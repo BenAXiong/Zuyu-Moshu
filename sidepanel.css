@@ -1089,6 +1089,17 @@ a {
   color: var(--accent);
 }
 
+.ai-action-button:hover,
+.ai-action-button.loading {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ai-action-button.error {
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
 .ai-grid {
   display: grid;
   gap: 8px;
@@ -1127,4 +1138,9 @@ a {
 .ai-action-button:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+.ai-action-button.loading,
+.ai-action-button.error {
+  opacity: 1;
 }

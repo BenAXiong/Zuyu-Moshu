@@ -50,11 +50,15 @@ document.addEventListener('DOMContentLoaded', () => {
   loadContext();
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'sync') {
-      if (!changes.theme && !changes.fontSize) return;
-      applyCompanionAppearance({
-        theme: changes.theme?.newValue,
-        fontSize: changes.fontSize?.newValue,
-      });
+      if (changes.theme || changes.fontSize) {
+        applyCompanionAppearance({
+          theme: changes.theme?.newValue,
+          fontSize: changes.fontSize?.newValue,
+        });
+      }
+      if (changes.language && getActiveMode() === 'ai') {
+        renderContext(normalizeCompanionState(companionState).contexts.ai, { activeMode: 'ai' });
+      }
       return;
     }
     if (area === 'local' && changes[FDT_SAVED_KEY]) {
@@ -153,9 +157,23 @@ function clearContext() {
 }
 
 function setActiveMode(mode) {
+  const currentState = normalizeCompanionState(companionState);
+  const activeMode = normalizeMode(mode);
+  const contexts = { ...currentState.contexts };
+  if (activeMode === 'ai' && !contexts.ai?.rawText) {
+    const source = contexts[currentState.activeMode];
+    if (source?.rawText) {
+      contexts.ai = makeAiContext({
+        rawText: source.rawText,
+        direction: FDT_LOOKUP_CORE.hasCjk(source.rawText) ? 'zh-to-x' : 'x-to-zh',
+        language: source.language || '',
+      });
+    }
+  }
   const next = {
-    ...normalizeCompanionState(companionState),
-    activeMode: normalizeMode(mode),
+    ...currentState,
+    activeMode,
+    contexts,
   };
   persistCompanionState(next, { resetHistory: false });
 }
@@ -270,6 +288,7 @@ function normalizeMode(mode) {
 }
 
 function modeForContext(context) {
+  if (context?.mode === 'ai') return 'ai';
   return context?.mode === 'word' ? 'lookup' : 'analysis';
 }
 
@@ -343,7 +362,9 @@ async function renderContext(context, options = {}) {
     currentHeaderSaveItem = null;
     currentHeaderSaveItems = null;
     currentKilangLookupMeta = null;
-    content.replaceChildren(buildAiView(context));
+    const view = await buildAiView(context);
+    if (serial !== renderSerial) return;
+    content.replaceChildren(view);
     syncManualSearchInput(context);
     return;
   }
@@ -477,7 +498,46 @@ function makeEmptyState() {
   return empty;
 }
 
-function buildAiView(context = null) {
+function makeAiContext(patch = {}) {
+  return {
+    mode: 'ai',
+    rawText: '',
+    outputText: '',
+    direction: 'x-to-zh',
+    language: '',
+    timestamp: new Date().toISOString(),
+    ...patch,
+  };
+}
+
+function updateAiContextLocal(patch = {}) {
+  const state = normalizeCompanionState(companionState);
+  const current = state.contexts.ai || makeAiContext();
+  companionState = {
+    ...state,
+    contexts: {
+      ...state.contexts,
+      ai: makeAiContext({
+        ...current,
+        ...patch,
+        timestamp: new Date().toISOString(),
+      }),
+    },
+  };
+}
+
+async function buildAiView(context = null) {
+  const settings = await readCompanionSettings();
+  const aiContext = makeAiContext(context || {});
+  const selectedLanguage = typeof settings.language === 'string'
+    ? settings.language
+    : (aiContext.language || '');
+  const languageLabel = getAiLanguageLabel(selectedLanguage);
+  const supportsAi = !selectedLanguage || selectedLanguage === 'Amis';
+  const initialDirection = normalizeAiDirection(aiContext.direction || (
+    FDT_LOOKUP_CORE.hasCjk(aiContext.rawText) ? 'zh-to-x' : 'x-to-zh'
+  ));
+
   const panel = document.createElement('section');
   panel.className = 'companion-card ai-panel';
 
@@ -485,57 +545,165 @@ function buildAiView(context = null) {
   direction.className = 'ai-direction';
   const toZh = document.createElement('button');
   toZh.type = 'button';
-  toZh.className = 'ai-direction-button active';
+  toZh.className = 'ai-direction-button';
   toZh.dataset.direction = 'x-to-zh';
-  toZh.setAttribute('aria-pressed', 'true');
-  toZh.textContent = '族語 → ZH';
+  toZh.textContent = `${languageLabel} → 中文`;
   const toX = document.createElement('button');
   toX.type = 'button';
   toX.className = 'ai-direction-button';
   toX.dataset.direction = 'zh-to-x';
-  toX.setAttribute('aria-pressed', 'false');
-  toX.textContent = 'ZH → 族語';
+  toX.textContent = `中文 → ${languageLabel}`;
   direction.append(toZh, toX);
-  [toZh, toX].forEach(button => {
-    button.addEventListener('click', () => {
-      direction.querySelectorAll('.ai-direction-button').forEach(other => {
-        const isActive = other === button;
-        other.classList.toggle('active', isActive);
-        other.setAttribute('aria-pressed', String(isActive));
-      });
-    });
-  });
+  syncAiDirectionButtons(direction, initialDirection);
 
   const grid = document.createElement('div');
   grid.className = 'ai-grid';
   const input = document.createElement('textarea');
   input.className = 'ai-textarea';
   input.placeholder = '輸入文字';
-  input.value = context?.rawText || '';
+  input.value = aiContext.rawText || '';
   input.rows = 7;
   const output = document.createElement('textarea');
   output.className = 'ai-textarea';
   output.placeholder = '輸出';
+  output.value = aiContext.outputText || '';
   output.rows = 7;
   output.readOnly = true;
-  grid.append(input, output);
-
   const actions = document.createElement('div');
   actions.className = 'ai-actions';
   const translate = document.createElement('button');
   translate.type = 'button';
   translate.className = 'ai-action-button';
-  translate.disabled = true;
-  translate.textContent = '✦ Translate';
+  translate.textContent = '✦ 翻譯';
   const listen = document.createElement('button');
   listen.type = 'button';
   listen.className = 'ai-action-button';
-  listen.disabled = true;
-  listen.textContent = '〰 Listen';
+  listen.textContent = '〰 朗讀';
   actions.append(translate, listen);
+  grid.append(input, actions, output);
 
-  panel.append(direction, grid, actions);
+  direction.querySelectorAll('.ai-direction-button').forEach(button => {
+    button.addEventListener('click', () => {
+      const nextDirection = normalizeAiDirection(button.dataset.direction);
+      syncAiDirectionButtons(direction, nextDirection);
+      updateAiContextLocal({ direction: nextDirection });
+      updateAiActionState({ input, output, translate, listen, direction: nextDirection, supportsAi });
+    });
+  });
+  input.addEventListener('input', () => {
+    output.value = '';
+    updateAiContextLocal({ rawText: input.value, outputText: '' });
+    updateAiActionState({ input, output, translate, listen, direction: getAiDirection(direction), supportsAi });
+  });
+  translate.addEventListener('click', () => translateAiPanel({
+    input,
+    output,
+    translate,
+    listen,
+    direction,
+    supportsAi,
+  }));
+  listen.addEventListener('click', () => listenAiPanel({
+    input,
+    output,
+    translate,
+    listen,
+    direction,
+    supportsAi,
+  }));
+  updateAiActionState({ input, output, translate, listen, direction: initialDirection, supportsAi });
+  panel.append(direction, grid);
   return panel;
+}
+
+function getAiLanguageLabel(language) {
+  return language ? language : '族語';
+}
+
+function normalizeAiDirection(direction) {
+  return direction === 'zh-to-x' ? 'zh-to-x' : 'x-to-zh';
+}
+
+function syncAiDirectionButtons(container, direction) {
+  const normalized = normalizeAiDirection(direction);
+  container.querySelectorAll('.ai-direction-button').forEach(button => {
+    const isActive = button.dataset.direction === normalized;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
+  });
+}
+
+function getAiDirection(container) {
+  return normalizeAiDirection(container.querySelector('.ai-direction-button.active')?.dataset.direction);
+}
+
+function getAiTtsText(input, output, direction) {
+  return normalizeAiDirection(direction) === 'x-to-zh' ? input.value : output.value;
+}
+
+function updateAiActionState({ input, output, translate, listen, direction, supportsAi }) {
+  const inputText = FDT_LOOKUP_CORE.cleanPhraseText(input.value);
+  const ttsText = FDT_LOOKUP_CORE.cleanPhraseText(getAiTtsText(input, output, direction));
+  translate.disabled = !inputText;
+  listen.disabled = !supportsAi || !ttsText || FDT_LOOKUP_CORE.hasCjk(ttsText);
+}
+
+async function translateAiPanel({ input, output, translate, listen, direction, supportsAi }) {
+  const text = FDT_LOOKUP_CORE.cleanPhraseText(input.value);
+  if (!text || translate.disabled) return;
+  const activeDirection = getAiDirection(direction);
+  translate.disabled = true;
+  translate.classList.add('loading');
+  translate.classList.remove('error');
+  output.value = '';
+
+  if (!supportsAi) {
+    output.value = 'AI 目前僅支援 Amis。';
+    translate.classList.remove('loading');
+    updateAiContextLocal({ outputText: output.value, direction: activeDirection });
+    updateAiActionState({ input, output, translate, listen, direction: activeDirection, supportsAi });
+    return;
+  }
+
+  try {
+    const type = activeDirection === 'zh-to-x' ? 'translateIlrdfZhToAmis' : 'translateIlrdfText';
+    const response = await sendRuntimeMessage({ type, text });
+    output.value = response?.ok ? response.text : '翻譯失敗，請稍後再試。';
+    if (!response?.ok) translate.classList.add('error');
+  } catch {
+    output.value = '翻譯服務暫時無法使用。';
+    translate.classList.add('error');
+  } finally {
+    translate.classList.remove('loading');
+    updateAiContextLocal({ rawText: input.value, outputText: output.value, direction: activeDirection });
+    updateAiActionState({ input, output, translate, listen, direction: activeDirection, supportsAi });
+  }
+}
+
+async function listenAiPanel({ input, output, translate, listen, direction, supportsAi }) {
+  const activeDirection = getAiDirection(direction);
+  const text = FDT_LOOKUP_CORE.cleanPhraseText(getAiTtsText(input, output, activeDirection));
+  if (!supportsAi || !text || FDT_LOOKUP_CORE.hasCjk(text) || listen.disabled) return;
+
+  listen.disabled = true;
+  listen.classList.add('loading');
+  listen.classList.remove('error');
+  try {
+    const response = await sendRuntimeMessage({ type: 'playIlrdfTts', text });
+    if (!response?.ok) listen.classList.add('error');
+  } catch {
+    listen.classList.add('error');
+  } finally {
+    listen.classList.remove('loading');
+    updateAiActionState({
+      input,
+      output,
+      translate,
+      listen,
+      direction: activeDirection,
+      supportsAi,
+    });
+  }
 }
 
 function makeLoadingState(context) {

@@ -453,6 +453,15 @@ async function translateIlrdfText(text, dialect = AMIS_MALAN_DIALECT) {
     : { ok: false, reason: 'translateFailed' };
 }
 
+async function translateIlrdfZhToAmis(text, dialect = AMIS_MALAN_DIALECT) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!clean) return { ok: false, reason: 'missingText' };
+  const result = await gradioCall(ILRDF_MT_BASE, 'translate_1', [clean, 'zho_Hant', dialect]);
+  return typeof result === 'string'
+    ? { ok: true, text: result }
+    : { ok: false, reason: 'translateFailed' };
+}
+
 async function openCompanion(sender, context = null) {
   const contextWrite = context
     ? chrome.storage.session.set({ companionContext: context })
@@ -521,6 +530,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   if (msg.type === 'translateIlrdfText') {
     translateIlrdfText(msg.text, msg.dialect)
+      .then(response => sendResponse(response || { ok: false }))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'translateFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'translateIlrdfZhToAmis') {
+    translateIlrdfZhToAmis(msg.text, msg.dialect)
       .then(response => sendResponse(response || { ok: false }))
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'translateFailed' }));
 
