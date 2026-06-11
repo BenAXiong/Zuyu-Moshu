@@ -333,6 +333,10 @@ a {
   background: var(--surface-hi);
 }
 
+.companion-root-chip.recovered {
+  border-color: rgba(232,223,200,0.38);
+}
+
 .companion-root-chip.current {
   max-width: none;
   padding: 0;

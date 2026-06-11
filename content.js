@@ -528,13 +528,15 @@ function setHeaderRoot(root, options = {}) {
   const cleanRoot = cleanMoeText(root);
   const iconOnly = !!options.iconOnly;
   const isCurrentRoot = cleanRoot === getHeaderWord();
-  text.textContent = cleanRoot;
+  const isRecoveredRoot = !!options.recoveredRoot;
+  text.textContent = isRecoveredRoot ? `~ ${cleanRoot}` : cleanRoot;
   chip.dataset.root = cleanRoot;
   chip.hidden = !cleanRoot;
   chip.disabled = !cleanRoot || isCurrentRoot || iconOnly;
   chip.classList.toggle('current', !!cleanRoot && (isCurrentRoot || iconOnly));
-  chip.title = isCurrentRoot || iconOnly ? '詞根' : '查詢詞根';
-  chip.setAttribute('aria-label', isCurrentRoot || iconOnly ? '詞根' : '查詢詞根');
+  chip.classList.toggle('recovered', isRecoveredRoot);
+  chip.title = isCurrentRoot || iconOnly ? '詞根' : (isRecoveredRoot ? '查詢修復後詞根' : '查詢詞根');
+  chip.setAttribute('aria-label', chip.title);
 }
 
 function getHeaderWord() {
@@ -2614,7 +2616,11 @@ function renderMoeKilangSection(insights, settings) {
   const matchedKey = getMoeMatchKey(matchedWord);
   const headerKey = getMoeMatchKey(getHeaderWord());
   const rootAddsInfo = rootKey && rootKey !== matchedKey && rootKey !== headerKey;
-  setHeaderRoot(root, { iconOnly: isPureAltRecovery && !rootAddsInfo });
+  const recoveredRoot = !!rootKey && rootKey === matchedKey && rootKey !== headerKey;
+  setHeaderRoot(root, {
+    iconOnly: isPureAltRecovery && !rootAddsInfo && !recoveredRoot,
+    recoveredRoot,
+  });
   body.dataset.moeMainMatchKey = getMoeMatchKey(matchedWord);
   removeDuplicateMoeAltSection(body, body.dataset.moeMainMatchKey);
 

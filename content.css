@@ -203,6 +203,10 @@
   background: var(--fdt-tag-bg);
 }
 
+.fdt-root-chip.recovered {
+  border-color: rgba(178,59,34,0.26);
+}
+
 .fdt-root-chip.current {
   max-width: none;
   padding: 0;

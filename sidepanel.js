@@ -532,14 +532,19 @@ function updateLookupHeaderRoot(header, query) {
     && !!cleanMatched
     && cleanRoot.toLowerCase() === cleanMatched.toLowerCase()
     && cleanRoot.toLowerCase() !== cleanQuery.toLowerCase();
-  const iconOnly = isCurrentRoot || isAltRoot;
-  text.textContent = cleanRoot;
+  const isRecoveredRoot = !!cleanRoot
+    && !!cleanMatched
+    && cleanRoot.toLowerCase() === cleanMatched.toLowerCase()
+    && cleanRoot.toLowerCase() !== cleanQuery.toLowerCase();
+  const iconOnly = isCurrentRoot;
+  text.textContent = isRecoveredRoot ? `~ ${cleanRoot}` : cleanRoot;
   chip.dataset.root = cleanRoot;
   chip.hidden = !cleanRoot;
   chip.disabled = !cleanRoot || iconOnly;
   chip.classList.toggle('current', iconOnly);
-  chip.title = iconOnly ? '詞根' : '查詢詞根';
-  chip.setAttribute('aria-label', iconOnly ? '詞根' : '查詢詞根');
+  chip.classList.toggle('recovered', isRecoveredRoot || isAltRoot);
+  chip.title = iconOnly ? '詞根' : (isRecoveredRoot ? '查詢修復後詞根' : '查詢詞根');
+  chip.setAttribute('aria-label', chip.title);
 }
 
 function getCurrentDbRoot() {
