@@ -8,8 +8,14 @@
   --soft: #c9c6bf;
   --dim: #8a867d;
   --line: rgba(255,255,255,0.09);
+  --line-strong: rgba(232,223,200,0.28);
   --accent: #e8dfc8;
   --accent-soft: rgba(232,223,200,0.10);
+  --subtle: rgba(232,223,200,0.06);
+  --focus-border: rgba(232,223,200,0.42);
+  --focus-ring: rgba(232,223,200,0.08);
+  --danger: #fca5a5;
+  --danger-border: rgba(252,165,165,0.5);
 }
 
 body {
@@ -19,6 +25,63 @@ body {
   color: var(--text);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
         "Microsoft JhengHei", sans-serif;
+}
+
+body.font-small { font-size: 12.5px; }
+body.font-large { font-size: 16px; }
+
+body.light {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-hi: #f6f7fa;
+  --text: #0c0d11;
+  --soft: #3a3d45;
+  --dim: #737985;
+  --line: rgba(15,18,28,0.08);
+  --line-strong: rgba(15,18,28,0.14);
+  --accent: #2a6fdb;
+  --accent-soft: rgba(42,111,219,0.10);
+  --subtle: rgba(15,18,28,0.035);
+  --focus-border: rgba(42,111,219,0.42);
+  --focus-ring: rgba(42,111,219,0.12);
+  --danger: #b42318;
+  --danger-border: rgba(180,35,24,0.35);
+}
+
+body.paper {
+  --bg: #fbf5e7;
+  --surface: #fffcf3;
+  --surface-hi: #f5eedf;
+  --text: #2b221a;
+  --soft: #5c4e3f;
+  --dim: #887b68;
+  --line: rgba(43,34,26,0.08);
+  --line-strong: #e6dac0;
+  --accent: #a8351f;
+  --accent-soft: #f6e0d6;
+  --subtle: rgba(168,53,31,0.06);
+  --focus-border: rgba(168,53,31,0.42);
+  --focus-ring: rgba(168,53,31,0.12);
+  --danger: #9f1d1d;
+  --danger-border: rgba(159,29,29,0.36);
+}
+
+body.field {
+  --bg: #fbf5e7;
+  --surface: #fffcf3;
+  --surface-hi: #f0eed8;
+  --text: #2b221a;
+  --soft: #5c4e3f;
+  --dim: #887b68;
+  --line: rgba(43,34,26,0.08);
+  --line-strong: #e4e7cc;
+  --accent: #566234;
+  --accent-soft: #e4e7cc;
+  --subtle: rgba(86,98,52,0.07);
+  --focus-border: rgba(86,98,52,0.42);
+  --focus-ring: rgba(86,98,52,0.13);
+  --danger: #9f1d1d;
+  --danger-border: rgba(159,29,29,0.36);
 }
 
 .companion-top {
@@ -66,7 +129,7 @@ button {
 .reader-control-button.active {
   color: var(--accent);
   background: var(--accent-soft);
-  border-color: rgba(232,223,200,0.28);
+  border-color: var(--line-strong);
 }
 
 .reader-control-button:not(.active) {
@@ -139,8 +202,8 @@ button {
 }
 
 .manual-search input:focus {
-  border-color: rgba(232,223,200,0.42);
-  box-shadow: 0 0 0 2px rgba(232,223,200,0.08);
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .manual-search input::placeholder {
@@ -334,7 +397,7 @@ a {
 }
 
 .companion-root-chip.recovered {
-  border-color: rgba(232,223,200,0.38);
+  border-color: var(--line-strong);
 }
 
 .companion-root-chip.current {
@@ -495,7 +558,7 @@ a {
   height: 16px;
   display: inline-grid;
   place-items: center;
-  border: 1px solid rgba(232,223,200,0.28);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   color: var(--dim);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -534,7 +597,7 @@ a {
 }
 
 .candidate-group {
-  border-bottom: 1px solid rgba(255,255,255,0.10);
+  border-bottom: 1px solid var(--line);
 }
 
 .candidate-group:last-child {
@@ -551,7 +614,7 @@ a {
   gap: 7px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
-  background: rgba(232,223,200,0.05);
+  background: var(--subtle);
   color: var(--soft);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.86rem;
@@ -710,8 +773,8 @@ a {
 .companion-icon-button.error,
 .companion-tts-button.error,
 .companion-ai-button.error {
-  color: #fca5a5;
-  border-color: rgba(252,165,165,0.5);
+  color: var(--danger);
+  border-color: var(--danger-border);
 }
 
 .companion-icon-button:disabled,
@@ -723,9 +786,9 @@ a {
 
 .companion-mt-row {
   margin-top: 10px;
-  border: 1px solid rgba(232,223,200,0.16);
+  border: 1px solid var(--line-strong);
   border-radius: 7px;
-  background: rgba(232,223,200,0.07);
+  background: var(--subtle);
   color: var(--accent);
   padding: 8px 10px;
   font-size: 0.9rem;
@@ -831,7 +894,7 @@ a {
 
 .reader-token.status-unknown .reader-token-top,
 .reader-word-table-row.status-unknown .reader-word-table-furigana-col {
-  color: rgba(252,165,165,0.76);
+  color: var(--danger);
 }
 
 .companion-reader.hide-top-annotations .reader-token {

@@ -44,9 +44,18 @@ document.addEventListener('DOMContentLoaded', () => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
   });
 
+  loadCompanionAppearance();
   loadReaderControls();
   loadContext();
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync') {
+      if (!changes.theme && !changes.fontSize) return;
+      applyCompanionAppearance({
+        theme: changes.theme?.newValue,
+        fontSize: changes.fontSize?.newValue,
+      });
+      return;
+    }
     if (area === 'local' && changes[FDT_SAVED_KEY]) {
       refreshCompanionSaveButtons();
       refreshReaderSavedStatus(changes[FDT_SAVED_KEY].newValue || []);
@@ -70,6 +79,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (msg?.type === 'companionContextUpdated') loadIncomingContext();
   });
 });
+
+function loadCompanionAppearance() {
+  chrome.storage.sync.get(DEFAULTS, applyCompanionAppearance);
+}
+
+function applyCompanionAppearance(settings) {
+  const next = {};
+  if (Object.prototype.hasOwnProperty.call(settings || {}, 'theme')) {
+    next.theme = settings.theme;
+  }
+  if (Object.prototype.hasOwnProperty.call(settings || {}, 'fontSize')) {
+    next.fontSize = settings.fontSize;
+  }
+  FDT_APPEARANCE.applyAppearanceClasses(document.body, next, {
+    themePrefix: '',
+    fontPrefix: 'font-',
+  });
+}
 
 function loadContext() {
   chrome.storage.session.get({ [STATE_KEY]: null, [CONTEXT_KEY]: null }, data => {
