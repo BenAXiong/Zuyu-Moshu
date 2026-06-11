@@ -1,5 +1,6 @@
 const CONTEXT_KEY = 'companionContext';
 const STATE_KEY = 'companionState';
+const READER_CONTROLS_KEY = 'companionReaderControlsV1';
 const LOOKUP_CONCURRENCY = 4;
 const MAX_ANALYSIS_TOKENS = 80;
 const INDIHUNT_IMPORT_URL = 'https://indilog.vercel.app/import';
@@ -31,15 +32,18 @@ let currentExportItems = [];
 let currentHeaderSaveItem = null;
 let currentKilangLookupMeta = null;
 let pendingStateWrite = '';
+let readerControls = makeDefaultReaderControls();
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
   document.getElementById('topExport')?.addEventListener('click', exportCompanionToIndiHunt);
   document.getElementById('manualSearch')?.addEventListener('submit', handleManualSearch);
+  setupReaderControlButtons();
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
   });
 
+  loadReaderControls();
   loadContext();
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'session') return;
@@ -105,6 +109,7 @@ function updateActiveTab(mode) {
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.mode === mode);
   });
+  updateReaderControlsVisibility(mode);
 }
 
 function makeEmptyCompanionState() {
@@ -115,6 +120,74 @@ function makeEmptyCompanionState() {
       analysis: null,
     },
   };
+}
+
+function makeDefaultReaderControls() {
+  return {
+    topAnnotations: true,
+    zhGloss: true,
+    dividers: true,
+  };
+}
+
+function normalizeReaderControls(value) {
+  const defaults = makeDefaultReaderControls();
+  return {
+    topAnnotations: typeof value?.topAnnotations === 'boolean' ? value.topAnnotations : defaults.topAnnotations,
+    zhGloss: typeof value?.zhGloss === 'boolean' ? value.zhGloss : defaults.zhGloss,
+    dividers: typeof value?.dividers === 'boolean' ? value.dividers : defaults.dividers,
+  };
+}
+
+function setupReaderControlButtons() {
+  document.querySelectorAll('[data-reader-control]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.readerControl;
+      if (!Object.prototype.hasOwnProperty.call(readerControls, key)) return;
+      readerControls = normalizeReaderControls({
+        ...readerControls,
+        [key]: !readerControls[key],
+      });
+      chrome.storage.local.set({ [READER_CONTROLS_KEY]: readerControls });
+      syncReaderControlButtons();
+      applyReaderControls();
+    });
+  });
+  syncReaderControlButtons();
+}
+
+function loadReaderControls() {
+  chrome.storage.local.get({ [READER_CONTROLS_KEY]: null }, data => {
+    readerControls = normalizeReaderControls(data[READER_CONTROLS_KEY]);
+    syncReaderControlButtons();
+    applyReaderControls();
+  });
+}
+
+function syncReaderControlButtons() {
+  document.querySelectorAll('[data-reader-control]').forEach(button => {
+    const key = button.dataset.readerControl;
+    const isOn = !!readerControls[key];
+    button.classList.toggle('active', isOn);
+    button.setAttribute('aria-pressed', String(isOn));
+  });
+}
+
+function updateReaderControlsVisibility(mode = getActiveMode()) {
+  const controls = document.getElementById('readerControls');
+  if (!controls) return;
+  controls.hidden = normalizeMode(mode) !== 'analysis';
+}
+
+function applyReaderControls(root = document) {
+  const readers = [];
+  if (root.matches?.('.companion-reader')) readers.push(root);
+  root.querySelectorAll?.('.companion-reader').forEach(reader => readers.push(reader));
+  readers.forEach(reader => {
+    reader.classList.toggle('hide-top-annotations', !readerControls.topAnnotations);
+    reader.classList.toggle('hide-zh-gloss', !readerControls.zhGloss);
+    reader.classList.toggle('hide-dividers', !readerControls.dividers);
+  });
 }
 
 function normalizeCompanionState(state) {
@@ -861,6 +934,7 @@ function makeReaderView(rawText, rows) {
   }
 
   segments.forEach(segment => section.appendChild(makeReaderSentence(segment, resultMap)));
+  applyReaderControls(section);
   return section;
 }
 

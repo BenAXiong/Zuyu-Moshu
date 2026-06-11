@@ -47,6 +47,33 @@ button {
   gap: 6px;
 }
 
+.reader-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 25px;
+}
+
+.reader-controls[hidden] {
+  display: none;
+}
+
+.reader-control-button {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.reader-control-button.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(232,223,200,0.28);
+}
+
+.reader-control-button:not(.active) {
+  color: var(--dim);
+  background: transparent;
+}
+
 #clear:hover,
 #topExport:hover {
   color: var(--accent);
@@ -743,6 +770,30 @@ a {
 .reader-token.missing .reader-token-ab,
 .reader-token.missing .reader-token-zh {
   color: var(--dim);
+}
+
+.companion-reader.hide-top-annotations .reader-token {
+  grid-template-rows: auto 1.25em;
+}
+
+.companion-reader.hide-top-annotations .reader-token-top {
+  display: none;
+}
+
+.companion-reader.hide-zh-gloss .reader-token {
+  grid-template-rows: 1em auto;
+}
+
+.companion-reader.hide-zh-gloss .reader-token-zh {
+  display: none;
+}
+
+.companion-reader.hide-top-annotations.hide-zh-gloss .reader-token {
+  grid-template-rows: auto;
+}
+
+.companion-reader.hide-dividers .reader-sentence {
+  border-bottom: 0;
 }
 
 .notice,
