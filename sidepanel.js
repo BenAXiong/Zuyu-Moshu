@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('clear')?.addEventListener('click', clearContext);
   document.getElementById('topExport')?.addEventListener('click', exportCompanionToIndiHunt);
   document.getElementById('manualSearch')?.addEventListener('submit', handleManualSearch);
+  setupThemeButtons();
   setupReaderControlButtons();
   document.querySelectorAll('.mode-tab').forEach(tab => {
     tab.addEventListener('click', () => setActiveMode(tab.dataset.mode));
@@ -84,6 +85,16 @@ function loadCompanionAppearance() {
   chrome.storage.sync.get(DEFAULTS, applyCompanionAppearance);
 }
 
+function setupThemeButtons() {
+  document.querySelectorAll('[data-theme]').forEach(button => {
+    button.addEventListener('click', () => {
+      const theme = FDT_APPEARANCE.normalizeTheme(button.dataset.theme);
+      chrome.storage.sync.set({ theme });
+      applyCompanionAppearance({ theme });
+    });
+  });
+}
+
 function applyCompanionAppearance(settings) {
   const next = {};
   if (Object.prototype.hasOwnProperty.call(settings || {}, 'theme')) {
@@ -95,6 +106,17 @@ function applyCompanionAppearance(settings) {
   FDT_APPEARANCE.applyAppearanceClasses(document.body, next, {
     themePrefix: '',
     fontPrefix: 'font-',
+  });
+  if (Object.prototype.hasOwnProperty.call(next, 'theme')) {
+    syncThemeButtons(FDT_APPEARANCE.normalizeTheme(next.theme));
+  }
+}
+
+function syncThemeButtons(theme) {
+  document.querySelectorAll('[data-theme]').forEach(button => {
+    const isActive = button.dataset.theme === theme;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', String(isActive));
   });
 }
 
