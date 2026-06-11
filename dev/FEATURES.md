@@ -2,7 +2,7 @@
 
 Global timestamp: 2026-06-11 20:08 +08:00
 
-Current extension version: 1.6.2
+Current extension version: 1.6.3
 
 This document is a current-state inventory, not a historical changelog. It lists what is implemented, whether behavior is universal or source-specific, and the main technical entry points.
 
