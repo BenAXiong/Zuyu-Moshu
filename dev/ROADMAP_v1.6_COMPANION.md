@@ -313,10 +313,11 @@ Tasks:
 - YouTube transcript/subtitle mode in Companion. Started with `字幕` tab.
 - Detect current YouTube video context. Started through active-tab background broker + content-script video id detection.
 - Display available transcript/subtitle lines. Started by reading player-response caption tracks as `json3`, with visible transcript DOM fallback.
+- Caption-track selector. Done for player-response tracks; changing the selector re-fetches that track.
 - Click transcript line to analyze that line. Done: row click sends the line to existing `句子` reader/analyzer.
 - Optional current-time following if reliable.
 - Keep the first pass transcript-focused: capture/display/select/analyze, not transcript mining.
-- Not done yet: automate opening YouTube's transcript panel when no caption track is discoverable; track/language selector; playback-time following.
+- Not done yet: automate opening YouTube's transcript panel when no caption track is discoverable; playback-time following.
 
 ### v1.6.5 — Morphology Explorer Phase 1
 

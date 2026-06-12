@@ -1058,14 +1058,28 @@ a {
   cursor: pointer;
 }
 
+.youtube-track-select {
+  min-width: 96px;
+  max-width: 145px;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-hi);
+  color: var(--text);
+  padding: 4px 24px 4px 8px;
+  outline: none;
+}
+
 .youtube-refresh-button:hover,
-.youtube-refresh-button:focus {
+.youtube-refresh-button:focus,
+.youtube-track-select:focus {
   border-color: var(--focus-border);
   box-shadow: 0 0 0 2px var(--focus-ring);
   outline: none;
 }
 
-.youtube-refresh-button:disabled {
+.youtube-refresh-button:disabled,
+.youtube-track-select:disabled {
   color: var(--dim);
   cursor: progress;
   opacity: 0.7;

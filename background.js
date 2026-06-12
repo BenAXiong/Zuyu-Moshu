@@ -489,12 +489,15 @@ async function openCompanion(sender, context = null) {
   return { ok: true };
 }
 
-async function getYoutubeTranscriptFromActiveTab() {
+async function getYoutubeTranscriptFromActiveTab(options = {}) {
   const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   const tab = tabs && tabs[0];
   if (!tab?.id) return { ok: false, reason: 'noActiveTab' };
   try {
-    const response = await chrome.tabs.sendMessage(tab.id, { type: 'getYoutubeTranscript' }, { frameId: 0 });
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: 'getYoutubeTranscript',
+      trackKey: options.trackKey || '',
+    }, { frameId: 0 });
     return response || { ok: false, reason: 'noCaptions' };
   } catch {
     return { ok: false, reason: 'contentScriptUnavailable' };
@@ -525,7 +528,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === 'getYoutubeTranscript') {
-    getYoutubeTranscriptFromActiveTab()
+    getYoutubeTranscriptFromActiveTab({ trackKey: msg.trackKey || '' })
       .then(sendResponse)
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'transcriptFailed' }));
 

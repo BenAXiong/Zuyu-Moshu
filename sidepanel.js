@@ -783,11 +783,13 @@ async function buildYoutubeView(context = null) {
   titleGroup.appendChild(title);
   const actions = document.createElement('div');
   actions.className = 'lookup-head-actions';
+  const trackSelect = makeYoutubeTrackSelect(context);
+  if (trackSelect) actions.appendChild(trackSelect);
   const refresh = document.createElement('button');
   refresh.type = 'button';
   refresh.className = 'youtube-refresh-button';
   refresh.textContent = '讀取目前影片字幕';
-  refresh.addEventListener('click', () => requestYoutubeTranscript(refresh));
+  refresh.addEventListener('click', () => requestYoutubeTranscript(refresh, context?.selectedTrackKey || ''));
   actions.appendChild(refresh);
   top.append(titleGroup, actions);
   header.appendChild(top);
@@ -841,15 +843,15 @@ async function buildYoutubeView(context = null) {
   return wrap;
 }
 
-async function requestYoutubeTranscript(button = null) {
-  if (button) {
-    button.disabled = true;
-    button.classList.add('loading');
+async function requestYoutubeTranscript(control = null, trackKey = '') {
+  if (control) {
+    control.disabled = true;
+    control.classList.add('loading');
   }
-  const response = await sendRuntimeMessage({ type: 'getYoutubeTranscript' });
-  if (button) {
-    button.disabled = false;
-    button.classList.remove('loading');
+  const response = await sendRuntimeMessage({ type: 'getYoutubeTranscript', trackKey });
+  if (control) {
+    control.disabled = false;
+    control.classList.remove('loading');
   }
 
   const state = normalizeCompanionState(companionState);
@@ -876,11 +878,40 @@ function makeYoutubeContext(patch = {}) {
     page: { title: '', url: '' },
     videoId: '',
     trackLabel: '',
+    tracks: [],
+    selectedTrackKey: '',
     source: '',
     lines: [],
     timestamp: new Date().toISOString(),
     ...patch,
   };
+}
+
+function makeYoutubeTrackSelect(context) {
+  const tracks = Array.isArray(context?.tracks) ? context.tracks : [];
+  if (tracks.length <= 1) return null;
+  const select = document.createElement('select');
+  select.className = 'youtube-track-select';
+  select.setAttribute('aria-label', '字幕軌');
+  tracks.forEach(track => {
+    const option = document.createElement('option');
+    option.value = track.key || '';
+    option.textContent = formatYoutubeTrackOption(track);
+    select.appendChild(option);
+  });
+  select.value = context?.selectedTrackKey || tracks[0]?.key || '';
+  select.addEventListener('change', () => requestYoutubeTranscript(select, select.value));
+  return select;
+}
+
+function formatYoutubeTrackOption(track) {
+  const parts = [];
+  if (track?.label) parts.push(track.label);
+  if (track?.languageCode && !String(track.label || '').includes(track.languageCode)) {
+    parts.push(track.languageCode);
+  }
+  if (track?.isAuto) parts.push('自動');
+  return parts.join(' · ') || '字幕';
 }
 
 async function openTranscriptLineInReader(youtubeContext, line, index) {

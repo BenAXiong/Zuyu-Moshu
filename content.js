@@ -50,7 +50,7 @@ const moeFetched = new Map();
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== 'getYoutubeTranscript') return false;
-  collectYoutubeTranscript()
+  collectYoutubeTranscript(message?.trackKey || '')
     .then(sendResponse)
     .catch(error => sendResponse({ ok: false, reason: error?.message || 'transcriptFailed' }));
   return true;
@@ -471,23 +471,26 @@ function getPhraseTokens(raw) {
   return FDT_LOOKUP_CORE.getPhraseTokens(raw, MAX_PHRASE_TOKENS);
 }
 
-async function collectYoutubeTranscript() {
+async function collectYoutubeTranscript(selectedTrackKey = '') {
   const videoId = getYoutubeVideoId();
   if (!videoId) return { ok: false, reason: 'notYoutube' };
 
   const playerResponse = getYoutubePlayerResponse(videoId) || await fetchYoutubePlayerResponse(videoId);
   const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
-  const track = chooseYoutubeCaptionTrack(captionTracks);
-  if (track?.baseUrl) {
+  const tracks = normalizeYoutubeCaptionTracks(captionTracks);
+  const selected = chooseYoutubeCaptionTrack(tracks, selectedTrackKey);
+  if (selected?.baseUrl) {
     try {
-      const lines = await fetchYoutubeCaptionTrack(track.baseUrl);
+      const lines = await fetchYoutubeCaptionTrack(selected.baseUrl);
       if (lines.length > 0) {
         return {
           ok: true,
           context: makeYoutubeTranscriptContext({
             videoId,
             lines,
-            trackLabel: getYoutubeTrackLabel(track),
+            tracks: tracks.map(({ baseUrl, ...track }) => track),
+            selectedTrackKey: selected.key,
+            trackLabel: selected.label,
             source: 'caption-track',
           }),
         };
@@ -630,10 +633,34 @@ function extractBalancedJsonObject(text, startIndex) {
   return '';
 }
 
-function chooseYoutubeCaptionTrack(tracks) {
+function normalizeYoutubeCaptionTracks(tracks) {
+  return (Array.isArray(tracks) ? tracks : [])
+    .map((track, index) => ({
+      key: makeYoutubeTrackKey(track, index),
+      label: getYoutubeTrackLabel(track),
+      languageCode: track?.languageCode || '',
+      kind: track?.kind || '',
+      isAuto: track?.kind === 'asr',
+      isTranslatable: !!track?.isTranslatable,
+      baseUrl: track?.baseUrl || '',
+    }))
+    .filter(track => track.baseUrl);
+}
+
+function makeYoutubeTrackKey(track, index) {
+  return [
+    track?.languageCode || 'unknown',
+    track?.kind || 'manual',
+    getYoutubeTrackLabel(track),
+    index,
+  ].join(':');
+}
+
+function chooseYoutubeCaptionTrack(tracks, selectedTrackKey = '') {
   const list = Array.isArray(tracks) ? tracks : [];
-  return list.find(track => track?.isTranslatable && track?.kind !== 'asr')
-    || list.find(track => track?.kind !== 'asr')
+  return list.find(track => track.key === selectedTrackKey)
+    || list.find(track => track.isTranslatable && !track.isAuto)
+    || list.find(track => !track.isAuto)
     || list[0]
     || null;
 }
