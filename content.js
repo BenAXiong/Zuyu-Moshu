@@ -773,8 +773,21 @@ function normalizeYoutubeCaptionEvents(events) {
 function getVisibleYoutubeTranscriptLines() {
   const roots = getVisibleYoutubeTranscriptRoots();
   const rows = [];
+  const rowSelector = [
+    'ytd-transcript-segment-renderer',
+    'transcript-segment-view-model',
+    'macro-markers-panel-item-view-model',
+    'timeline-item-view-model',
+    '.ytwTranscriptSegmentViewModelHost',
+  ].join(', ');
   roots.forEach(root => {
-    [root, ...root.querySelectorAll('ytd-transcript-segment-renderer, button, div, span')].forEach(element => {
+    const elements = root.matches?.(rowSelector)
+      ? [root, ...root.querySelectorAll(rowSelector)]
+      : [...root.querySelectorAll(rowSelector)];
+    const fallbackElements = elements.length
+      ? elements
+      : [root, ...root.querySelectorAll('button, div, span')];
+    fallbackElements.forEach(element => {
       const line = extractVisibleYoutubeTranscriptLine(element);
       if (line) rows.push(line);
     });
@@ -788,6 +801,9 @@ function getVisibleYoutubeTranscriptRoots() {
     'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]',
     'ytd-transcript-renderer',
     'ytd-transcript-segment-list-renderer',
+    'macro-markers-list-view-model',
+    'transcript-segment-list-view-model',
+    'transcript-segment-view-model',
     'tp-yt-paper-dialog',
     '[role="dialog"]',
   ];
@@ -799,13 +815,23 @@ function getVisibleYoutubeTranscriptRoots() {
 
 function extractVisibleYoutubeTranscriptLine(row) {
   if (!isVisibleElement(row)) return null;
-  const timeText = row.querySelector?.('.segment-timestamp')?.textContent
-    || row.querySelector?.('[class*="timestamp"]')?.textContent
+  const segment = row.matches?.('transcript-segment-view-model, .ytwTranscriptSegmentViewModelHost, ytd-transcript-segment-renderer')
+    ? row
+    : row.querySelector?.('transcript-segment-view-model, .ytwTranscriptSegmentViewModelHost, ytd-transcript-segment-renderer');
+  const source = segment || row;
+  const timeText = source.querySelector?.('.segment-timestamp')?.textContent
+    || source.querySelector?.('.ytwTranscriptSegmentViewModelTimestamp')?.textContent
+    || source.querySelector?.('[class*="timestamp" i]')?.textContent
     || '';
-  const text = row.querySelector?.('.segment-text')?.textContent
-    || row.querySelector?.('yt-formatted-string')?.textContent
-    || row.innerText
-    || row.textContent
+  const transcriptText = source.querySelector?.('.segment-text')?.textContent
+    || source.querySelector?.('[role="text"].ytAttributedStringHost')?.textContent
+    || source.querySelector?.('.ytwTranscriptSegmentViewModelText')?.textContent
+    || source.querySelector?.('.ytAttributedStringHost')?.textContent
+    || source.querySelector?.('yt-formatted-string')?.textContent
+    || '';
+  const text = transcriptText
+    || source.innerText
+    || source.textContent
     || '';
 
   if (timeText) {
@@ -835,6 +861,9 @@ function extractVisibleYoutubeTranscriptLine(row) {
 function cleanYoutubeTranscriptLineText(text) {
   return String(text || '')
     .replace(/\bSearch transcript\b/gi, '')
+    .replace(/\b\d+\s+hours?(?:,\s*)?/gi, '')
+    .replace(/\b\d+\s+minutes?(?:,\s*)?/gi, '')
+    .replace(/\b\d+\s+seconds?\b/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
