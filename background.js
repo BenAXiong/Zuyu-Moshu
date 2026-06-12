@@ -398,11 +398,10 @@ async function getTtsAudioUrl(speaker, text) {
 }
 
 function notifyCompanionContextUpdated() {
-  try {
-    chrome.runtime.sendMessage({ type: 'companionContextUpdated' }, () => {
-      void chrome.runtime.lastError;
-    });
-  } catch {}
+  // Context delivery is storage-backed. The side panel reads companionContext
+  // on startup and also observes storage.session changes while open, so a
+  // runtime-message broadcast is redundant and can create "Receiving end does
+  // not exist" service-worker errors when the panel is closed.
 }
 
 async function ensureOffscreenAudioDocument() {
