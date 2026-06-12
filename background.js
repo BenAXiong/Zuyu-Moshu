@@ -463,12 +463,13 @@ async function translateIlrdfZhToAmis(text, dialect = AMIS_MALAN_DIALECT) {
 }
 
 async function openCompanion(sender, context = null) {
-  if (context) {
-    await chrome.storage.session.set({ companionContext: context });
-    notifyCompanionContextUpdated();
-  }
+  const contextWrite = context
+    ? chrome.storage.session.set({ companionContext: context })
+    : Promise.resolve();
 
   if (!chrome.sidePanel?.open) {
+    await contextWrite;
+    if (context) notifyCompanionContextUpdated();
     return { ok: false, reason: 'sidePanelUnavailable', preloaded: !!context };
   }
 
@@ -476,16 +477,24 @@ async function openCompanion(sender, context = null) {
     const windowId = sender?.tab?.windowId;
     if (typeof windowId === 'number') {
       await chrome.sidePanel.open({ windowId });
+      await contextWrite;
+      if (context) notifyCompanionContextUpdated();
       return { ok: true, preloaded: !!context };
     }
 
     const window = await chrome.windows.getLastFocused();
     if (typeof window?.id !== 'number') {
+      await contextWrite;
+      if (context) notifyCompanionContextUpdated();
       return { ok: false, reason: 'windowUnavailable', preloaded: !!context };
     }
     await chrome.sidePanel.open({ windowId: window.id });
+    await contextWrite;
+    if (context) notifyCompanionContextUpdated();
     return { ok: true, preloaded: !!context };
   } catch (error) {
+    await contextWrite;
+    if (context) notifyCompanionContextUpdated();
     return { ok: false, reason: error?.message || 'openFailed', preloaded: !!context };
   }
 }
