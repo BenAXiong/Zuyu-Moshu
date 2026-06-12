@@ -489,6 +489,18 @@ async function openCompanion(sender, context = null) {
   return { ok: true };
 }
 
+async function getYoutubeTranscriptFromActiveTab() {
+  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const tab = tabs && tabs[0];
+  if (!tab?.id) return { ok: false, reason: 'noActiveTab' };
+  try {
+    const response = await chrome.tabs.sendMessage(tab.id, { type: 'getYoutubeTranscript' }, { frameId: 0 });
+    return response || { ok: false, reason: 'noCaptions' };
+  } catch {
+    return { ok: false, reason: 'contentScriptUnavailable' };
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'openSavedPage') {
     chrome.tabs.create({ url: msg.url || chrome.runtime.getURL('saved.html') });
@@ -508,6 +520,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     openCompanion(_sender, msg.context)
       .then(sendResponse)
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'openFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'getYoutubeTranscript') {
+    getYoutubeTranscriptFromActiveTab()
+      .then(sendResponse)
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'transcriptFailed' }));
 
     return true;
   }

@@ -1044,6 +1044,80 @@ a {
   margin: 0;
 }
 
+.youtube-head h2 {
+  white-space: normal;
+}
+
+.youtube-refresh-button {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-hi);
+  color: var(--text);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.youtube-refresh-button:hover,
+.youtube-refresh-button:focus {
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 2px var(--focus-ring);
+  outline: none;
+}
+
+.youtube-refresh-button:disabled {
+  color: var(--dim);
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.youtube-meta {
+  padding: 9px 12px;
+  color: var(--dim);
+  font-size: 0.82rem;
+}
+
+.youtube-transcript {
+  padding: 0;
+  overflow: hidden;
+}
+
+.youtube-line {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  padding: 9px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.youtube-line:last-child {
+  border-bottom: 0;
+}
+
+.youtube-line:hover,
+.youtube-line:focus {
+  background: var(--subtle);
+  outline: none;
+}
+
+.youtube-line-time {
+  color: var(--dim);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.youtube-line-text {
+  min-width: 0;
+  line-height: 1.45;
+}
+
 .ai-panel {
   padding: 12px;
 }

@@ -231,6 +231,7 @@ function makeEmptyCompanionState() {
       lookup: null,
       analysis: null,
       ai: null,
+      youtube: null,
     },
   };
 }
@@ -317,17 +318,19 @@ function normalizeCompanionState(state) {
       lookup: state?.contexts?.lookup || null,
       analysis: state?.contexts?.analysis || null,
       ai: state?.contexts?.ai || null,
+      youtube: state?.contexts?.youtube || null,
     },
   };
 }
 
 function normalizeMode(mode) {
-  if (mode === 'analysis' || mode === 'ai') return mode;
+  if (mode === 'analysis' || mode === 'ai' || mode === 'youtube') return mode;
   return 'lookup';
 }
 
 function modeForContext(context) {
   if (context?.mode === 'ai') return 'ai';
+  if (context?.mode === 'youtube') return 'youtube';
   return context?.mode === 'word' ? 'lookup' : 'analysis';
 }
 
@@ -368,7 +371,8 @@ function getStateTime(state) {
   return Math.max(
     getContextTime(normalized.contexts.lookup),
     getContextTime(normalized.contexts.analysis),
-    getContextTime(normalized.contexts.ai)
+    getContextTime(normalized.contexts.ai),
+    getContextTime(normalized.contexts.youtube)
   );
 }
 
@@ -405,6 +409,19 @@ async function renderContext(context, options = {}) {
     if (serial !== renderSerial) return;
     content.replaceChildren(view);
     syncManualSearchInput(context);
+    return;
+  }
+
+  if (activeMode === 'youtube') {
+    content.className = 'content';
+    currentExportItems = [];
+    currentHeaderSaveItem = null;
+    currentHeaderSaveItems = null;
+    currentKilangLookupMeta = null;
+    const view = await buildYoutubeView(context);
+    if (serial !== renderSerial) return;
+    content.replaceChildren(view);
+    syncManualSearchInput(null);
     return;
   }
 
@@ -530,7 +547,9 @@ function makeEmptyState() {
   const empty = document.createElement('div');
   empty.className = 'empty-state';
   const title = document.createElement('strong');
-  title.textContent = getActiveMode() === 'analysis' ? '尚無句子內容' : '尚無單詞內容';
+  title.textContent = getActiveMode() === 'analysis'
+    ? '尚無句子內容'
+    : (getActiveMode() === 'youtube' ? '尚無字幕內容' : '尚無單詞內容');
   const body = document.createElement('span');
   body.textContent = '可從網頁選取文字，或使用上方輸入列。';
   empty.append(title, body);
@@ -747,6 +766,168 @@ async function listenAiPanel({ input, output, translate, listen, direction, supp
       supportsAi,
     });
   }
+}
+
+async function buildYoutubeView(context = null) {
+  const wrap = document.createElement('div');
+  wrap.className = 'companion-stack youtube-panel';
+
+  const header = document.createElement('section');
+  header.className = 'lookup-head youtube-head';
+  const top = document.createElement('div');
+  top.className = 'lookup-head-main';
+  const titleGroup = document.createElement('div');
+  titleGroup.className = 'lookup-title-group';
+  const title = document.createElement('h2');
+  title.textContent = context?.page?.title || context?.rawText || 'YouTube 字幕';
+  titleGroup.appendChild(title);
+  const actions = document.createElement('div');
+  actions.className = 'lookup-head-actions';
+  const refresh = document.createElement('button');
+  refresh.type = 'button';
+  refresh.className = 'youtube-refresh-button';
+  refresh.textContent = '讀取目前影片字幕';
+  refresh.addEventListener('click', () => requestYoutubeTranscript(refresh));
+  actions.appendChild(refresh);
+  top.append(titleGroup, actions);
+  header.appendChild(top);
+  wrap.appendChild(header);
+
+  if (!context) {
+    wrap.appendChild(makeNotice('切到 YouTube 影片頁後讀取字幕。'));
+    return wrap;
+  }
+
+  if (context.error) {
+    wrap.appendChild(makeNotice(context.error));
+    return wrap;
+  }
+
+  const lines = Array.isArray(context.lines) ? context.lines : [];
+  const meta = document.createElement('section');
+  meta.className = 'companion-card youtube-meta';
+  const source = context.trackLabel || context.source || '';
+  meta.textContent = [
+    context.videoId ? `影片：${context.videoId}` : '',
+    source ? `字幕：${source}` : '',
+    `${lines.length} 行`,
+  ].filter(Boolean).join(' · ');
+  wrap.appendChild(meta);
+
+  if (lines.length === 0) {
+    wrap.appendChild(makeNotice('沒有可顯示的字幕。'));
+    return wrap;
+  }
+
+  const list = document.createElement('section');
+  list.className = 'companion-card youtube-transcript';
+  lines.forEach((line, index) => {
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'youtube-line';
+    row.title = '送到句子分析';
+    row.addEventListener('click', () => openTranscriptLineInReader(context, line, index));
+
+    const time = document.createElement('span');
+    time.className = 'youtube-line-time';
+    time.textContent = formatTranscriptTime(line.startMs);
+    const text = document.createElement('span');
+    text.className = 'youtube-line-text';
+    text.textContent = line.text || '';
+    row.append(time, text);
+    list.appendChild(row);
+  });
+  wrap.appendChild(list);
+  return wrap;
+}
+
+async function requestYoutubeTranscript(button = null) {
+  if (button) {
+    button.disabled = true;
+    button.classList.add('loading');
+  }
+  const response = await sendRuntimeMessage({ type: 'getYoutubeTranscript' });
+  if (button) {
+    button.disabled = false;
+    button.classList.remove('loading');
+  }
+
+  const state = normalizeCompanionState(companionState);
+  const context = response?.ok
+    ? makeYoutubeContext(response.context || {})
+    : makeYoutubeContext({
+      rawText: 'YouTube 字幕',
+      error: getYoutubeTranscriptError(response?.reason),
+    });
+  persistCompanionState({
+    ...state,
+    activeMode: 'youtube',
+    contexts: {
+      ...state.contexts,
+      youtube: context,
+    },
+  }, { resetHistory: true });
+}
+
+function makeYoutubeContext(patch = {}) {
+  return {
+    mode: 'youtube',
+    rawText: '',
+    page: { title: '', url: '' },
+    videoId: '',
+    trackLabel: '',
+    source: '',
+    lines: [],
+    timestamp: new Date().toISOString(),
+    ...patch,
+  };
+}
+
+async function openTranscriptLineInReader(youtubeContext, line, index) {
+  const text = FDT_LOOKUP_CORE.cleanPhraseText(line?.text || '');
+  if (!text) return;
+  const settings = await readCompanionSettings();
+  const context = {
+    mode: 'sentences',
+    rawText: text,
+    tokens: FDT_LOOKUP_CORE.getPhraseTokens(text, MAX_ANALYSIS_TOKENS),
+    page: youtubeContext?.page || { title: '', url: '' },
+    trigger: 'youtubeTranscript',
+    language: settings.language || '',
+    sources: Array.isArray(settings.sources) ? settings.sources : DEFAULTS.sources,
+    transcript: {
+      videoId: youtubeContext?.videoId || '',
+      lineIndex: index,
+      startMs: line?.startMs || 0,
+      trackLabel: youtubeContext?.trackLabel || '',
+    },
+    timestamp: new Date().toISOString(),
+  };
+  companionHistory = [];
+  const state = normalizeCompanionState(companionState);
+  persistCompanionState({
+    ...state,
+    activeMode: 'analysis',
+    contexts: {
+      ...state.contexts,
+      analysis: context,
+    },
+  }, { resetHistory: true });
+}
+
+function getYoutubeTranscriptError(reason) {
+  if (reason === 'notYoutube') return '目前分頁不是 YouTube 影片頁。';
+  if (reason === 'noCaptions') return '這支影片沒有可讀取的字幕軌。';
+  if (reason === 'noActiveTab') return '找不到目前分頁。';
+  if (reason === 'contentScriptUnavailable') return '無法連到目前分頁，請重新整理 YouTube 頁面後再試。';
+  return '無法讀取字幕。';
+}
+
+function formatTranscriptTime(ms) {
+  const total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
 function makeLoadingState(context) {
@@ -1953,6 +2134,22 @@ function formatIndiHuntAnalysisItems(context) {
     }));
 }
 
+function formatIndiHuntYoutubeItems(context) {
+  if (!context || context.mode !== 'youtube') return [];
+  const language = getIndiHuntLanguageCode(context.language || latestSettings.language);
+  if (!language) return [];
+  return (Array.isArray(context.lines) ? context.lines : [])
+    .map(line => cleanExportText(line?.text || ''))
+    .filter(Boolean)
+    .map(ab => cleanIndiHuntItem({
+      ab,
+      type: 'sentence',
+      language,
+      notes: formatIndiHuntContextNotes(context),
+      tags: ['YOUTUBE', 'COMPANION'],
+    }));
+}
+
 function formatIndiHuntContextNotes(context) {
   const notes = [];
   if (context?.page?.title) notes.push(`Page: ${cleanExportText(context.page.title)}`);
@@ -1973,7 +2170,9 @@ function encodeIndiHuntPayload(payload) {
 function exportCompanionToIndiHunt() {
   const items = (currentContext?.mode === 'word'
     ? currentExportItems.flatMap(formatIndiHuntItems)
-    : formatIndiHuntAnalysisItems(currentContext)
+    : (currentContext?.mode === 'youtube'
+      ? formatIndiHuntYoutubeItems(currentContext)
+      : formatIndiHuntAnalysisItems(currentContext))
   ).slice(0, INDIHUNT_MAX_ITEMS);
   if (items.length === 0) return;
   const b64 = encodeIndiHuntPayload({

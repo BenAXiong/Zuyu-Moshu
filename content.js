@@ -48,6 +48,14 @@ let savedOpenButton = null;
 const fetched = new Map();
 const moeFetched = new Map();
 
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type !== 'getYoutubeTranscript') return false;
+  collectYoutubeTranscript()
+    .then(sendResponse)
+    .catch(error => sendResponse({ ok: false, reason: error?.message || 'transcriptFailed' }));
+  return true;
+});
+
 // ' (apostrophe) intentionally excluded — it's a glottal stop character in these orthographies
 function cleanWord(w) {
   return FDT_LOOKUP_CORE.cleanWord(w);
@@ -461,6 +469,230 @@ function cleanPhraseText(text) {
 
 function getPhraseTokens(raw) {
   return FDT_LOOKUP_CORE.getPhraseTokens(raw, MAX_PHRASE_TOKENS);
+}
+
+async function collectYoutubeTranscript() {
+  const videoId = getYoutubeVideoId();
+  if (!videoId) return { ok: false, reason: 'notYoutube' };
+
+  const playerResponse = getYoutubePlayerResponse(videoId) || await fetchYoutubePlayerResponse(videoId);
+  const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
+  const track = chooseYoutubeCaptionTrack(captionTracks);
+  if (track?.baseUrl) {
+    try {
+      const lines = await fetchYoutubeCaptionTrack(track.baseUrl);
+      if (lines.length > 0) {
+        return {
+          ok: true,
+          context: makeYoutubeTranscriptContext({
+            videoId,
+            lines,
+            trackLabel: getYoutubeTrackLabel(track),
+            source: 'caption-track',
+          }),
+        };
+      }
+    } catch {
+      // Fall back to the open transcript panel if caption-track fetching fails.
+    }
+  }
+
+  const domLines = getVisibleYoutubeTranscriptLines();
+  if (domLines.length > 0) {
+    return {
+      ok: true,
+      context: makeYoutubeTranscriptContext({
+        videoId,
+        lines: domLines,
+        trackLabel: '頁面字幕',
+        source: 'visible-transcript',
+      }),
+    };
+  }
+
+  return { ok: false, reason: 'noCaptions' };
+}
+
+function makeYoutubeTranscriptContext(patch = {}) {
+  return {
+    mode: 'youtube',
+    rawText: document.title || 'YouTube 字幕',
+    page: {
+      title: document.title || '',
+      url: location.href,
+    },
+    timestamp: new Date().toISOString(),
+    ...patch,
+  };
+}
+
+function getYoutubeVideoId() {
+  const host = location.hostname.replace(/^www\./, '');
+  if (host === 'youtu.be') return cleanYoutubeVideoId(location.pathname.split('/').filter(Boolean)[0]);
+  if (!host.endsWith('youtube.com')) return '';
+  const fromQuery = cleanYoutubeVideoId(new URL(location.href).searchParams.get('v'));
+  if (fromQuery) return fromQuery;
+  const shorts = location.pathname.match(/^\/shorts\/([^/?#]+)/);
+  if (shorts) return cleanYoutubeVideoId(shorts[1]);
+  const embed = location.pathname.match(/^\/embed\/([^/?#]+)/);
+  if (embed) return cleanYoutubeVideoId(embed[1]);
+  return '';
+}
+
+function cleanYoutubeVideoId(value) {
+  const clean = String(value || '').trim();
+  return /^[a-zA-Z0-9_-]{6,}$/.test(clean) ? clean : '';
+}
+
+function getYoutubePlayerResponse(videoId = '') {
+  if (isMatchingYoutubePlayerResponse(globalThis.ytInitialPlayerResponse, videoId)) {
+    return globalThis.ytInitialPlayerResponse;
+  }
+  const scripts = [...document.scripts];
+  return getYoutubePlayerResponseFromTextList(scripts.map(script => script.textContent || ''), videoId);
+}
+
+async function fetchYoutubePlayerResponse(videoId) {
+  if (!videoId || !location.hostname.replace(/^www\./, '').endsWith('youtube.com')) return null;
+  try {
+    const response = await fetch(`/watch?v=${encodeURIComponent(videoId)}&hl=zh-TW`, { credentials: 'include' });
+    if (!response.ok) return null;
+    const html = await response.text();
+    return getYoutubePlayerResponseFromTextList([html], videoId);
+  } catch {
+    return null;
+  }
+}
+
+function getYoutubePlayerResponseFromTextList(texts, videoId = '') {
+  const list = Array.isArray(texts) ? texts : [];
+  for (const text of list) {
+    const parsed = getYoutubePlayerResponseFromText(text, videoId);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function getYoutubePlayerResponseFromText(text, videoId = '') {
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const markerIndex = text.indexOf('ytInitialPlayerResponse', searchFrom);
+    if (markerIndex < 0) break;
+    const braceIndex = text.indexOf('{', markerIndex);
+    if (braceIndex < 0) break;
+    const json = extractBalancedJsonObject(text, braceIndex);
+    if (!json) {
+      searchFrom = braceIndex + 1;
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(json);
+      if (isMatchingYoutubePlayerResponse(parsed, videoId)) return parsed;
+    } catch {
+      // Keep scanning; YouTube may include multiple script shapes.
+    }
+    searchFrom = braceIndex + 1;
+  }
+  return null;
+}
+
+function isMatchingYoutubePlayerResponse(response, videoId = '') {
+  if (!response?.captions) return false;
+  const responseVideoId = response?.videoDetails?.videoId || '';
+  return !videoId || !responseVideoId || responseVideoId === videoId;
+}
+
+function extractBalancedJsonObject(text, startIndex) {
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = startIndex; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === '\\') {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) return text.slice(startIndex, i + 1);
+    }
+  }
+  return '';
+}
+
+function chooseYoutubeCaptionTrack(tracks) {
+  const list = Array.isArray(tracks) ? tracks : [];
+  return list.find(track => track?.isTranslatable && track?.kind !== 'asr')
+    || list.find(track => track?.kind !== 'asr')
+    || list[0]
+    || null;
+}
+
+function getYoutubeTrackLabel(track) {
+  return track?.name?.simpleText
+    || track?.name?.runs?.map(run => run.text).join('')
+    || track?.languageCode
+    || '字幕';
+}
+
+async function fetchYoutubeCaptionTrack(baseUrl) {
+  const url = new URL(baseUrl);
+  url.searchParams.set('fmt', 'json3');
+  const response = await fetch(url.toString(), { credentials: 'include' });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return normalizeYoutubeCaptionEvents(data?.events || []);
+}
+
+function normalizeYoutubeCaptionEvents(events) {
+  return (Array.isArray(events) ? events : [])
+    .map(event => {
+      const text = (event.segs || [])
+        .map(seg => seg.utf8 || '')
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return {
+        startMs: Number(event.tStartMs || 0),
+        durationMs: Number(event.dDurationMs || 0),
+        text,
+      };
+    })
+    .filter(line => line.text);
+}
+
+function getVisibleYoutubeTranscriptLines() {
+  const rows = [...document.querySelectorAll('ytd-transcript-segment-renderer, ytd-transcript-segment-list-renderer ytd-transcript-segment-renderer')];
+  return rows.map(row => {
+    const timeText = row.querySelector('.segment-timestamp')?.textContent
+      || row.querySelector('[class*="timestamp"]')?.textContent
+      || '';
+    const text = row.querySelector('.segment-text')?.textContent
+      || row.querySelector('yt-formatted-string')?.textContent
+      || row.textContent
+      || '';
+    return {
+      startMs: parseYoutubeTimecode(timeText),
+      durationMs: 0,
+      text: text.replace(timeText, '').replace(/\s+/g, ' ').trim(),
+    };
+  }).filter(line => line.text);
+}
+
+function parseYoutubeTimecode(value) {
+  const parts = String(value || '').trim().split(':').map(part => Number(part));
+  if (parts.some(part => !Number.isFinite(part))) return 0;
+  return parts.reduce((total, part) => (total * 60) + part, 0) * 1000;
 }
 
 function setHeaderWord(word) {
