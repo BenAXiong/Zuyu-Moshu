@@ -546,21 +546,41 @@ async function collectYoutubeTranscript(selectedTrackKey = '', options = {}) {
 async function ensureYoutubeTranscriptPanelOpen() {
   if (getVisibleYoutubeTranscriptLines().length > 0) return true;
 
-  let transcriptButton = findVisibleYoutubeControl(/\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i);
+  let transcriptButton = findYoutubeTranscriptOpenControl();
   if (!transcriptButton) {
-    const metadataRoot = document.querySelector('ytd-watch-metadata') || document;
-    const moreButton = findVisibleYoutubeControl(/(?:^|\s)\.\.\.more\b|\bshow more\b|更多/i, metadataRoot);
+    const moreButton = findYoutubeDescriptionExpandControl();
     if (moreButton) {
-      moreButton.click();
-      await wait(450);
-      transcriptButton = findVisibleYoutubeControl(/\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i, metadataRoot)
-        || findVisibleYoutubeControl(/\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i);
+      clickYoutubeControl(moreButton);
+      await wait(700);
+      transcriptButton = findYoutubeTranscriptOpenControl();
     }
   }
 
   if (!transcriptButton) return false;
-  transcriptButton.click();
-  return await waitForYoutubeTranscriptLines(2500);
+  clickYoutubeControl(transcriptButton);
+  return await waitForYoutubeTranscriptLines(4000);
+}
+
+function findYoutubeTranscriptOpenControl() {
+  const pattern = /\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i;
+  const metadataRoot = document.querySelector('ytd-watch-metadata') || document;
+  return findVisibleYoutubeControl(pattern, metadataRoot)
+    || findVisibleYoutubeControl(pattern);
+}
+
+function findYoutubeDescriptionExpandControl() {
+  const metadataRoot = document.querySelector('ytd-watch-metadata') || document;
+  const selectors = [
+    'ytd-text-inline-expander tp-yt-paper-button#expand',
+    'ytd-text-inline-expander [id="expand"][role="button"]',
+    'tp-yt-paper-button#expand',
+    '[id="expand"][role="button"]',
+  ];
+  for (const selector of selectors) {
+    const control = metadataRoot.querySelector(selector);
+    if (isVisibleElement(control)) return control;
+  }
+  return findVisibleYoutubeControl(/(?:^|\s)(?:\.\.\.|…)more\b|\bshow more\b|更多/i, metadataRoot);
 }
 
 function findVisibleYoutubeControl(pattern, root = document) {
@@ -574,6 +594,22 @@ function findVisibleYoutubeControl(pattern, root = document) {
       ].join(' ').replace(/\s+/g, ' ').trim();
       return pattern.test(text);
     }) || null;
+}
+
+function clickYoutubeControl(control) {
+  if (!control) return;
+  try {
+    control.scrollIntoView?.({ block: 'center', inline: 'center' });
+  } catch {}
+
+  const target = control.querySelector?.('button, [role="button"], tp-yt-paper-button')
+    || control;
+  const eventInit = { bubbles: true, cancelable: true, composed: true, view: window };
+  try { target.dispatchEvent(new MouseEvent('mouseover', eventInit)); } catch {}
+  try { target.dispatchEvent(new MouseEvent('mousedown', eventInit)); } catch {}
+  try { target.dispatchEvent(new MouseEvent('mouseup', eventInit)); } catch {}
+  try { target.dispatchEvent(new MouseEvent('click', eventInit)); } catch {}
+  try { target.click?.(); } catch {}
 }
 
 async function waitForYoutubeTranscriptLines(timeoutMs = 2000) {
