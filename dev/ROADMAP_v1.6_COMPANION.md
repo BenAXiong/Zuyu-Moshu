@@ -312,7 +312,7 @@ Tasks:
 
 - YouTube transcript/subtitle mode in Companion. Started with `字幕` tab.
 - Detect current YouTube video context. Started through active-tab background broker + content-script video id detection.
-- Display available transcript/subtitle lines. Started by reading player-response caption tracks as `json3`, with visible transcript DOM fallback.
+- Display available transcript/subtitle lines. Started by reading player-response caption tracks and fetching selected `/api/timedtext` tracks as `json3` through the background service worker, with visible transcript DOM fallback.
 - Caption-track selector. Done for player-response tracks; changing the selector re-fetches that track.
 - Click transcript line to analyze that line. Done: row click sends the line to existing `句子` reader/analyzer.
 - Optional current-time following if reliable.

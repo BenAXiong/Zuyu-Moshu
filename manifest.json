@@ -33,7 +33,8 @@
   },
   "host_permissions": [
     "https://ycm-citadel.vercel.app/*",
-    "https://ai-labs.ilrdf.org.tw/*"
+    "https://ai-labs.ilrdf.org.tw/*",
+    "https://www.youtube.com/*"
   ],
   "web_accessible_resources": [
     {

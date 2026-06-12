@@ -673,11 +673,9 @@ function getYoutubeTrackLabel(track) {
 }
 
 async function fetchYoutubeCaptionTrack(baseUrl) {
-  const url = new URL(baseUrl);
-  url.searchParams.set('fmt', 'json3');
-  const response = await fetch(url.toString(), { credentials: 'include' });
-  if (!response.ok) return [];
-  const data = await response.json();
+  const response = await sendRuntimeMessage({ type: 'fetchYoutubeCaptionTrack', url: baseUrl });
+  if (!response?.ok || !response.text) return [];
+  const data = JSON.parse(response.text);
   return normalizeYoutubeCaptionEvents(data?.events || []);
 }
 

@@ -504,6 +504,28 @@ async function getYoutubeTranscriptFromActiveTab(options = {}) {
   }
 }
 
+function isYoutubeTimedTextUrl(value) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname.replace(/^www\./, '');
+    return host === 'youtube.com' && url.pathname === '/api/timedtext';
+  } catch {
+    return false;
+  }
+}
+
+async function fetchYoutubeCaptionTrack(url) {
+  if (!isYoutubeTimedTextUrl(url)) return { ok: false, reason: 'invalidUrl' };
+  const next = new URL(url);
+  next.searchParams.set('fmt', 'json3');
+  const response = await fetch(next.toString(), { credentials: 'include' });
+  if (!response.ok) return { ok: false, reason: `http${response.status}` };
+  const text = await response.text();
+  return text
+    ? { ok: true, text }
+    : { ok: false, reason: 'emptyTrack' };
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'openSavedPage') {
     chrome.tabs.create({ url: msg.url || chrome.runtime.getURL('saved.html') });
@@ -531,6 +553,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     getYoutubeTranscriptFromActiveTab({ trackKey: msg.trackKey || '' })
       .then(sendResponse)
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'transcriptFailed' }));
+
+    return true;
+  }
+
+  if (msg.type === 'fetchYoutubeCaptionTrack') {
+    fetchYoutubeCaptionTrack(msg.url)
+      .then(sendResponse)
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'captionFetchFailed' }));
 
     return true;
   }
