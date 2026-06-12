@@ -311,8 +311,10 @@ Tasks:
 ### v1.6.4 — YouTube Transcript Companion
 
 - YouTube transcript/subtitle mode in Companion. Started with `字幕` tab.
+- YouTube watch page auto-open/preload. Started; content script attempts to open Companion when the extension is enabled, but Chrome may still require a user gesture for the actual Side Panel open call.
 - Detect current YouTube video context. Started through active-tab background broker + content-script video id detection.
 - Display available transcript/subtitle lines. Started by reading player-response caption tracks and fetching selected `/api/timedtext` tracks as `json3` through the background service worker, with visible transcript DOM fallback.
+- Transcript failure diagnostics. Started; detected tracks remain visible when line fetch fails, with a user-facing reason.
 - Caption-track selector. Done for player-response tracks; changing the selector re-fetches that track.
 - Click transcript line to analyze that line. Done: row click sends the line to existing `句子` reader/analyzer.
 - Optional current-time following if reliable.

@@ -47,6 +47,7 @@ let currentTooltipNav = null;
 let savedOpenButton = null;
 const fetched = new Map();
 const moeFetched = new Map();
+let lastYoutubeAutoOpenKey = '';
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== 'getYoutubeTranscript') return false;
@@ -196,6 +197,9 @@ document.addEventListener('keydown', (e) => {
   if (['Control', 'Meta', 'Alt', 'Shift'].includes(e.key)) clearHoverTimer();
   if (e.key === 'Escape') dismissTooltip();
 });
+
+scheduleYoutubeCompanionAutoOpen();
+document.addEventListener('yt-navigate-finish', scheduleYoutubeCompanionAutoOpen);
 
 // --- Core ---
 
@@ -481,7 +485,7 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
   const selected = chooseYoutubeCaptionTrack(tracks, selectedTrackKey);
   if (selected?.baseUrl) {
     try {
-      const lines = await fetchYoutubeCaptionTrack(selected.baseUrl);
+      const { lines, reason } = await fetchYoutubeCaptionTrack(selected.baseUrl);
       if (lines.length > 0) {
         return {
           ok: true,
@@ -495,6 +499,18 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
           }),
         };
       }
+      return {
+        ok: true,
+        context: makeYoutubeTranscriptContext({
+          videoId,
+          lines: [],
+          tracks: tracks.map(({ baseUrl, ...track }) => track),
+          selectedTrackKey: selected.key,
+          trackLabel: selected.label,
+          source: 'caption-track',
+          error: `找到字幕軌「${selected.label}」，但字幕內容讀取失敗：${formatYoutubeCaptionFailure(reason)}。`,
+        }),
+      };
     } catch {
       // Fall back to the open transcript panel if caption-track fetching fails.
     }
@@ -514,6 +530,60 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
   }
 
   return { ok: false, reason: 'noCaptions' };
+}
+
+function scheduleYoutubeCompanionAutoOpen() {
+  let isTopFrame = true;
+  try {
+    isTopFrame = globalThis.top === globalThis;
+  } catch {
+    isTopFrame = false;
+  }
+  if (!isTopFrame || !getYoutubeVideoId()) return;
+  setTimeout(autoOpenYoutubeCompanion, 900);
+}
+
+async function autoOpenYoutubeCompanion() {
+  const videoId = getYoutubeVideoId();
+  if (!videoId) return;
+  const settings = await readContentSettings();
+  if (!settings.enabled) return;
+  const key = `${videoId}:${location.href}`;
+  if (key === lastYoutubeAutoOpenKey) return;
+  lastYoutubeAutoOpenKey = key;
+
+  const response = await collectYoutubeTranscript();
+  const context = response?.ok
+    ? response.context
+    : makeYoutubeTranscriptContext({
+      videoId,
+      lines: [],
+      error: formatYoutubeAutoOpenFailure(response?.reason),
+    });
+  await sendRuntimeMessage({ type: 'companionContext', context });
+}
+
+function readContentSettings() {
+  return new Promise(resolve => {
+    chrome.storage.sync.get(DEFAULTS, data => {
+      if (chrome.runtime.lastError) resolve(DEFAULTS);
+      else resolve({ ...DEFAULTS, ...data });
+    });
+  });
+}
+
+function formatYoutubeAutoOpenFailure(reason) {
+  if (reason === 'noCaptions') return '已開啟 Companion，但目前沒有讀到字幕。';
+  if (reason === 'notYoutube') return '目前頁面不是 YouTube 影片頁。';
+  return '已開啟 Companion，但字幕讀取失敗。';
+}
+
+function formatYoutubeCaptionFailure(reason) {
+  if (reason === 'emptyTrack') return '字幕軌回傳空內容';
+  if (reason === 'invalidUrl') return '字幕網址無效';
+  if (reason && String(reason).startsWith('http')) return `HTTP ${String(reason).replace(/^http/, '')}`;
+  if (reason === 'missingText') return '沒有回傳文字';
+  return reason || '未知原因';
 }
 
 function makeYoutubeTranscriptContext(patch = {}) {
@@ -674,9 +744,11 @@ function getYoutubeTrackLabel(track) {
 
 async function fetchYoutubeCaptionTrack(baseUrl) {
   const response = await sendRuntimeMessage({ type: 'fetchYoutubeCaptionTrack', url: baseUrl });
-  if (!response?.ok || !response.text) return [];
+  if (!response?.ok || !response.text) {
+    return { lines: [], reason: response?.reason || 'missingText' };
+  }
   const data = JSON.parse(response.text);
-  return normalizeYoutubeCaptionEvents(data?.events || []);
+  return { lines: normalizeYoutubeCaptionEvents(data?.events || []), reason: '' };
 }
 
 function normalizeYoutubeCaptionEvents(events) {

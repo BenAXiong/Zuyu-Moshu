@@ -800,11 +800,6 @@ async function buildYoutubeView(context = null) {
     return wrap;
   }
 
-  if (context.error) {
-    wrap.appendChild(makeNotice(context.error));
-    return wrap;
-  }
-
   const lines = Array.isArray(context.lines) ? context.lines : [];
   const meta = document.createElement('section');
   meta.className = 'companion-card youtube-meta';
@@ -815,6 +810,11 @@ async function buildYoutubeView(context = null) {
     `${lines.length} 行`,
   ].filter(Boolean).join(' · ');
   wrap.appendChild(meta);
+
+  if (context.error) {
+    wrap.appendChild(makeNotice(context.error));
+    return wrap;
+  }
 
   if (lines.length === 0) {
     wrap.appendChild(makeNotice('沒有可顯示的字幕。'));
