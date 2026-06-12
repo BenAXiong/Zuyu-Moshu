@@ -464,7 +464,7 @@ async function sendCompanionContext(raw, phraseTokens, settings, trigger) {
     timestamp: new Date().toISOString(),
   };
   const response = await sendRuntimeMessage({ type: 'companionContext', context });
-  return !!response?.ok;
+  return !!(response?.ok || response?.preloaded);
 }
 
 function cleanPhraseText(text) {
