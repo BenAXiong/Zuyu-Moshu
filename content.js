@@ -51,7 +51,7 @@ let lastYoutubeAutoOpenKey = '';
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== 'getYoutubeTranscript') return false;
-  collectYoutubeTranscript(message?.trackKey || '')
+  collectYoutubeTranscript(message?.trackKey || '', { openTranscriptPanel: true })
     .then(sendResponse)
     .catch(error => sendResponse({ ok: false, reason: error?.message || 'transcriptFailed' }));
   return true;
@@ -475,7 +475,7 @@ function getPhraseTokens(raw) {
   return FDT_LOOKUP_CORE.getPhraseTokens(raw, MAX_PHRASE_TOKENS);
 }
 
-async function collectYoutubeTranscript(selectedTrackKey = '') {
+async function collectYoutubeTranscript(selectedTrackKey = '', options = {}) {
   const videoId = getYoutubeVideoId();
   if (!videoId) return { ok: false, reason: 'notYoutube' };
 
@@ -514,7 +514,16 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
     }
   }
 
-  const domLines = getVisibleYoutubeTranscriptLines();
+  if (options.openTranscriptPanel) {
+    await ensureYoutubeTranscriptPanelOpen();
+  }
+
+  let domLines = [];
+  try {
+    domLines = getVisibleYoutubeTranscriptLines();
+  } catch {
+    domLines = [];
+  }
   if (domLines.length > 0) {
     return {
       ok: true,
@@ -532,6 +541,52 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
   if (trackFailureContext) return { ok: true, context: trackFailureContext };
 
   return { ok: false, reason: 'noCaptions' };
+}
+
+async function ensureYoutubeTranscriptPanelOpen() {
+  if (getVisibleYoutubeTranscriptLines().length > 0) return true;
+
+  let transcriptButton = findVisibleYoutubeControl(/\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i);
+  if (!transcriptButton) {
+    const metadataRoot = document.querySelector('ytd-watch-metadata') || document;
+    const moreButton = findVisibleYoutubeControl(/(?:^|\s)\.\.\.more\b|\bshow more\b|更多/i, metadataRoot);
+    if (moreButton) {
+      moreButton.click();
+      await wait(450);
+      transcriptButton = findVisibleYoutubeControl(/\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i, metadataRoot)
+        || findVisibleYoutubeControl(/\bshow transcript\b|顯示逐字稿|顯示文字稿|顯示字幕|字幕記錄/i);
+    }
+  }
+
+  if (!transcriptButton) return false;
+  transcriptButton.click();
+  return await waitForYoutubeTranscriptLines(2500);
+}
+
+function findVisibleYoutubeControl(pattern, root = document) {
+  return [...root.querySelectorAll('button, [role="button"], tp-yt-paper-button, ytd-button-renderer')]
+    .find(control => {
+      if (!isVisibleElement(control)) return false;
+      const text = [
+        control.getAttribute('aria-label') || '',
+        control.innerText || '',
+        control.textContent || '',
+      ].join(' ').replace(/\s+/g, ' ').trim();
+      return pattern.test(text);
+    }) || null;
+}
+
+async function waitForYoutubeTranscriptLines(timeoutMs = 2000) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (getVisibleYoutubeTranscriptLines().length > 0) return true;
+    await wait(150);
+  }
+  return false;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function scheduleYoutubeCompanionAutoOpen() {
