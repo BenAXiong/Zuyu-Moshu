@@ -45,7 +45,23 @@ let readerControls = makeDefaultReaderControls();
 let ttsDialect = getDefaultTtsDialect();
 let latestSettings = { ...DEFAULTS };
 
+window.addEventListener('error', event => {
+  showCompanionRuntimeError(event.error || event.message);
+});
+
+window.addEventListener('unhandledrejection', event => {
+  showCompanionRuntimeError(event.reason);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
+  try {
+    initializeCompanion();
+  } catch (error) {
+    showCompanionRuntimeError(error);
+  }
+});
+
+function initializeCompanion() {
   document.getElementById('clear')?.addEventListener('click', clearContext);
   document.getElementById('topExport')?.addEventListener('click', exportCompanionToIndiHunt);
   document.getElementById('manualSearch')?.addEventListener('submit', handleManualSearch);
@@ -58,50 +74,52 @@ document.addEventListener('DOMContentLoaded', () => {
   loadCompanionAppearance();
   loadReaderControls();
   loadContext();
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync') {
-      if (changes.theme || changes.fontSize) {
-        applyCompanionAppearance({
-          theme: changes.theme?.newValue,
-          fontSize: changes.fontSize?.newValue,
-        });
-      }
-      if (changes.language && getActiveMode() === 'ai') {
-        renderContext(normalizeCompanionState(companionState).contexts.ai, { activeMode: 'ai' });
-      }
-      if (changes.language) {
-        latestSettings = { ...latestSettings, language: changes.language.newValue };
-        updateTtsDialectAvailability(latestSettings);
-      }
-      return;
-    }
-    if (area === 'local' && changes[TTS_DIALECT_KEY]) {
-      setTtsDialect(changes[TTS_DIALECT_KEY].newValue || getDefaultTtsDialect().code);
-      return;
-    }
-    if (area === 'local' && changes[FDT_SAVED_KEY]) {
-      refreshCompanionSaveButtons();
-      refreshReaderSavedStatus(changes[FDT_SAVED_KEY].newValue || []);
-      return;
-    }
-    if (area !== 'session') return;
-    if (changes[STATE_KEY]) {
-      const nextStateKey = JSON.stringify(changes[STATE_KEY].newValue || null);
-      if (pendingStateWrite && nextStateKey === pendingStateWrite) {
-        pendingStateWrite = '';
-        return;
-      }
-      applyCompanionState(changes[STATE_KEY].newValue || makeEmptyCompanionState(), { resetHistory: true });
-      return;
-    }
-    if (changes[CONTEXT_KEY]) {
-      applyIncomingContext(changes[CONTEXT_KEY].newValue || null);
-    }
-  });
+  chrome.storage.onChanged.addListener(handleStorageChange);
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.type === 'companionContextUpdated') loadIncomingContext();
   });
-});
+}
+
+function handleStorageChange(changes, area) {
+  if (area === 'sync') {
+    if (changes.theme || changes.fontSize) {
+      applyCompanionAppearance({
+        theme: changes.theme?.newValue,
+        fontSize: changes.fontSize?.newValue,
+      });
+    }
+    if (changes.language && getActiveMode() === 'ai') {
+      safeRenderContext(normalizeCompanionState(companionState).contexts.ai, { activeMode: 'ai' });
+    }
+    if (changes.language) {
+      latestSettings = { ...latestSettings, language: changes.language.newValue };
+      updateTtsDialectAvailability(latestSettings);
+    }
+    return;
+  }
+  if (area === 'local' && changes[TTS_DIALECT_KEY]) {
+    setTtsDialect(changes[TTS_DIALECT_KEY].newValue || getDefaultTtsDialect().code);
+    return;
+  }
+  if (area === 'local' && changes[FDT_SAVED_KEY]) {
+    refreshCompanionSaveButtons();
+    refreshReaderSavedStatus(changes[FDT_SAVED_KEY].newValue || []);
+    return;
+  }
+  if (area !== 'session') return;
+  if (changes[STATE_KEY]) {
+    const nextStateKey = JSON.stringify(changes[STATE_KEY].newValue || null);
+    if (pendingStateWrite && nextStateKey === pendingStateWrite) {
+      pendingStateWrite = '';
+      return;
+    }
+    applyCompanionState(changes[STATE_KEY].newValue || makeEmptyCompanionState(), { resetHistory: true });
+    return;
+  }
+  if (changes[CONTEXT_KEY]) {
+    applyIncomingContext(changes[CONTEXT_KEY].newValue || null);
+  }
+}
 
 function loadCompanionAppearance() {
   chrome.storage.sync.get(DEFAULTS, settings => {
@@ -384,10 +402,25 @@ function getContextTime(context) {
 function applyCompanionState(state, options = {}) {
   companionState = normalizeCompanionState(state);
   const context = companionState.contexts[companionState.activeMode] || null;
-  renderContext(context, {
+  safeRenderContext(context, {
     ...options,
     activeMode: companionState.activeMode,
   });
+}
+
+function safeRenderContext(context, options = {}) {
+  renderContext(context, options).catch(showCompanionRuntimeError);
+}
+
+function showCompanionRuntimeError(error) {
+  const message = error?.stack || error?.message || String(error || 'unknown error');
+  const content = document.getElementById('content');
+  if (!content) return;
+  content.className = 'content';
+  const notice = document.createElement('section');
+  notice.className = 'companion-card notice';
+  notice.textContent = `Companion error: ${message}`;
+  content.replaceChildren(notice);
 }
 
 async function renderContext(context, options = {}) {
