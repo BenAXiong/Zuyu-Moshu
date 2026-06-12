@@ -16,6 +16,7 @@ const MAX_MOE_SUFFIX_STRIPS = 1;
 const MIN_MOE_RECOVERY_BASE_LEN = 4;
 const MAX_TTS_CACHE = 200;
 const ttsFetched = new Map();
+let lastYoutubeCompanionTabId = null;
 
 async function updateIcon(enabled) {
   const size = 16;
@@ -462,6 +463,10 @@ async function translateIlrdfZhToAmis(text, dialect = AMIS_MALAN_DIALECT) {
 }
 
 async function openCompanion(sender, context = null) {
+  if (context?.mode === 'youtube' && typeof sender?.tab?.id === 'number') {
+    lastYoutubeCompanionTabId = sender.tab.id;
+  }
+
   const contextWrite = context
     ? chrome.storage.session.set({ companionContext: context })
     : Promise.resolve();
@@ -499,8 +504,7 @@ async function openCompanion(sender, context = null) {
 }
 
 async function getYoutubeTranscriptFromActiveTab(options = {}) {
-  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  const tab = tabs && tabs[0];
+  const tab = await getYoutubeTranscriptTargetTab();
   if (!tab?.id) return { ok: false, reason: 'noActiveTab' };
   try {
     const response = await chrome.tabs.sendMessage(tab.id, {
@@ -509,7 +513,38 @@ async function getYoutubeTranscriptFromActiveTab(options = {}) {
     }, { frameId: 0 });
     return response || { ok: false, reason: 'noCaptions' };
   } catch {
-    return { ok: false, reason: 'contentScriptUnavailable' };
+    return { ok: false, reason: 'contentScriptUnavailable', tabId: tab.id };
+  }
+}
+
+async function getYoutubeTranscriptTargetTab() {
+  if (typeof lastYoutubeCompanionTabId === 'number') {
+    try {
+      const remembered = await chrome.tabs.get(lastYoutubeCompanionTabId);
+      if (isYoutubeWatchTab(remembered)) return remembered;
+    } catch {
+      lastYoutubeCompanionTabId = null;
+    }
+  }
+
+  const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  const active = tabs && tabs[0];
+  if (isYoutubeWatchTab(active)) {
+    lastYoutubeCompanionTabId = active.id;
+    return active;
+  }
+
+  return active || null;
+}
+
+function isYoutubeWatchTab(tab) {
+  if (!tab?.url) return false;
+  try {
+    const url = new URL(tab.url);
+    const host = url.hostname.replace(/^www\./, '');
+    return host.endsWith('youtube.com') && url.pathname === '/watch' && url.searchParams.has('v');
+  } catch {
+    return false;
   }
 }
 
