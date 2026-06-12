@@ -463,30 +463,31 @@ async function translateIlrdfZhToAmis(text, dialect = AMIS_MALAN_DIALECT) {
 }
 
 async function openCompanion(sender, context = null) {
-  const contextWrite = context
-    ? chrome.storage.session.set({ companionContext: context })
-    : Promise.resolve();
+  if (context) {
+    await chrome.storage.session.set({ companionContext: context });
+    notifyCompanionContextUpdated();
+  }
 
   if (!chrome.sidePanel?.open) {
-    return { ok: false, reason: 'sidePanelUnavailable' };
+    return { ok: false, reason: 'sidePanelUnavailable', preloaded: !!context };
   }
 
-  const windowId = sender?.tab?.windowId;
-  if (typeof windowId === 'number') {
-    await chrome.sidePanel.open({ windowId });
-    await contextWrite;
-    notifyCompanionContextUpdated();
-    return { ok: true };
-  }
+  try {
+    const windowId = sender?.tab?.windowId;
+    if (typeof windowId === 'number') {
+      await chrome.sidePanel.open({ windowId });
+      return { ok: true, preloaded: !!context };
+    }
 
-  const window = await chrome.windows.getLastFocused();
-  if (typeof window?.id !== 'number') {
-    return { ok: false, reason: 'windowUnavailable' };
+    const window = await chrome.windows.getLastFocused();
+    if (typeof window?.id !== 'number') {
+      return { ok: false, reason: 'windowUnavailable', preloaded: !!context };
+    }
+    await chrome.sidePanel.open({ windowId: window.id });
+    return { ok: true, preloaded: !!context };
+  } catch (error) {
+    return { ok: false, reason: error?.message || 'openFailed', preloaded: !!context };
   }
-  await chrome.sidePanel.open({ windowId: window.id });
-  await contextWrite;
-  notifyCompanionContextUpdated();
-  return { ok: true };
 }
 
 async function getYoutubeTranscriptFromActiveTab(options = {}) {

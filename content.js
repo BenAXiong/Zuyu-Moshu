@@ -483,6 +483,7 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
   const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks || [];
   const tracks = normalizeYoutubeCaptionTracks(captionTracks);
   const selected = chooseYoutubeCaptionTrack(tracks, selectedTrackKey);
+  let trackFailureContext = null;
   if (selected?.baseUrl) {
     try {
       const { lines, reason } = await fetchYoutubeCaptionTrack(selected.baseUrl);
@@ -499,18 +500,15 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
           }),
         };
       }
-      return {
-        ok: true,
-        context: makeYoutubeTranscriptContext({
-          videoId,
-          lines: [],
-          tracks: tracks.map(({ baseUrl, ...track }) => track),
-          selectedTrackKey: selected.key,
-          trackLabel: selected.label,
-          source: 'caption-track',
-          error: `找到字幕軌「${selected.label}」，但字幕內容讀取失敗：${formatYoutubeCaptionFailure(reason)}。`,
-        }),
-      };
+      trackFailureContext = makeYoutubeTranscriptContext({
+        videoId,
+        lines: [],
+        tracks: tracks.map(({ baseUrl, ...track }) => track),
+        selectedTrackKey: selected.key,
+        trackLabel: selected.label,
+        source: 'caption-track',
+        error: `找到字幕軌「${selected.label}」，但字幕內容讀取失敗：${formatYoutubeCaptionFailure(reason)}。`,
+      });
     } catch {
       // Fall back to the open transcript panel if caption-track fetching fails.
     }
@@ -523,11 +521,15 @@ async function collectYoutubeTranscript(selectedTrackKey = '') {
       context: makeYoutubeTranscriptContext({
         videoId,
         lines: domLines,
+        tracks: tracks.map(({ baseUrl, ...track }) => track),
+        selectedTrackKey: selected?.key || '',
         trackLabel: '頁面字幕',
         source: 'visible-transcript',
       }),
     };
   }
+
+  if (trackFailureContext) return { ok: true, context: trackFailureContext };
 
   return { ok: false, reason: 'noCaptions' };
 }
@@ -769,21 +771,91 @@ function normalizeYoutubeCaptionEvents(events) {
 }
 
 function getVisibleYoutubeTranscriptLines() {
-  const rows = [...document.querySelectorAll('ytd-transcript-segment-renderer, ytd-transcript-segment-list-renderer ytd-transcript-segment-renderer')];
-  return rows.map(row => {
-    const timeText = row.querySelector('.segment-timestamp')?.textContent
-      || row.querySelector('[class*="timestamp"]')?.textContent
-      || '';
-    const text = row.querySelector('.segment-text')?.textContent
-      || row.querySelector('yt-formatted-string')?.textContent
-      || row.textContent
-      || '';
-    return {
+  const roots = getVisibleYoutubeTranscriptRoots();
+  const rows = [];
+  roots.forEach(root => {
+    [root, ...root.querySelectorAll('ytd-transcript-segment-renderer, button, div, span')].forEach(element => {
+      const line = extractVisibleYoutubeTranscriptLine(element);
+      if (line) rows.push(line);
+    });
+  });
+  return dedupeYoutubeTranscriptLines(rows);
+}
+
+function getVisibleYoutubeTranscriptRoots() {
+  const selectors = [
+    'ytd-engagement-panel-section-list-renderer[target-id*="transcript"]',
+    'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-searchable-transcript"]',
+    'ytd-transcript-renderer',
+    'ytd-transcript-segment-list-renderer',
+    'tp-yt-paper-dialog',
+    '[role="dialog"]',
+  ];
+  const roots = selectors
+    .flatMap(selector => [...document.querySelectorAll(selector)])
+    .filter(isVisibleElement);
+  return roots;
+}
+
+function extractVisibleYoutubeTranscriptLine(row) {
+  if (!isVisibleElement(row)) return null;
+  const timeText = row.querySelector?.('.segment-timestamp')?.textContent
+    || row.querySelector?.('[class*="timestamp"]')?.textContent
+    || '';
+  const text = row.querySelector?.('.segment-text')?.textContent
+    || row.querySelector?.('yt-formatted-string')?.textContent
+    || row.innerText
+    || row.textContent
+    || '';
+
+  if (timeText) {
+    const clean = cleanYoutubeTranscriptLineText(text.replace(timeText, ''));
+    return clean ? {
       startMs: parseYoutubeTimecode(timeText),
       durationMs: 0,
-      text: text.replace(timeText, '').replace(/\s+/g, ' ').trim(),
-    };
-  }).filter(line => line.text);
+      text: clean,
+    } : null;
+  }
+
+  const lines = String(text || '').split(/\r?\n/).map(part => part.trim()).filter(Boolean);
+  if (lines.length > 3) return null;
+  const joined = lines.join(' ');
+  const timeMatch = joined.match(/^\s*((?:\d{1,2}:)?\d{1,2}:\d{2})\s+([\s\S]+)$/);
+  if (!timeMatch) return null;
+  const timeCount = (joined.match(/(?:^|\s)(?:\d{1,2}:)?\d{1,2}:\d{2}(?=\s)/g) || []).length;
+  if (timeCount > 1) return null;
+  const clean = cleanYoutubeTranscriptLineText(timeMatch[2]);
+  return clean ? {
+    startMs: parseYoutubeTimecode(timeMatch[1]),
+    durationMs: 0,
+    text: clean,
+  } : null;
+}
+
+function cleanYoutubeTranscriptLineText(text) {
+  return String(text || '')
+    .replace(/\bSearch transcript\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeYoutubeTranscriptLines(lines) {
+  const seen = new Set();
+  return lines.filter(line => {
+    const key = `${line.startMs}:${line.text}`;
+    if (!line.text || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => a.startMs - b.startMs);
+}
+
+function isVisibleElement(element) {
+  if (!element || element.nodeType !== Node.ELEMENT_NODE) return false;
+  const style = getComputedStyle(element);
+  return style.display !== 'none'
+    && style.visibility !== 'hidden'
+    && style.opacity !== '0'
+    && element.getClientRects().length > 0;
 }
 
 function parseYoutubeTimecode(value) {
